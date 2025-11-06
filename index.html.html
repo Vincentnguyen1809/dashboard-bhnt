@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Master Plan: Dịch Vụ Marketing BHNT — Final</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background-color: #f5f5f5; }
+    .chart-container { position: relative; width:100%; max-width:350px; margin:0 auto; height:300px; max-height:350px; }
+    .nav-link { display:flex; align-items:center; padding:0.625rem 1rem; border-radius:0.375rem; color:#374151; font-weight:500; font-size:0.9375rem; transition:all .15s; cursor:pointer; margin-bottom:0.25rem; }
+    .nav-link:hover{ background:#e5e7eb; }
+    .nav-link.active{ background:#dbeafe; color:#1e40af; }
+    .nav-link .emoji{ font-size:1.25rem; margin-right:0.75rem; }
+    .sidebar{ transform:translateX(-100%); transition: transform .3s; position:fixed; inset:0 auto 0 0; z-index:30; background:#fafafa; border-right:1px solid #e5e7eb; width:16rem; }
+    .sidebar.open{ transform:translateX(0); }
+    @media (min-width:1024px){ .sidebar{ transform:none; position:static; } }
+    .task-card{ background:#fff; border-radius:0.5rem; padding:1.25rem; margin-bottom:1rem; border:1px solid #e5e7eb; transition:box-shadow .2s; }
+    .task-card:hover{ box-shadow:0 2px 8px rgba(0,0,0,.08); }
+    .task-card.completed{ background:#f0fdf4; border-color:#86efac; }
+    .task-card.overdue{ background:#fef2f2; border-color:#fca5a5; }
+    .task-header{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem; }
+    .task-title{ font-size:1rem; font-weight:600; color:#111827; flex:1; padding-right:1rem; }
+    .task-status{ font-size:0.6875rem; font-weight:600; padding:0.25rem 0.625rem; border-radius:0.25rem; text-transform:uppercase; letter-spacing:.025em; white-space:nowrap; }
+    .status-pending{ background:#f3f4f6; color:#6b7280; }
+    .status-completed{ background:#dcfce7; color:#166534; }
+    .status-overdue{ background:#fee2e2; color:#991b1b; }
+    .task-details{ margin-top:0.75rem; }
+    .task-details-label{ font-weight:600; font-size:0.875rem; color:#374151; margin-bottom:0.5rem; }
+    .task-detail-list{ list-style:disc; margin-left:1.25rem; font-size:0.875rem; color:#6b7280; line-height:1.6; }
+    .task-detail-list li{ margin-bottom:0.375rem; }
+    .task-meta{ font-size:0.8125rem; color:#9ca3af; margin-top:0.75rem; display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; }
+    .deadline-countdown{ font-weight:600; margin-left:0.25rem; }
+    .deadline-imminent{ color:#dc2626; }
+    .deadline-soon{ color:#f59e0b; }
+    .task-action-area{ margin-top:1rem; padding-top:1rem; border-top:1px solid #f3f4f6; }
+    .task-input-group{ display:flex; gap:0.5rem; }
+    .task-link-input{ flex:1; border:1px solid #d1d5db; border-radius:0.375rem; padding:0.5rem 0.75rem; font-size:0.875rem; color:#374151; transition:.2s; }
+    .task-link-input:focus{ outline:none; border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.1); }
+    .task-link-input:disabled{ background:#f9fafb; color:#9ca3af; cursor:not-allowed; }
+    .task-btn{ padding:0.5rem 1rem; font-size:0.875rem; font-weight:500; border-radius:0.375rem; transition:.2s; cursor:pointer; border:none; white-space:nowrap; }
+    .task-btn:disabled{ opacity:.5; cursor:not-allowed; }
+    .btn-complete{ background:#10b981; color:#fff; }
+    .btn-complete:hover:not(:disabled){ background:#059669; }
+    .btn-edit-dropdown{ background:#3b82f6; color:#fff; position:relative; padding-right:2rem; }
+    .btn-edit-dropdown:hover{ background:#2563eb; }
+    .btn-edit-dropdown::after{ content:'▼'; position:absolute; right:0.5rem; font-size:0.625rem; }
+    .edit-dropdown-wrapper{ position:relative; display:inline-block; }
+    .edit-dropdown-menu{ display:none; position:absolute; top:100%; right:0; margin-top:0.25rem; background:#fff; border:1px solid #e5e7eb; border-radius:0.375rem; box-shadow:0 4px 6px -1px rgba(0,0,0,.1); min-width:150px; z-index:10; }
+    .edit-dropdown-menu.show{ display:block; }
+    .dropdown-item{ padding:0.625rem 1rem; font-size:0.875rem; color:#374151; cursor:pointer; display:flex; align-items:center; gap:0.5rem; }
+    .dropdown-item:hover{ background:#f3f4f6; }
+    .dropdown-item.delete{ color:#dc2626; }
+    .dropdown-item.delete:hover{ background:#fef2f2; }
+    .btn-cancel{ background:#e5e7eb; color:#374151; }
+    .btn-cancel:hover{ background:#d1d5db; }
+    .progress-bar{ background:#e5e7eb; border-radius:9999px; overflow:hidden; height:0.75rem; }
+    .progress-bar-inner{ background:#3b82f6; height:100%; transition:width .5s; }
+    .section-title{ font-size:1.875rem; font-weight:700; color:#111827; margin-bottom:0.75rem; }
+    .section-subtitle{ font-size:1rem; color:#6b7280; margin-bottom:2rem; line-height:1.5; }
+    .phase-title{ font-size:1.25rem; font-weight:600; color:#1e40af; margin-top:2rem; margin-bottom:1rem; padding-bottom:0.5rem; border-bottom:2px solid #dbeafe; }
+    .notes-textarea{ width:100%; border:1px solid #d1d5db; border-radius:0.375rem; padding:0.75rem; font-size:0.875rem; resize:none; min-height:120px; font-family:inherit; }
+    .notes-textarea:focus{ outline:none; border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.1); }
+    .notes-table{ width:100%; border-collapse:collapse; font-size:0.875rem; }
+    .notes-table th{ background:#f9fafb; padding:0.75rem; text-align:left; font-weight:600; color:#374151; border-bottom:2px solid #e5e7eb; }
+    .notes-table td{ padding:0.75rem; border-bottom:1px solid #f3f4f6; color:#6b7280; }
+    .notes-table tr:hover{ background:#f9fafb; }
+    .custom-type-item{ display:inline-flex; align-items:center; gap:0.375rem; padding:0.25rem 0.75rem; background:#dbeafe; border-radius:9999px; margin:0.25rem; font-size:0.8125rem; color:#1e40af; }
+    .custom-type-remove{ color:#ef4444; cursor:pointer; font-weight:700; font-size:1rem; line-height:1; padding:0 0.25rem; }
+    .custom-type-remove:hover{ color:#dc2626; }
+    .filter-container{ display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1.5rem; }
+    .filter-input, .form-select{ width:100%; border:1px solid #d1d5db; border-radius:0.375rem; padding:0.5rem 0.75rem; font-size:0.875rem; background:#fff; }
+    .filter-input:focus, .form-select:focus{ outline:none; border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.1); }
+    .modal-overlay{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:50; align-items:center; justify-content:center; backdrop-filter: blur(2px); }
+    .modal-overlay.active{ display:flex; }
+    .modal-content{ background:#fff; padding:1.75rem; border-radius:0.75rem; max-width:420px; width:90%; box-shadow:0 20px 25px -5px rgba(0,0,0,.1), 0 10px 10px -5px rgba(0,0,0,.04); }
+    .modal-title{ font-size:1.25rem; font-weight:700; color:#111827; margin-bottom:0.75rem; }
+    .modal-message{ color:#6b7280; margin-bottom:1.5rem; line-height:1.5; }
+    .modal-buttons{ display:flex; gap:0.75rem; justify-content:flex-end; }
+  </style>
+</head>
+<body class="text-gray-800">
+  <!-- Delete Task Modal -->
+  <div id="delete-task-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="delete-task-title">
+      <h3 id="delete-task-title" class="modal-title">Xác nhận xóa</h3>
+      <p class="modal-message">Bạn có chắc chắn muốn xóa task này không? Link đã nhập sẽ bị xóa và task sẽ trở về trạng thái chưa hoàn thành.</p>
+      <div class="modal-buttons">
+        <button id="cancel-delete-task-btn" class="task-btn btn-cancel">Không</button>
+        <button id="confirm-delete-task-btn" class="task-btn" style="background-color:#ef4444; color:#fff;">Có</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Note Modal -->
+  <div id="delete-note-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="delete-note-title">
+      <h3 id="delete-note-title" class="modal-title">Xác nhận xóa ghi chú</h3>
+      <p class="modal-message">Bạn có chắc chắn muốn xóa ghi chú này không?</p>
+      <div class="modal-buttons">
+        <button id="cancel-delete-note-btn" class="task-btn btn-cancel">Không</button>
+        <button id="confirm-delete-note-btn" class="task-btn" style="background-color:#ef4444; color:#fff;">Có</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex h-screen overflow-hidden">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar lg:static" aria-label="Thanh điều hướng">
+      <div class="flex h-full flex-col">
+        <div class="flex items-center h-16 px-5 border-b border-gray-200">
+          <h1 class="text-base font-bold text-gray-900">Master Plan (A-Z+)</h1>
+          <button id="close-menu" class="lg:hidden ml-auto text-gray-600 hover:text-gray-900 text-2xl" aria-label="Đóng menu">&times;</button>
+        </div>
+        <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
+          <a class="nav-link active" data-target="overview"><span class="emoji">📊</span><span>Tổng Quan</span></a>
+          <a class="nav-link" data-target="gd1"><span class="emoji">🎯</span><span>GĐ 1: Nền Tảng</span></a>
+          <a class="nav-link" data-target="gd2"><span class="emoji">🏗️</span><span>GĐ 2: Xây Dựng</span></a>
+          <a class="nav-link" data-target="gd3"><span class="emoji">⚙️</span><span>GĐ 3: Vận Hành & Tối Ưu</span></a>
+          <a class="nav-link" data-target="gd4"><span class="emoji">🚀</span><span>GĐ 4: Ra Mắt</span></a>
+          <a class="nav-link" data-target="notes"><span class="emoji">📝</span><span>Ghi Chú Dự Án</span></a>
+        </nav>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 relative overflow-y-auto bg-gray-50">
+      <!-- Top bar -->
+      <header class="sticky top-0 z-20 flex items-center justify-between px-6 py-3 bg-white border-b border-gray-200">
+        <button id="open-menu" class="mobile-menu-button lg:hidden text-gray-600 hover:text-gray-900" aria-label="Mở menu">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </button>
+        <div class="ml-auto text-right">
+          <div class="text-sm font-medium text-gray-700">Ngày Ra Mắt (D-Day)</div>
+          <div class="text-base font-bold text-red-600">15/03/2026</div>
+        </div>
+      </header>
+
+      <div class="p-6 max-w-7xl mx-auto">
+        <div id="content-sections">
+          <!-- Overview -->
+          <section id="overview" class="content-section">
+            <h2 class="section-title">Tổng Quan Tiến Độ Dự Án</h2>
+            <p class="section-subtitle">Dán link kết quả cho từng task rồi bấm “Hoàn Thành”. Hệ thống tự cập nhật tiến độ, biểu đồ, và cảnh báo deadline.</p>
+
+            <div class="card-section">
+              <h3 class="card-title">Tổng Tiến Độ (Toàn Dự Án)</h3>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-medium text-gray-600">Tiến độ</span>
+                <span id="total-progress-text" class="text-sm font-bold text-blue-600">0 / 0 Tasks</span>
+              </div>
+              <div class="progress-bar"><div id="total-progress-bar" class="progress-bar-inner" style="width:0%"></div></div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              <div class="stat-card">
+                <h3 class="card-title text-center">Tỷ Lệ Hoàn Thành</h3>
+                <div class="chart-container"><canvas id="progressChart"></canvas></div>
+              </div>
+              <div class="stat-card">
+                <h3 class="card-title">Tiến Độ Theo Giai Đoạn</h3>
+                <div class="space-y-4">
+                  <div>
+                    <div class="flex justify-between mb-1.5"><span class="text-sm font-medium text-blue-700">GĐ 1: Nền Tảng</span><span id="gd1-progress-text" class="text-sm font-medium text-blue-700">0 / 0</span></div>
+                    <div class="progress-bar"><div id="gd1-progress-bar" class="progress-bar-inner" style="width:0%"></div></div>
+                  </div>
+                  <div>
+                    <div class="flex justify-between mb-1.5"><span class="text-sm font-medium text-green-700">GĐ 2: Xây Dựng</span><span id="gd2-progress-text" class="text-sm font-medium text-green-700">0 / 0</span></div>
+                    <div class="progress-bar"><div id="gd2-progress-bar" class="progress-bar-inner bg-green-600" style="width:0%"></div></div>
+                  </div>
+                  <div>
+                    <div class="flex justify-between mb-1.5"><span class="text-sm font-medium text-yellow-700">GĐ 3: Vận Hành</span><span id="gd3-progress-text" class="text-sm font-medium text-yellow-700">0 / 0</span></div>
+                    <div class="progress-bar"><div id="gd3-progress-bar" class="progress-bar-inner bg-yellow-500" style="width:0%"></div></div>
+                  </div>
+                  <div>
+                    <div class="flex justify-between mb-1.5"><span class="text-sm font-medium text-red-700">GĐ 4: Ra Mắt</span><span id="gd4-progress-text" class="text-sm font-medium text-red-700">0 / 0</span></div>
+                    <div class="progress-bar"><div id="gd4-progress-bar" class="progress-bar-inner bg-red-600" style="width:0%"></div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="upcoming-deadlines-container" class="card-section hidden">
+              <h3 class="card-title text-orange-600">⚠️ Deadline Sắp Tới (Trong 7 ngày)</h3>
+              <ul id="upcoming-deadlines-list" class="list-disc list-inside space-y-1.5 text-gray-700"></ul>
+            </div>
+            <div id="overdue-tasks-container" class="card-section hidden">
+              <h3 class="card-title text-red-600">🚨 Tasks Quá Hạn</h3>
+              <ul id="overdue-tasks-list" class="list-disc list-inside space-y-1.5 text-gray-700"></ul>
+            </div>
+          </section>
+
+          <!-- GĐ1 -->
+          <section id="gd1" class="content-section hidden">
+            <h2 class="section-title">Giai Đoạn 1: Nền Tảng & Chiến Lược</h2>
+            <p class="section-subtitle">Mục tiêu: Định hình rõ chúng ta là ai, bán gì, bán cho ai.</p>
+            <h3 class="phase-title">Tuần 1-2: Nghiên Cứu & Định Vị</h3>
+            <div id="gd1-week1-2" class="space-y-4"></div>
+            <h3 class="phase-title">Tuần 3-4: Thiết Kế Dịch Vụ & Giá</h3>
+            <div id="gd1-week3-4" class="space-y-4"></div>
+          </section>
+
+          <!-- GĐ2 -->
+          <section id="gd2" class="content-section hidden">
+            <h2 class="section-title">Giai Đoạn 2: Xây Dựng Hạ Tầng & Tài Sản</h2>
+            <p class="section-subtitle">Website, Funnel, Social, Portfolio, Sales Kit, Hợp đồng, Nội dung & Nhân sự.</p>
+            <h3 class="phase-title">Tuần 5-8: Hạ Tầng Kỹ Thuật</h3>
+            <div id="gd2-week5-8" class="space-y-4"></div>
+            <h3 class="phase-title">Tuần 9-11: Portfolio & Sales Kit</h3>
+            <div id="gd2-week9-11" class="space-y-4"></div>
+            <h3 class="phase-title">Tuần 12-13: Nội dung & Vận hành</h3>
+            <div id="gd2-week12-13" class="space-y-4"></div>
+          </section>
+
+          <!-- GĐ3 -->
+          <section id="gd3" class="content-section hidden">
+            <h2 class="section-title">Giai Đoạn 3: Vận Hành & Tối Ưu (A-Z+)</h2>
+            <p class="section-subtitle">Nhân sự, SOPs, Sales scripts, CSKH, rủi ro, test & kế hoạch ra mắt.</p>
+            <h3 class="phase-title">Tuần 14-15: Nhân Sự & SOPs</h3>
+            <div id="gd3-week14-15" class="space-y-4"></div>
+            <h3 class="phase-title">Tuần 16-17: Kịch Bản & Rủi Ro</h3>
+            <div id="gd3-week16-17" class="space-y-4"></div>
+          </section>
+
+          <!-- GĐ4 -->
+          <section id="gd4" class="content-section hidden">
+            <h2 class="section-title">Giai Đoạn 4: Ra Mắt (D-Day)</h2>
+            <p class="section-subtitle">Build hype, kiểm tra kỹ thuật, ra mắt & tổng kết.</p>
+            <div id="gd4-week18" class="space-y-4"></div>
+          </section>
+
+          <!-- Notes -->
+          <section id="notes" class="content-section hidden">
+            <h2 class="section-title">Ghi Chú Dự Án</h2>
+            <div class="card-section">
+              <h3 class="card-title">Quản Lý Loại Ghi Chú</h3>
+              <p class="text-sm text-gray-600 mb-3">Tối đa 10 loại ghi chú tùy chỉnh</p>
+              <div class="flex gap-2 mb-3">
+                <input type="text" id="custom-type-input" class="flex-1 filter-input" placeholder="VD: Meeting, Bug, Feature..."/>
+                <button id="add-custom-type-btn" class="task-btn btn-complete">Thêm Loại</button>
+              </div>
+              <div class="bg-gray-50 p-3 rounded-lg">
+                <div class="text-sm font-medium text-gray-700 mb-2">Các loại hiện có:</div>
+                <div id="custom-types-list"></div>
+              </div>
+            </div>
+
+            <div class="card-section">
+              <h3 class="card-title">Ghi Chú Mới</h3>
+              <textarea id="notes-textarea" class="notes-textarea" placeholder="Nhập ghi chú của bạn hôm nay..."></textarea>
+              <select id="note-type-select" class="form-select mt-3"></select>
+              <button id="save-note-btn" class="task-btn btn-complete w-full mt-3">💾 Lưu Ghi Chú</button>
+            </div>
+
+            <div class="card-section">
+              <h3 class="card-title">Lọc Ghi Chú</h3>
+              <div class="filter-container">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1.5">Từ ngày</label>
+                  <input type="date" id="filter-date-from" class="filter-input"/>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1.5">Đến ngày</label>
+                  <input type="date" id="filter-date-to" class="filter-input"/>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1.5">Loại</label>
+                  <select id="filter-type" class="filter-input"><option value="">Tất cả loại</option></select>
+                </div>
+              </div>
+              <div class="flex gap-2 mt-3">
+                <button id="apply-filter-btn" class="task-btn btn-complete">🔍 Lọc</button>
+                <button id="reset-filter-btn" class="task-btn btn-cancel">🔄 Reset</button>
+              </div>
+            </div>
+
+            <div class="card-section">
+              <h3 class="card-title">Ghi Chú Đã Lưu</h3>
+              <div class="overflow-x-auto">
+                <table class="notes-table">
+                  <thead>
+                    <tr>
+                      <th style="width:15%">Ngày Giờ</th>
+                      <th style="width:15%">Loại</th>
+                      <th style="width:60%">Nội Dung</th>
+                      <th style="width:10%; text-align:center;">Xóa</th>
+                    </tr>
+                  </thead>
+                  <tbody id="notes-list-container"></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // ========= DATA =========
+    const tasksData = [
+      // GĐ1 – Tuần 1-2
+      { id:'1.1', phase:'gd1', week:'gd1-week1-2', title:'Task 1.1: Nghiên cứu thị trường & Đối thủ', deadline:'12/11/2025', owner:'BOD, Marketing', details:[
+        'Phân tích website, fanpage của 5-10 đối thủ (cả trực tiếp và gián tiếp).',
+        'Lập file Excel so sánh: gói, giá, điểm mạnh/yếu.',
+        'Tìm khoảng trống thị trường.'
+      ]},
+      { id:'1.2', phase:'gd1', week:'gd1-week1-2', title:'Task 1.2: Chốt Tên Thương Hiệu & Domain', deadline:'13/11/2025', owner:'BOD, Marketing', details:[
+        'Brainstorm 20+ tên (dễ nhớ, chuyên nghiệp).',
+        'Kiểm tra domain .vn/.com và tên trên MXH.',
+        'Chốt tên và mua domain.'
+      ]},
+      { id:'1.3', phase:'gd1', week:'gd1-week1-2', title:'Task 1.3: Chốt Chân dung Khách hàng (Target Audience)', deadline:'19/11/2025', owner:'BOD, Marketing', details:[
+        'Nhắm đến ai (TVV mới, Leader, GA...)',
+        'Nỗi đau chính; mục tiêu.',
+        'Vẽ 2-3 persona chi tiết.'
+      ]},
+      { id:'1.4', phase:'gd1', week:'gd1-week1-2', title:'Task 1.4: Phát triển Bộ Nhận Diện Thương Hiệu (Brand Kit)', deadline:'19/11/2025', owner:'Marketing, Design', details:[
+        'Thiết kế Logo (đủ + icon).',
+        'Chốt 3-5 màu (mã hex).',
+        'Chốt font tiêu đề & nội dung.',
+        'Làm Brand Guideline PDF cơ bản.'
+      ]},
+      // GĐ1 – Tuần 3-4
+      { id:'1.5', phase:'gd1', week:'gd1-week3-4', title:'Task 1.5: Thiết kế Gói Dịch Vụ', deadline:'27/11/2025', owner:'Product, Sales', details:[
+        'Xây 3 gói: Cơ bản/Chuyên nghiệp/Cao cấp.',
+        'Bảng so sánh hạng mục (Fanpage, Web, Video AI, Ads, Báo cáo...).',
+        'Liệt kê rõ "Không bao gồm".'
+      ]},
+      { id:'1.6', phase:'gd1', week:'gd1-week3-4', title:'Task 1.6: Xây dựng Chính Sách Giá (Pricing)', deadline:'28/11/2025', owner:'Product, Sales, Finance', details:[
+        'Định giá cho 3 gói (liên quan 1.5).',
+        'File Excel tính COGS.',
+        'Mục tiêu lợi nhuận gộp 30-50%.'
+      ]},
+      { id:'1.7', phase:'gd1', week:'gd1-week3-4', title:'Task 1.7: Xây dựng Chính Sách Bán Hàng', deadline:'04/12/2025', owner:'Sales', details:[
+        'Chính sách hoa hồng (Sales/CTV).',
+        'Chính sách thanh toán.',
+        'Điều khoản cam kết/hoàn tiền (chặt chẽ).'
+      ]},
+      { id:'1.8', phase:'gd1', week:'gd1-week3-4', title:'Task 1.8: Phác thảo Quy trình làm việc (Client Workflow)', deadline:'04/12/2025', owner:'Product, Ops', details:[
+        'Vẽ flowchart Miro/Figma.',
+        '5 bước: Sales chốt → Bàn giao Ops → Onboarding → Triển khai hằng tháng → Báo cáo & Gia hạn.'
+      ]},
+
+      // GĐ2 – Tuần 5-8
+      { id:'2.1', phase:'gd2', week:'gd2-week5-8', title:'Task 2.1: Xây dựng Website Chính', deadline:'08/01/2026', owner:'Marketing, IT/Dev', details:[
+        'Trang: Home, About, Dịch vụ, Bảng giá, Case Studies, Blog, Liên hệ.',
+        'Đẹp, chuyên nghiệp, mobile-first.'
+      ]},
+      { id:'2.2', phase:'gd2', week:'gd2-week5-8', title:'Task 2.2: Xây dựng Phễu Thu Lead (Sales Funnel)', deadline:'15/01/2026', owner:'Marketing', details:[
+        'Thiết kế Lead Magnet.',
+        'Landing Page tặng tài liệu.',
+        'Email tự động gửi quà & nuôi dưỡng.'
+      ]},
+      { id:'2.3', phase:'gd2', week:'gd2-week5-8', title:'Task 2.3: Xây dựng Kênh Social Media', deadline:'16/01/2026', owner:'Marketing', details:[
+        'Tạo & tối ưu Fanpage/LinkedIn/YouTube.',
+        'Đăng 3-5 bài mồi mỗi kênh.'
+      ]},
+
+      // GĐ2 – Tuần 9-11
+      { id:'2.4A', phase:'gd2', week:'gd2-week9-11', title:'Task 2.4.A: Chạy dự án "Beta" (Lấy Case Study THẬT)', deadline:'29/01/2026', owner:'Marketing, Sales', details:[
+        'Làm thử cho 2-3 TVV (miễn phí/giá rẻ).',
+        'Thu 3 case Before-After + 1 video testimonial 30-60s.'
+      ]},
+      { id:'2.4B', phase:'gd2', week:'gd2-week9-11', title:'Task 2.4.B: Xây dựng "Gói Demo" (Tài sản Mẫu)', deadline:'29/01/2026', owner:'Marketing, Design', details:[
+        'Website mẫu cho TVV tưởng tượng.',
+        'Bộ 4 bài content mẫu.',
+        '1-2 video AI mẫu (HeyGen).',
+        'Tổng hợp vào 1 folder GDrive.'
+      ]},
+      { id:'2.5', phase:'gd2', week:'gd2-week9-11', title:'Task 2.5: Xây dựng Bộ Tài Liệu Bán Hàng (Sales Kit)', deadline:'05/02/2026', owner:'Sales, Marketing', details:[
+        'Sales Deck: vấn đề → giải pháp → gói → case.',
+        'Proposal template.',
+        'Folder Sales Kit tổng hợp.'
+      ]},
+      { id:'2.5C', phase:'gd2', week:'gd2-week9-11', title:'Task 2.5.C: Soạn thảo Hợp đồng mẫu (Pháp lý)', deadline:'05/02/2026', owner:'BOD, Legal', details:[
+        'Tham vấn luật sư/mẫu chuẩn.',
+        'Rõ scope theo 3 gói; số lần sửa; miễn trừ; bảo mật.'
+      ]},
+
+      // GĐ2 – Tuần 12-13
+      { id:'2.6', phase:'gd2', week:'gd2-week12-13', title:'Task 2.6: Viết Kịch Bản Video Bán Hàng', deadline:'12/02/2026', owner:'Marketing', details:[
+        'Script (60s) vấn đề-giải pháp.',
+        'Script (2-3p) giới thiệu dịch vụ.',
+        'Script (60s) testimonial.',
+        'Có lời thoại & mô tả hình ảnh.'
+      ]},
+      { id:'2.7', phase:'gd2', week:'gd2-week12-13', title:'Task 2.7: Quay & Dựng 3 Video Bán Hàng', deadline:'26/02/2026', owner:'Marketing', details:[
+        'Sản xuất theo kịch bản 2.6.',
+        'Ưu tiên chất lượng/AI.',
+        'Phụ đề, nhạc nền, CTA rõ.'
+      ]},
+      { id:'2.8', phase:'gd2', week:'gd2-week12-13', title:'Task 2.8: Xây dựng Kế hoạch Tuyển dụng', deadline:'12/02/2026', owner:'HR', details:[
+        'Xác định vị trí cốt lõi (1 Content, 1 Account).',
+        'JD chi tiết, đăng tin.',
+        'Danh sách 3-5 freelancer dự phòng.'
+      ]},
+      { id:'2.9', phase:'gd2', week:'gd2-week12-13', title:'Task 2.9: Chuẩn bị Tài sản Quảng cáo (Ads)', deadline:'12/02/2026', owner:'Marketing, Ads', details:[
+        'Tạo 3-5 BM dự phòng.',
+        'Pixel + cài lên Web/Funnel.',
+        'Xác minh domain FB.',
+        'Chuẩn bị 1-2 tài khoản Ads cá nhân.'
+      ]},
+      { id:'2.10', phase:'gd2', week:'gd2-week12-13', title:'Task 2.10: Xây dựng Template Vận hành (Internal)', deadline:'12/02/2026', owner:'Ops', details:[
+        'Folder Template cho KH mới.',
+        'Project Template (Trello/Base).',
+        'Template báo cáo tháng (Slides).'
+      ]},
+
+      // GĐ3 – Tuần 14-15
+      { id:'3.1', phase:'gd3', week:'gd3-week14-15', title:'Task 3.1: Hoàn tất Phỏng vấn & Chốt nhân sự', deadline:'19/02/2026', owner:'HR', details:[
+        'Phỏng vấn, chốt Offer.',
+        'Ký HĐ lao động/dịch vụ.'
+      ]},
+      { id:'3.2A', phase:'gd3', week:'gd3-week14-15', title:'Task 3.2.A: Thiết kế Client Briefing Form', deadline:'19/02/2026', owner:'Ops, Marketing', details:[
+        'Google Form lấy thông tin.',
+        'Câu hỏi: link, TOV, 3 đối thủ, tuỳ chọn clone AI...'
+      ]},
+      { id:'3.2.1', phase:'gd3', week:'gd3-week14-15', title:'Task 3.2.1: SOP - Onboarding Khách Hàng Mới', deadline:'26/02/2026', owner:'Ops', details:[
+        'Bàn giao Sales→AM; email chào; hẹn kick-off; tạo project (2.10); kick-off.'
+      ]},
+      { id:'3.2.2', phase:'gd3', week:'gd3-week14-15', title:'Task 3.2.2: SOP - Dịch Vụ Quản lý Content/Website', deadline:'26/02/2026', owner:'Ops, Content', details:[
+        'Content plan tháng → sản xuất → duyệt (≤2 lần sửa/bài) → lên lịch → báo cáo.'
+      ]},
+      { id:'3.2.3', phase:'gd3', week:'gd3-week14-15', title:'Task 3.2.3: SOP - Dịch Vụ AI Video (HeyGen/ElevenLabs)', deadline:'26/02/2026', owner:'Ops, Media', details:[
+        'Nhận brief → duyệt kịch bản → nháp (watermark) → duyệt (chỉ lỗi) → bàn giao full HD.'
+      ]},
+      { id:'3.2B', phase:'gd3', week:'gd3-week14-15', title:'Task 3.2.B: Quy trình Hướng dẫn KH dùng AI Tools', deadline:'26/02/2026', owner:'Ops, Media', details:[
+        '2 video hướng dẫn: quay mẫu cho HeyGen; xác thực voice ElevenLabs.'
+      ]},
+      { id:'3.3', phase:'gd3', week:'gd3-week14-15', title:'Task 3.3: Đào tạo Nhân sự mới', deadline:'27/02/2026', owner:'HR, Ops', details:[
+        'Training 1 buổi: 3 gói (1.5), SOPs (3.2.x), kịch bản sales (3.9).'
+      ]},
+
+      // GĐ3 – Tuần 16-17
+      { id:'3.8A', phase:'gd3', week:'gd3-week16-17', title:'Task 3.8.A: Viết Ebook Lead Magnet', deadline:'01/03/2026', owner:'Marketing, Content', details:[
+        'Ebook 10-15 trang PDF, chủ đề phù hợp phễu (2.2).'
+      ]},
+      { id:'3.9', phase:'gd3', week:'gd3-week16-17', title:'Task 3.9: Soạn Kịch Bản Bán Hàng (Sales Scripts)', deadline:'01/03/2026', owner:'Sales', details:[
+        'Telesales; email lạnh; xử lý từ chối; follow-up 3 lần.'
+      ]},
+      { id:'3.10', phase:'gd3', week:'gd3-week16-17', title:'Task 3.10: Soạn Bộ FAQ', deadline:'01/03/2026', owner:'Marketing, Sales', details:[
+        'Tối thiểu 10 câu: cam kết lead, ngân sách ads, duyệt nội dung, HĐ tối thiểu...'
+      ]},
+      { id:'3.11', phase:'gd3', week:'gd3-week16-17', title:'Task 3.11: Thiết lập Hệ thống CSKH & SLA', deadline:'05/03/2026', owner:'Ops', details:[
+        'Chốt kênh hỗ trợ; soạn SLA; Form đo CSAT hàng tháng.'
+      ]},
+      { id:'3.12', phase:'gd3', week:'gd3-week16-17', title:'Task 3.12: Kế hoạch Quản Trị Rủi Ro', deadline:'05/03/2026', owner:'BOD, Ops', details:[
+        'Phương án cho 5 rủi ro: kỳ vọng, nhân sự nghỉ, chậm duyệt, tool tăng giá, hết khách.'
+      ]},
+      { id:'3.4', phase:'gd3', week:'gd3-week16-17', title:'Task 3.4: Test Toàn bộ Hệ thống (Internal Testing)', deadline:'06/03/2026', owner:'Toàn đội', details:[
+        'Test Web (2.1), Funnel (2.2), Form liên hệ, checklist lỗi.'
+      ]},
+      { id:'3.5', phase:'gd3', week:'gd3-week16-17', title:'Task 3.5: Lên Kế Hoạch Nội Dung Tuần Lễ Ra Mắt', deadline:'06/03/2026', owner:'Marketing', details:[
+        'Lịch 09/03-15/03: kênh, nội dung, media; viết sẵn 100%.'
+      ]},
+      { id:'3.6', phase:'gd3', week:'gd3-week16-17', title:'Task 3.6: Chuẩn bị Chương trình Khuyến Mãi Ra Mắt', deadline:'06/03/2026', owner:'Sales, Marketing', details:[
+        'Chọn 1 ưu đãi (ví dụ -20% cho 10 KH đầu); thiết kế banner.'
+      ]},
+      { id:'3.7', phase:'gd3', week:'gd3-week16-17', title:'Task 3.7: Rà soát Tổng thể (Final Check)', deadline:'08/03/2026', owner:'BOD', details:[
+        'CEO check: Sales Kit, HĐ, Website, Phễu, Video, Nhân sự, Content ra mắt.'
+      ]},
+
+      // GĐ4 – Tuần 18
+      { id:'4.1', phase:'gd4', week:'gd4-week18', title:'Task 4.1: Build Hype (trước D-Day)', deadline:'14/03/2026', owner:'Marketing, Sales', details:[
+        'Teaser + đếm ngược; Sales nhắn 20 KH tiềm năng về ưu đãi.'
+      ]},
+      { id:'4.2', phase:'gd4', week:'gd4-week18', title:'Task 4.2: Kiểm tra Kỹ thuật Lần Cuối', deadline:'14/03/2026', owner:'IT, Marketing', details:[
+        'Server, website, form hoạt động; tài khoản Ads & nạp tiền sẵn sàng.'
+      ]},
+      { id:'4.3', phase:'gd4', week:'gd4-week18', title:'Task 4.3 (D-DAY): Ra Mắt Chính Thức', deadline:'15/03/2026', owner:'Toàn đội', details:[
+        '08:00 gửi Email Launch; 09:00 đăng bài đồng loạt; 09:01 cả team chia sẻ; trực chiến cả ngày.'
+      ]},
+      { id:'4.4', phase:'gd4', week:'gd4-week18', title:'Task 4.4: Họp nhanh Cuối ngày', deadline:'15/03/2026', owner:'Toàn đội', details:[
+        '17:00 họp 30 phút: tổng kết lead, KH chốt, vấn đề phát sinh.'
+      ]},
+    ];
+
+    // ========= STATE =========
+    const storageKey = 'projectPlanState_BHNT_v12_final';
+    const notesStorageKey = 'projectNotes_BHNT_v8_final';
+    const customTypesKey = 'customNoteTypes_BHNT_v5';
+
+    let taskState = {};
+    let allTasks = [];
+    let notes = [];
+    let filteredNotes = [];
+    let customTypes = ['Ý tưởng','Việc cần làm','Rủi ro','Khác'];
+
+    // ========= HELPERS =========
+    const $ = (sel, ctx=document) => ctx.querySelector(sel);
+    const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
+
+    function parseDate(ddmmyyyy){
+      if(!ddmmyyyy) return null;
+      const [d,m,y] = ddmmyyyy.split('/').map(Number);
+      if(!d||!m||!y) return null;
+      return new Date(y, m-1, d);
+    }
+    function isOverdue(deadline, completed){
+      if(!deadline || completed) return false;
+      const today = new Date(); today.setHours(0,0,0,0);
+      const d = parseDate(deadline); if(!d) return false;
+      return d < today;
+    }
+    function saveState(){ localStorage.setItem(storageKey, JSON.stringify(taskState)); }
+    function loadState(){
+      const raw = localStorage.getItem(storageKey);
+      taskState = raw ? JSON.parse(raw) : {};
+      tasksData.forEach(t => { if(!(t.id in taskState)) taskState[t.id] = { completed:false, link:'' }; });
+    }
+
+    // ========= RENDER =========
+    function createTaskCard(t){
+      const card = document.createElement('div');
+      card.className = 'task-card';
+      card.id = 'task-card-' + t.id;
+      card.innerHTML = `
+        <div class="task-header">
+          <h4 class="task-title">${t.title}</h4>
+          <span id="task-status-${t.id}" class="task-status status-pending">Chưa xong</span>
+        </div>
+        <div class="task-details">
+          <div class="task-details-label">Chi tiết:</div>
+          <ul class="task-detail-list">${t.details.map(d=>`<li>${d}</li>`).join('')}</ul>
+        </div>
+        <div class="task-meta">
+          <span>Deadline: ${t.deadline}</span><span>|</span>
+          <span>Phụ trách: ${t.owner}</span>
+          <span class="deadline-countdown" data-deadline="${t.deadline}"></span>
+        </div>
+        <div class="task-action-area">
+          <div class="task-input-group" data-input-group="${t.id}">
+            <input type="text" class="task-link-input" data-task-id="${t.id}" data-phase="${t.phase}" placeholder="Dán link (tài liệu, file, trang kết quả...)"/>
+            <button class="task-btn btn-complete task-complete-btn" data-task-id="${t.id}" disabled>Hoàn Thành</button>
+          </div>
+          <div class="edit-dropdown-wrapper hidden" data-edit-wrapper="${t.id}">
+            <button class="task-btn btn-edit-dropdown" data-dropdown-btn="${t.id}">Edit</button>
+            <div class="edit-dropdown-menu" data-dropdown-menu="${t.id}">
+              <div class="dropdown-item" data-action="edit" data-task-id="${t.id}"><span>✏️</span><span>Chỉnh sửa</span></div>
+              <div class="dropdown-item delete" data-action="delete" data-task-id="${t.id}"><span>🗑️</span><span>Xóa</span></div>
+            </div>
+          </div>
+        </div>`;
+      return card;
+    }
+
+    function renderTasks(){
+      const mounts = {
+        'gd1-week1-2': $('#gd1-week1-2'),
+        'gd1-week3-4': $('#gd1-week3-4'),
+        'gd2-week5-8': $('#gd2-week5-8'),
+        'gd2-week9-11': $('#gd2-week9-11'),
+        'gd2-week12-13': $('#gd2-week12-13'),
+        'gd3-week14-15': $('#gd3-week14-15'),
+        'gd3-week16-17': $('#gd3-week16-17'),
+        'gd4-week18': $('#gd4-week18'),
+      };
+      Object.values(mounts).forEach(n => { if(n) n.innerHTML = ''; });
+      tasksData.forEach(t => { const m = mounts[t.week]; if(m) m.appendChild(createTaskCard(t)); });
+
+      allTasks = $$('.task-link-input').map(input => {
+        const card = input.closest('.task-card');
+        const deadlineSpan = card ? card.querySelector('.deadline-countdown') : null;
+        return {
+          id: input.dataset.taskId,
+          phase: input.dataset.phase,
+          deadline: deadlineSpan ? deadlineSpan.dataset.deadline : null,
+          title: card ? card.querySelector('.task-title').textContent : ''
+        };
+      });
+    }
+
+    // ========= UI / LOGIC =========
+    let progressChart;
+    let taskInputs;
+    let completeButtons;
+
+    const deleteTaskModal = $('#delete-task-modal');
+    const confirmDeleteTaskBtn = $('#confirm-delete-task-btn');
+    const cancelDeleteTaskBtn = $('#cancel-delete-task-btn');
+    const deleteNoteModal = $('#delete-note-modal');
+    const confirmDeleteNoteBtn = $('#confirm-delete-note-btn');
+    const cancelDeleteNoteBtn = $('#cancel-delete-note-btn');
+
+    let currentDeleteTaskId = null;
+    let currentDeleteNoteId = null;
+
+    function bindTaskEvents(){
+      taskInputs = $$('.task-link-input');
+      completeButtons = $$('.task-complete-btn');
+
+      taskInputs.forEach(inp => {
+        inp.addEventListener('input', e => {
+          const id = e.target.dataset.taskId;
+          const link = e.target.value.trim();
+          if(taskState[id]){
+            taskState[id].link = link;
+            saveState();
+            const group = document.querySelector(`[data-input-group="${id}"]`);
+            const btn = group ? group.querySelector('.task-complete-btn') : null;
+            if(btn) btn.disabled = link === '';
+          }
+        });
+      });
+
+      completeButtons.forEach(btn => {
+        btn.addEventListener('click', e => {
+          const id = e.target.dataset.taskId;
+          if(taskState[id] && taskState[id].link){
+            taskState[id].completed = true;
+            saveState();
+            updateUI();
+          } else {
+            alert('Vui lòng nhập link trước khi hoàn thành task');
+          }
+        });
+      });
+    }
+
+    function setupDropdowns(){
+      $$('[data-dropdown-btn]').forEach(btn => {
+        btn.addEventListener('click', function(e){
+          e.stopPropagation();
+          const id = this.dataset.dropdownBtn;
+          const menu = document.querySelector(`[data-dropdown-menu="${id}"]`);
+          $$('.edit-dropdown-menu').forEach(m => { if(m !== menu) m.classList.remove('show'); });
+          if(menu) menu.classList.toggle('show');
+        });
+      });
+
+      $$('.dropdown-item').forEach(item => {
+        item.addEventListener('click', function(e){
+          e.stopPropagation();
+          const action = this.dataset.action;
+          const id = this.dataset.taskId;
+          const menu = this.closest('.edit-dropdown-menu');
+          if(menu) menu.classList.remove('show');
+          if(action === 'edit') handleEditTask(id);
+          else if(action === 'delete') handleDeleteTaskClick(id);
+        });
+      });
+
+      document.addEventListener('click', () => $$('.edit-dropdown-menu').forEach(m => m.classList.remove('show')));
+      document.addEventListener('keydown', (e) => { if(e.key === 'Escape') $$('.edit-dropdown-menu').forEach(m => m.classList.remove('show')); });
+    }
+
+    function handleEditTask(id){
+      if(taskState[id]){
+        taskState[id].completed = false;
+        saveState();
+        updateUI();
+        setTimeout(() => {
+          const input = document.querySelector(`[data-task-id="${id}"]`);
+          if(input){ input.focus(); input.select(); }
+        }, 80);
+      }
+    }
+    function handleDeleteTaskClick(id){
+      currentDeleteTaskId = id;
+      deleteTaskModal.classList.add('active');
+      deleteTaskModal.setAttribute('aria-hidden','false');
+    }
+    function confirmDeleteTask(){
+      if(currentDeleteTaskId && taskState[currentDeleteTaskId]){
+        taskState[currentDeleteTaskId].link = '';
+        taskState[currentDeleteTaskId].completed = false;
+        saveState();
+        updateUI();
+        currentDeleteTaskId = null;
+        deleteTaskModal.classList.remove('active');
+        deleteTaskModal.setAttribute('aria-hidden','true');
+      }
+    }
+    function cancelDeleteTask(){
+      currentDeleteTaskId = null;
+      deleteTaskModal.classList.remove('active');
+      deleteTaskModal.setAttribute('aria-hidden','true');
+    }
+
+    function initChart(){
+      const canvas = document.getElementById('progressChart');
+      if(!canvas) return;
+      const ctx = canvas.getContext('2d');
+      progressChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels:['Hoàn Thành','Chưa Xong'], datasets:[{ data:[0,0], backgroundColor:['#10b981','#e5e7eb'], hoverOffset:4 }] },
+        options: { responsive:true, maintainAspectRatio:false, cutout:'70%', plugins:{ legend:{ position:'bottom' } } }
+      });
+    }
+
+    function calculateDeadlines(){
+      const today = new Date(); today.setHours(0,0,0,0);
+      const upcomingList = $('#upcoming-deadlines-list');
+      const upcomingContainer = $('#upcoming-deadlines-container');
+      const overdueList = $('#overdue-tasks-list');
+      const overdueContainer = $('#overdue-tasks-container');
+      if(!upcomingList || !overdueList) return;
+
+      upcomingList.innerHTML = '';
+      overdueList.innerHTML = '';
+      let upcomingCount = 0, overdueCount = 0;
+
+      allTasks.forEach(task => {
+        const state = taskState[task.id];
+        if(!state || state.completed || !task.deadline) return;
+        const d = parseDate(task.deadline); if(!d) return;
+        const diffDays = Math.ceil((d - today) / (1000*60*60*24));
+        const card = document.getElementById('task-card-' + task.id);
+        const countdownSpan = card ? card.querySelector('.deadline-countdown') : null;
+
+        if(diffDays < 0){
+          const abs = Math.abs(diffDays);
+          if(countdownSpan){ countdownSpan.textContent = `(Quá hạn ${abs} ngày)`; countdownSpan.className = 'deadline-countdown deadline-imminent'; }
+          if(card) card.classList.add('overdue');
+          const li = document.createElement('li');
+          li.innerHTML = `<b>${task.title}</b>: ${task.deadline} <span class="text-red-600 font-semibold">(Quá hạn ${abs} ngày)</span>`;
+          overdueList.appendChild(li); overdueCount++;
+        } else if(diffDays >= 0 && diffDays <= 7){
+          if(countdownSpan){ countdownSpan.textContent = `(Còn ${diffDays} ngày)`; countdownSpan.className = 'deadline-countdown deadline-imminent'; }
+          if(card) card.classList.remove('overdue');
+          const li = document.createElement('li');
+          li.innerHTML = `<b>${task.title}</b>: ${task.deadline} <span class="text-orange-600 font-semibold">(Còn ${diffDays} ngày)</span>`;
+          upcomingList.appendChild(li); upcomingCount++;
+        } else if(diffDays > 7 && diffDays <= 14){
+          if(countdownSpan){ countdownSpan.textContent = `(Còn ${diffDays} ngày)`; countdownSpan.className = 'deadline-countdown deadline-soon'; }
+          if(card) card.classList.remove('overdue');
+        } else {
+          if(countdownSpan){ countdownSpan.textContent = ''; countdownSpan.className = 'deadline-countdown'; }
+          if(card) card.classList.remove('overdue');
+        }
+      });
+
+      if(upcomingContainer) upcomingContainer.classList.toggle('hidden', upcomingCount === 0);
+      if(overdueContainer) overdueContainer.classList.toggle('hidden', overdueCount === 0);
+    }
+
+    function updateUI(){
+      let total = 0, done = 0;
+      const phaseCounts = { gd1:{total:0,completed:0}, gd2:{total:0,completed:0}, gd3:{total:0,completed:0}, gd4:{total:0,completed:0} };
+
+      allTasks.forEach(task => {
+        const state = taskState[task.id]; if(!state) return;
+        total++;
+        if(phaseCounts[task.phase]) phaseCounts[task.phase].total++;
+
+        const card = document.getElementById('task-card-'+task.id);
+        const statusBadge = document.getElementById('task-status-'+task.id);
+        const input = document.querySelector(`[data-task-id="${task.id}"].task-link-input`);
+        const inputGroup = document.querySelector(`[data-input-group="${task.id}"]`);
+        const editWrapper = document.querySelector(`[data-edit-wrapper="${task.id}"]`);
+
+        if(input) input.value = state.link || '';
+
+        const overdue = isOverdue(task.deadline, state.completed);
+        if(state.completed){
+          done++;
+          if(phaseCounts[task.phase]) phaseCounts[task.phase].completed++;
+          if(card){ card.classList.add('completed'); card.classList.remove('overdue'); }
+          if(statusBadge){ statusBadge.className = 'task-status status-completed'; statusBadge.textContent = 'Đã xong'; }
+          if(inputGroup) inputGroup.classList.add('hidden');
+          if(editWrapper) editWrapper.classList.remove('hidden');
+          if(input) input.disabled = true;
+        } else {
+          if(card){ card.classList.remove('completed'); if(overdue) card.classList.add('overdue'); else card.classList.remove('overdue'); }
+          if(statusBadge){ statusBadge.className = 'task-status ' + (overdue ? 'status-overdue' : 'status-pending'); statusBadge.textContent = overdue ? 'Quá hạn' : 'Chưa xong'; }
+          if(inputGroup) inputGroup.classList.remove('hidden');
+          if(editWrapper) editWrapper.classList.add('hidden');
+          if(input){
+            input.disabled = false;
+            const btn = inputGroup ? inputGroup.querySelector('.task-complete-btn') : null;
+            if(btn) btn.disabled = (state.link||'').trim() === '';
+          }
+        }
+      });
+
+      const totalText = $('#total-progress-text');
+      const totalBar = $('#total-progress-bar');
+      if(totalText) totalText.textContent = `${done} / ${total} Tasks`;
+      if(totalBar) totalBar.style.width = (total > 0 ? (done/total)*100 : 0) + '%';
+
+      ['gd1','gd2','gd3','gd4'].forEach(ph => {
+        const d = phaseCounts[ph];
+        const pct = d.total > 0 ? (d.completed/d.total)*100 : 0;
+        const t = document.getElementById(`${ph}-progress-text`);
+        const b = document.getElementById(`${ph}-progress-bar`);
+        if(t) t.textContent = `${d.completed} / ${d.total}`;
+        if(b) b.style.width = pct + '%';
+      });
+
+      if(progressChart){
+        progressChart.data.datasets[0].data = [done, Math.max(0, total - done)];
+        progressChart.update();
+      }
+
+      calculateDeadlines();
+    }
+
+    // ========= NOTES =========
+    function loadNotes(){ const raw = localStorage.getItem(notesStorageKey); notes = raw ? JSON.parse(raw) : []; filteredNotes = notes.slice(); renderNotes(); }
+    function saveNotes(){ localStorage.setItem(notesStorageKey, JSON.stringify(notes)); }
+
+    function renderNotes(){
+      const tbody = $('#notes-list-container'); if(!tbody) return;
+      tbody.innerHTML = '';
+      if(filteredNotes.length === 0){
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-gray-500 py-8">Chưa có ghi chú nào.</td></tr>';
+        return;
+      }
+      filteredNotes.slice().reverse().forEach(n => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${n.date}</td>
+                        <td><span class="custom-type-item">${n.type}</span></td>
+                        <td style="white-space:pre-wrap;">${n.content.replace(/\n/g,'<br>')}</td>
+                        <td style="text-align:center;"><span class="note-delete-btn" data-note-id="${n.id}">🗑️</span></td>`;
+        tbody.appendChild(tr);
+      });
+      $$('.note-delete-btn').forEach(btn => btn.addEventListener('click', e => {
+        currentDeleteNoteId = e.target.dataset.noteId;
+        deleteNoteModal.classList.add('active');
+        deleteNoteModal.setAttribute('aria-hidden','false');
+      }));
+    }
+
+    function applyFilters(){
+      const from = $('#filter-date-from'); const to = $('#filter-date-to'); const type = $('#filter-type');
+      filteredNotes = notes.filter(n => {
+        const [d,m,y] = n.date.split(' ')[0].split('/').map(Number);
+        const nDate = new Date(y, m-1, d);
+        if(from && from.value){ const f = new Date(from.value); if(nDate < f) return false; }
+        if(to && to.value){ const t = new Date(to.value); if(nDate > t) return false; }
+        if(type && type.value && n.type !== type.value) return false;
+        return true;
+      });
+      renderNotes();
+    }
+    function resetFilters(){
+      const from = $('#filter-date-from'), to = $('#filter-date-to'), type = $('#filter-type');
+      if(from) from.value = ''; if(to) to.value = ''; if(type) type.value = '';
+      filteredNotes = notes.slice(); renderNotes();
+    }
+
+    function saveNewNote(){
+      const textarea = $('#notes-textarea'); const typeSel = $('#note-type-select'); if(!textarea || !typeSel) return;
+      const content = textarea.value.trim(); if(!content){ alert('Vui lòng nhập nội dung ghi chú'); return; }
+      const now = new Date();
+      const id = now.getTime();
+      const date = now.toLocaleString('vi-VN',{ day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+      notes.push({ id, date, type:typeSel.value, content });
+      saveNotes(); filteredNotes = notes.slice(); renderNotes(); textarea.value = '';
+    }
+
+    function confirmDeleteNote(){
+      if(currentDeleteNoteId){
+        notes = notes.filter(n => String(n.id) !== String(currentDeleteNoteId));
+        saveNotes(); applyFilters();
+        currentDeleteNoteId = null;
+        deleteNoteModal.classList.remove('active');
+        deleteNoteModal.setAttribute('aria-hidden','true');
+      }
+    }
+    function cancelDeleteNote(){
+      currentDeleteNoteId = null;
+      deleteNoteModal.classList.remove('active');
+      deleteNoteModal.setAttribute('aria-hidden','true');
+    }
+
+    // ========= CUSTOM TYPES =========
+    function loadCustomTypes(){ const raw = localStorage.getItem(customTypesKey); if(raw) customTypes = JSON.parse(raw); renderCustomTypes(); updateTypeSelects(); }
+    function saveCustomTypes(){ localStorage.setItem(customTypesKey, JSON.stringify(customTypes)); }
+    function renderCustomTypes(){
+      const c = $('#custom-types-list'); if(!c) return;
+      c.innerHTML = '';
+      customTypes.forEach(t => {
+        const item = document.createElement('span');
+        item.className = 'custom-type-item';
+        item.innerHTML = `${t}<span class="custom-type-remove" data-type="${t}">×</span>`;
+        c.appendChild(item);
+      });
+      $$('.custom-type-remove').forEach(btn => btn.addEventListener('click', e => {
+        const t = e.target.dataset.type;
+        if(confirm(`Xóa loại "${t}"?`)){
+          customTypes = customTypes.filter(x => x !== t);
+          saveCustomTypes(); renderCustomTypes(); updateTypeSelects();
+        }
+      }));
+    }
+    function updateTypeSelects(){
+      const noteSel = $('#note-type-select'); const filterSel = $('#filter-type');
+      if(noteSel){ noteSel.innerHTML = ''; customTypes.forEach(t => { const o = document.createElement('option'); o.value = t; o.textContent = t; noteSel.appendChild(o); }); }
+      if(filterSel){ filterSel.innerHTML = '<option value="">Tất cả loại</option>'; customTypes.forEach(t => { const o = document.createElement('option'); o.value = t; o.textContent = t; filterSel.appendChild(o); }); }
+    }
+    function handleAddCustomType(){
+      const inp = $('#custom-type-input'); if(!inp) return;
+      const v = (inp.value || '').trim();
+      if(!v){ alert('Vui lòng nhập tên loại ghi chú'); return; }
+      if(customTypes.includes(v)){ alert('Loại này đã tồn tại'); return; }
+      if(customTypes.length >= 10){ alert('Đã đạt giới hạn 10 loại'); return; }
+      customTypes.push(v); saveCustomTypes(); renderCustomTypes(); updateTypeSelects(); inp.value = '';
+    }
+
+    // ========= NAV =========
+    function showSection(id){ $$('.content-section').forEach(s => s.classList.toggle('hidden', s.id !== id)); const main = document.querySelector('main'); if(main) main.scrollTop = 0; }
+    function bindNav(){
+      $$('.nav-link').forEach(link => link.addEventListener('click', e => {
+        e.preventDefault();
+        const targetId = link.getAttribute('data-target');
+        $$('.nav-link').forEach(n => n.classList.remove('active'));
+        link.classList.add('active');
+        showSection(targetId);
+        if(window.innerWidth < 1024){ const sidebar = $('#sidebar'); if(sidebar) sidebar.classList.remove('open'); }
+      }));
+      const openBtn = $('#open-menu'), closeBtn = $('#close-menu'), sidebar = $('#sidebar');
+      if(openBtn) openBtn.addEventListener('click', e => { e.stopPropagation(); if(sidebar) sidebar.classList.add('open'); });
+      if(closeBtn) closeBtn.addEventListener('click', () => { if(sidebar) sidebar.classList.remove('open'); });
+      document.addEventListener('click', e => {
+        if(window.innerWidth < 1024 && sidebar){
+          if(!sidebar.contains(e.target) && e.target !== openBtn && !(openBtn && openBtn.contains(e.target))){
+            sidebar.classList.remove('open');
+          }
+        }
+      });
+    }
+
+    // ========= MODALS WIRING =========
+    if(confirmDeleteTaskBtn) confirmDeleteTaskBtn.addEventListener('click', confirmDeleteTask);
+    if(cancelDeleteTaskBtn) cancelDeleteTaskBtn.addEventListener('click', cancelDeleteTask);
+    if(confirmDeleteNoteBtn) confirmDeleteNoteBtn.addEventListener('click', confirmDeleteNote);
+    if(cancelDeleteNoteBtn) cancelDeleteNoteBtn.addEventListener('click', cancelDeleteNote);
+    const deleteTaskModalEl = $('#delete-task-modal');
+    const deleteNoteModalEl = $('#delete-note-modal');
+    if(deleteTaskModalEl) deleteTaskModalEl.addEventListener('click', e => { if(e.target === deleteTaskModalEl) cancelDeleteTask(); });
+    if(deleteNoteModalEl) deleteNoteModalEl.addEventListener('click', e => { if(e.target === deleteNoteModalEl) cancelDeleteNote(); });
+
+    // ========= BOOT =========
+    loadState();
+    renderTasks();
+    bindTaskEvents();
+    setupDropdowns();
+    bindNav();
+    initChart();
+    updateUI();
+    showSection('overview');
+
+    loadCustomTypes();
+    loadNotes();
+    const saveNoteBtn = $('#save-note-btn'); if(saveNoteBtn) saveNoteBtn.addEventListener('click', saveNewNote);
+    const addCustomTypeBtn = $('#add-custom-type-btn'); if(addCustomTypeBtn) addCustomTypeBtn.addEventListener('click', handleAddCustomType);
+    const applyFilterBtn = $('#apply-filter-btn'); if(applyFilterBtn) applyFilterBtn.addEventListener('click', applyFilters);
+    const resetFilterBtn = $('#reset-filter-btn'); if(resetFilterBtn) resetFilterBtn.addEventListener('click', resetFilters);
+    const customTypeInput = $('#custom-type-input'); if(customTypeInput) customTypeInput.addEventListener('keypress', e => { if(e.key === 'Enter') handleAddCustomType(); });
+  });
+  </script>
+</body>
+</html>
