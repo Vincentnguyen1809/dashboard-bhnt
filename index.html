@@ -262,10 +262,7 @@
               <h3 class="card-title">Tổng Tiến Độ (Toàn Dự Án)</h3>
               <div class="flex items-center justify-between mb-2">
                 <span class="text-sm font-medium text-gray-600">Tiến độ</span>
-                <div class="flex items-center gap-3">
-                  <span id="total-progress-text" class="text-sm font-bold text-blue-600">0 / 0 Tasks</span>
-                  <span id="total-progress-percent" class="text-2xl font-bold text-blue-600">0%</span>
-                </div>
+                <span id="total-progress-text" class="text-sm font-bold text-blue-600">0 / 0 Tasks</span>
               </div>
               <div class="progress-bar"><div id="total-progress-bar" class="progress-bar-inner" style="width:0%"></div></div>
             </div>
@@ -421,34 +418,34 @@
                   <label class="text-sm font-medium text-gray-700" for="filter-keyword">Từ khóa</label>
                   <input type="text" id="filter-keyword" class="filter-input w-full" placeholder="Tìm theo nội dung..." />
                 </div>
-                <div class="flex flex-col gap-1 w-full md:w-auto">
+                <div class="flex flex-col gap-1 w-full md:w-60">
                   <label class="text-sm font-medium text-gray-700" for="filter-type">Loại</label>
                   <select id="filter-type" class="filter-input"><option value="">Tất cả loại</option></select>
                 </div>
-                <div class="flex flex-col gap-1 w-full md:w-auto">
-                  <label class="text-sm font-medium text-gray-700" for="filter-time">Thời gian</label>
-                  <select id="filter-time" class="filter-input">
-                    <option value="all">Tất cả</option>
-                    <option value="today">Hôm nay</option>
-                    <option value="yesterday">Hôm qua</option>
-                    <option value="7days">7 ngày qua</option>
-                    <option value="14days">14 ngày qua</option>
-                    <option value="thisMonth">Tháng này</option>
-                    <option value="lastMonth">Tháng trước</option>
-                    <option value="custom">Tùy chọn</option>
-                  </select>
-                </div>
-                <div id="custom-date-inputs" class="flex flex-col gap-1 w-full md:w-auto hidden">
-                  <label class="block text-sm font-medium text-gray-700" for="filter-date-from">Từ ngày</label>
-                  <input type="date" id="filter-date-from" class="filter-input"/>
-                </div>
-                <div id="custom-date-to-wrapper" class="flex flex-col gap-1 w-full md:w-auto hidden">
-                  <label class="block text-sm font-medium text-gray-700" for="filter-date-to">Đến ngày</label>
-                  <input type="date" id="filter-date-to" class="filter-input"/>
-                </div>
-                <div class="flex flex-col gap-1 w-full md:w-auto">
-                  <label class="block text-sm font-medium text-gray-700 opacity-0">Reset</label>
-                  <button id="reset-filter-btn" class="task-btn btn-cancel w-full md:w-auto">🔄 Reset</button>
+                <div class="flex flex-col gap-2 w-full">
+                  <span class="text-sm font-medium text-gray-700">Thời gian</span>
+                  <div id="quick-date-buttons" class="flex flex-wrap gap-2">
+                    <button type="button" class="quick-date-btn" data-range="today">Hôm nay</button>
+                    <button type="button" class="quick-date-btn" data-range="yesterday">Hôm qua</button>
+                    <button type="button" class="quick-date-btn" data-range="7days">7 ngày qua</button>
+                    <button type="button" class="quick-date-btn" data-range="14days">14 ngày qua</button>
+                    <button type="button" class="quick-date-btn" data-range="thisMonth">Tháng này</button>
+                    <button type="button" class="quick-date-btn" data-range="lastMonth">Tháng trước</button>
+                    <button type="button" class="quick-date-btn" data-range="custom">Tùy chọn</button>
+                  </div>
+                  <div id="custom-date-inputs" class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end hidden">
+                    <div class="md:col-span-1">
+                      <label class="block text-sm font-medium text-gray-700 mb-1.5" for="filter-date-from">Từ ngày</label>
+                      <input type="date" id="filter-date-from" class="filter-input"/>
+                    </div>
+                    <div class="md:col-span-1">
+                      <label class="block text-sm font-medium text-gray-700 mb-1.5" for="filter-date-to">Đến ngày</label>
+                      <input type="date" id="filter-date-to" class="filter-input"/>
+                    </div>
+                    <div class="md:col-span-1 flex md:justify-end">
+                      <button id="reset-filter-btn" class="task-btn btn-cancel w-full md:w-auto">🔄 Reset</button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -480,12 +477,10 @@
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1.5" for="setting-logo-upload">Logo (hiển thị ở Cover & Sidebar)</label>
                     <input type="file" id="setting-logo-upload" class="w-full text-sm text-gray-600" accept="image/*" />
-                    <p class="text-xs text-gray-500 mt-1">Lưu ý: Nếu upload file lỗi, bạn cần cấu hình CORS trên Firebase Storage.</p>
                   </div>
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1.5" for="setting-favicon-upload">Favicon</label>
                     <input type="file" id="setting-favicon-upload" class="w-full text-sm text-gray-600" accept="image/*" />
-                    <p class="text-xs text-gray-500 mt-1">Lưu ý: Nếu upload file lỗi, bạn cần cấu hình CORS trên Firebase Storage.</p>
                   </div>
                 </div>
                 <div class="space-y-4">
@@ -1688,18 +1683,15 @@
 
       const totalText = $('#total-progress-text');
       const totalBar = $('#total-progress-bar');
-      const totalPercent = $('#total-progress-percent');
-      const percentage = total > 0 ? Math.round((done/total)*100) : 0;
       if(totalText) totalText.textContent = `${done} / ${total} Tasks`;
-      if(totalBar) totalBar.style.width = percentage + '%';
-      if(totalPercent) totalPercent.textContent = percentage + '%';
+      if(totalBar) totalBar.style.width = (total > 0 ? (done/total)*100 : 0) + '%';
 
       ['gd1','gd2','gd3','gd4'].forEach(ph => {
         const d = phaseCounts[ph];
-        const pct = d.total > 0 ? Math.round((d.completed/d.total)*100) : 0;
+        const pct = d.total > 0 ? (d.completed/d.total)*100 : 0;
         const t = document.getElementById(`${ph}-progress-text`);
         const b = document.getElementById(`${ph}-progress-bar`);
-        if(t) t.textContent = `${d.completed} / ${d.total} (${pct}%)`;
+        if(t) t.textContent = `${d.completed} / ${d.total}`;
         if(b) b.style.width = pct + '%';
       });
 
@@ -1914,16 +1906,13 @@
     }
     function setQuickDateRange(range){
       selectedQuickRange = range;
-      const timeDropdown = $('#filter-time');
-      if(timeDropdown) timeDropdown.value = range;
+      const buttons = $$('#quick-date-buttons .quick-date-btn');
+      buttons.forEach(btn => btn.classList.toggle('active', btn.dataset.range === range));
       const customContainer = $('#custom-date-inputs');
-      const customToWrapper = $('#custom-date-to-wrapper');
       if(range === 'custom'){
         if(customContainer) customContainer.classList.remove('hidden');
-        if(customToWrapper) customToWrapper.classList.remove('hidden');
       } else {
         if(customContainer) customContainer.classList.add('hidden');
-        if(customToWrapper) customToWrapper.classList.add('hidden');
         const fromInput = $('#filter-date-from');
         const toInput = $('#filter-date-to');
         if(fromInput) fromInput.value = '';
@@ -2537,10 +2526,11 @@
       if(router) router.navigate('/tongquan');
     });
 
-    const filterTimeSelect = $('#filter-time');
-    if(filterTimeSelect){
-      filterTimeSelect.addEventListener('change', e => {
-        const range = filterTimeSelect.value || 'all';
+    const quickDateButtons = $$('#quick-date-buttons .quick-date-btn');
+    quickDateButtons.forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.preventDefault();
+        const range = btn.dataset.range || 'all';
         setQuickDateRange(range);
         if(range === 'custom'){
           const fromInput = $('#filter-date-from');
@@ -2549,12 +2539,7 @@
           applyFilters();
         }
       });
-    }
-
-    const filterDateFrom = $('#filter-date-from');
-    const filterDateTo = $('#filter-date-to');
-    if(filterDateFrom) filterDateFrom.addEventListener('change', () => { if(selectedQuickRange === 'custom') applyFilters(); });
-    if(filterDateTo) filterDateTo.addEventListener('change', () => { if(selectedQuickRange === 'custom') applyFilters(); });
+    });
 
     const saveNoteBtn = $('#save-note-btn'); if(saveNoteBtn) saveNoteBtn.addEventListener('click', saveNewNote);
     const resetFilterBtn = $('#reset-filter-btn'); if(resetFilterBtn) resetFilterBtn.addEventListener('click', e => { e.preventDefault(); resetFilters(); });
