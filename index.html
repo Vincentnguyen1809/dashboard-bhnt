@@ -97,7 +97,7 @@
     .task-log-link{ color:#2563eb; font-weight:600; text-decoration:none; }
     .task-log-link:hover{ text-decoration:underline; }
     .activity-table th{ white-space:nowrap; }
-    .filter-container{ display:flex; flex-direction:column; gap:1rem; margin-bottom:1.5rem; }
+    .filter-container{ display:flex; flex-direction:column; gap:1.25rem; margin-bottom:1.5rem; }
     @media (min-width:768px){
       .filter-container{ flex-direction:row; flex-wrap:wrap; align-items:flex-end; }
     }
@@ -106,6 +106,16 @@
     .quick-date-btn{ padding:0.4rem 0.75rem; border-radius:9999px; border:1px solid #d1d5db; background:#fff; font-size:0.8125rem; color:#374151; cursor:pointer; transition:all .2s; }
     .quick-date-btn:hover{ background:#e5e7eb; }
     .quick-date-btn.active{ background:#1d4ed8; border-color:#1d4ed8; color:#fff; }
+    .note-content-clamp{ display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; white-space:pre-line; }
+    .note-read-more-btn{ margin-top:0.5rem; display:inline-flex; align-items:center; gap:0.35rem; font-size:0.8125rem; color:#2563eb; font-weight:600; }
+    .note-read-more-btn:hover{ text-decoration:underline; }
+    .note-modal-overlay{ display:none; position:fixed; inset:0; background:rgba(15,23,42,.55); z-index:60; justify-content:flex-end; }
+    .note-modal-overlay.active{ display:flex; }
+    .note-modal-panel{ background:#fff; width:100%; max-width:640px; height:100%; overflow-y:auto; padding:2rem 1.75rem; box-shadow:-8px 0 30px rgba(15,23,42,.25); transform:translateX(100%); transition:transform .3s ease-in-out; }
+    .note-modal-overlay.active .note-modal-panel{ transform:translateX(0); }
+    .note-modal-close{ background:none; border:none; font-size:1.5rem; line-height:1; cursor:pointer; color:#4b5563; }
+    .note-attachment-chip{ margin-top:0.5rem; display:inline-flex; align-items:center; gap:0.35rem; font-size:0.8125rem; color:#0f172a; background:#e0f2fe; border-radius:9999px; padding:0.25rem 0.75rem; }
+    .sidebar-logo{ max-height:2.5rem; width:auto; }
     .modal-overlay{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:50; align-items:center; justify-content:center; backdrop-filter: blur(2px); }
     .modal-overlay.active{ display:flex; }
     .modal-content{ background:#fff; padding:1.75rem; border-radius:0.75rem; max-width:420px; width:90%; box-shadow:0 20px 25px -5px rgba(0,0,0,.1), 0 10px 10px -5px rgba(0,0,0,.04); }
@@ -139,13 +149,33 @@
     </div>
   </div>
 
-  <section id="cover-page" class="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-100 text-center px-6 py-16">
-    <div class="max-w-3xl mx-auto space-y-6">
-      <h1 class="text-3xl md:text-4xl font-bold text-blue-900">Dự án Kế hoạch Dịch vụ Marketing Assistant</h1>
-      <p class="text-lg text-gray-700 leading-relaxed">Cung cấp một lộ trình (master plan) chi tiết, A-Z, để xây dựng và ra mắt dịch vụ Marketing Assistant.</p>
-      <div class="space-y-1 text-gray-600">
-        <p>Quản lý dự án / Kỹ thuật: [Tên Quản lý]</p>
-        <p>Vận hành: [Tên Trưởng nhóm]</p>
+  <div id="note-detail-modal" class="note-modal-overlay" aria-hidden="true">
+    <div class="note-modal-panel" role="dialog" aria-modal="true" aria-labelledby="note-modal-title">
+      <div class="flex items-start justify-between gap-6">
+        <div>
+          <h3 id="note-modal-title" class="text-xl font-semibold text-slate-900">Chi tiết ghi chú</h3>
+          <p class="text-sm text-slate-500 mt-1">Xem toàn bộ nội dung và tệp đính kèm.</p>
+        </div>
+        <button id="note-modal-close" class="note-modal-close" aria-label="Đóng">&times;</button>
+      </div>
+      <div id="note-modal-content" class="mt-6 text-base leading-relaxed text-slate-700 whitespace-pre-line"></div>
+      <div id="note-modal-attachment" class="mt-6"></div>
+    </div>
+  </div>
+
+  <section id="cover-page" class="min-h-screen flex flex-col items-center justify-center bg-sky-100 text-center px-6 py-16">
+    <div class="max-w-4xl mx-auto space-y-8">
+      <div id="cover-logo-wrapper" class="flex justify-center">
+        <img id="cover-logo" class="h-24 w-auto hidden" alt="Logo dự án" />
+      </div>
+      <h2 id="cover-slogan" class="text-2xl md:text-3xl font-semibold text-blue-800 hidden"></h2>
+      <div class="space-y-4">
+        <h1 class="text-3xl md:text-4xl font-bold text-blue-900">Dự án Kế hoạch Dịch vụ Marketing Assistant</h1>
+        <p class="text-lg text-gray-700 leading-relaxed">Cung cấp một lộ trình (master plan) chi tiết, A-Z, để xây dựng và ra mắt dịch vụ Marketing Assistant.</p>
+        <div class="space-y-1 text-gray-700" id="cover-contacts">
+          <p id="cover-contact-manager">Quản lý dự án / Kỹ thuật: [Chưa cập nhật]</p>
+          <p id="cover-contact-ops">Vận hành: [Chưa cập nhật]</p>
+        </div>
       </div>
       <button id="start-plan-btn" class="task-btn btn-complete text-lg px-10 py-3">BẮT ĐẦU KẾ HOẠCH</button>
     </div>
@@ -155,10 +185,11 @@
     <!-- Sidebar -->
     <aside id="sidebar" class="sidebar lg:static" aria-label="Thanh điều hướng">
       <div class="flex h-full flex-col">
-        <div class="flex items-center h-16 px-5 border-b border-gray-200">
-          <h1 class="text-base font-bold text-gray-900">Master Plan (A-Z+)</h1>
+        <div class="flex items-center h-16 px-5 border-b border-gray-200 gap-3">
+          <img id="sidebar-logo" class="sidebar-logo hidden" alt="Logo sidebar" />
           <button id="close-menu" class="lg:hidden ml-auto text-gray-600 hover:text-gray-900 text-2xl" aria-label="Đóng menu">&times;</button>
         </div>
+        <div class="px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500" id="sidebar-branding-title">Master Plan (A-Z+)</div>
         <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
           <a class="nav-link" href="/tongquan"><span class="emoji">📊</span><span>Tổng Quan</span></a>
           <a class="nav-link" href="/giaidoan1"><span class="emoji">🎯</span><span>GĐ 1: Nền Tảng</span></a>
@@ -166,6 +197,7 @@
           <a class="nav-link" href="/giaidoan3"><span class="emoji">⚙️</span><span>GĐ 3: Vận Hành & Tối Ưu</span></a>
           <a class="nav-link" href="/giaidoan4"><span class="emoji">🚀</span><span>GĐ 4: Ra Mắt</span></a>
           <a class="nav-link" href="/ghichu"><span class="emoji">📝</span><span>Ghi Chú Dự Án</span></a>
+          <a class="nav-link" href="/cai-dat"><span class="emoji">🔧</span><span>Cài Đặt</span></a>
         </nav>
       </div>
     </aside>
@@ -194,6 +226,15 @@
           <section id="overview" class="content-section">
             <h2 class="section-title">Tổng Quan Tiến Độ Dự Án</h2>
             <p class="section-subtitle">Dán link kết quả cho từng task rồi bấm “Hoàn Thành”. Hệ thống tự cập nhật tiến độ, biểu đồ, và cảnh báo deadline.</p>
+
+            <div id="upcoming-deadlines-container" class="card-section hidden">
+              <h3 class="card-title text-orange-600">⚠️ Deadline Sắp Tới (Trong 7 ngày)</h3>
+              <ul id="upcoming-deadlines-list" class="list-disc list-inside space-y-1.5 text-gray-700"></ul>
+            </div>
+            <div id="overdue-tasks-container" class="card-section hidden">
+              <h3 class="card-title text-red-600">🚨 Tasks Quá Hạn</h3>
+              <ul id="overdue-tasks-list" class="list-disc list-inside space-y-1.5 text-gray-700"></ul>
+            </div>
 
             <div class="card-section">
               <h3 class="card-title">Tổng Tiến Độ (Toàn Dự Án)</h3>
@@ -233,9 +274,11 @@
             </div>
 
             <div id="note-statistics-card" class="card-section mb-6">
-              <h3 class="card-title">Ghi Chú Thống Kê</h3>
-              <p id="note-stats-total" class="text-sm text-gray-600 mb-4">Tổng số ghi chú: 0</p>
-              <div id="note-stats-breakdown" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 text-sm"></div>
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="card-title">Ghi Chú Thống Kê</h3>
+                <span id="note-stats-total" class="text-sm text-gray-600">Tổng số ghi chú: 0</span>
+              </div>
+              <canvas id="note-stats-chart" class="w-full" height="320"></canvas>
             </div>
 
             <div id="activity-log-section" class="card-section">
@@ -258,15 +301,6 @@
                 </table>
               </div>
               <button id="activity-log-toggle" class="task-btn btn-view mt-3 hidden">Xem thêm</button>
-            </div>
-
-            <div id="upcoming-deadlines-container" class="card-section hidden">
-              <h3 class="card-title text-orange-600">⚠️ Deadline Sắp Tới (Trong 7 ngày)</h3>
-              <ul id="upcoming-deadlines-list" class="list-disc list-inside space-y-1.5 text-gray-700"></ul>
-            </div>
-            <div id="overdue-tasks-container" class="card-section hidden">
-              <h3 class="card-title text-red-600">🚨 Tasks Quá Hạn</h3>
-              <ul id="overdue-tasks-list" class="list-disc list-inside space-y-1.5 text-gray-700"></ul>
             </div>
           </section>
 
@@ -315,8 +349,8 @@
             <div class="card-section">
               <h3 class="card-title">Ghi Chú Mới</h3>
               <textarea id="notes-textarea" class="notes-textarea" placeholder="Nhập ghi chú của bạn hôm nay..."></textarea>
-              <div class="md:grid md:grid-cols-[minmax(0,1fr)_auto] md:gap-4 md:items-end md:mt-4">
-                <div>
+              <div class="md:grid md:grid-cols-2 md:gap-4 md:items-end md:mt-4">
+                <div class="space-y-4">
                   <div class="note-type-dropdown" id="note-type-dropdown">
                     <button type="button" class="note-type-trigger" id="note-type-trigger" aria-haspopup="true" aria-expanded="false">
                       <span id="note-type-trigger-label">Chọn loại ghi chú</span>
@@ -334,7 +368,11 @@
                   </div>
                   <p class="text-xs text-gray-500 mt-2">Chọn loại ghi chú hoặc tạo mới ngay trong danh sách.</p>
                 </div>
-                <div class="mt-4 md:mt-0">
+                <div class="space-y-4 mt-4 md:mt-0">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5" for="note-file-upload">Đính kèm tệp (tùy chọn)</label>
+                    <input type="file" id="note-file-upload" class="w-full text-sm text-gray-600" />
+                  </div>
                   <button id="save-note-btn" class="task-btn btn-complete w-full md:w-auto md:px-6">💾 Lưu Ghi Chú</button>
                 </div>
               </div>
@@ -364,21 +402,20 @@
                     <button type="button" class="quick-date-btn" data-range="lastMonth">Tháng trước</button>
                     <button type="button" class="quick-date-btn" data-range="custom">Tùy chọn</button>
                   </div>
-                  <div id="custom-date-inputs" class="grid grid-cols-1 md:grid-cols-2 gap-3 hidden">
-                    <div>
+                  <div id="custom-date-inputs" class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end hidden">
+                    <div class="md:col-span-1">
                       <label class="block text-sm font-medium text-gray-700 mb-1.5" for="filter-date-from">Từ ngày</label>
                       <input type="date" id="filter-date-from" class="filter-input"/>
                     </div>
-                    <div>
+                    <div class="md:col-span-1">
                       <label class="block text-sm font-medium text-gray-700 mb-1.5" for="filter-date-to">Đến ngày</label>
                       <input type="date" id="filter-date-to" class="filter-input"/>
                     </div>
+                    <div class="md:col-span-1 flex md:justify-end">
+                      <button id="reset-filter-btn" class="task-btn btn-cancel w-full md:w-auto">🔄 Reset</button>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div class="flex gap-2 mt-3">
-                <button id="apply-filter-btn" class="task-btn btn-complete">🔍 Lọc</button>
-                <button id="reset-filter-btn" class="task-btn btn-cancel">🔄 Reset</button>
               </div>
             </div>
 
@@ -396,6 +433,42 @@
                   </thead>
                   <tbody id="notes-list-container"></tbody>
                 </table>
+              </div>
+            </div>
+          </section>
+
+          <section id="settings-page" class="content-section hidden">
+            <h2 class="section-title">Cài Đặt Dự Án</h2>
+            <p class="section-subtitle">Tùy chỉnh giao diện và thông tin hiển thị trên trang chủ, sidebar.</p>
+            <div class="card-section space-y-6">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5" for="setting-logo-upload">Logo (hiển thị ở Cover & Sidebar)</label>
+                    <input type="file" id="setting-logo-upload" class="w-full text-sm text-gray-600" accept="image/*" />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5" for="setting-favicon-upload">Favicon</label>
+                    <input type="file" id="setting-favicon-upload" class="w-full text-sm text-gray-600" accept="image/*" />
+                  </div>
+                </div>
+                <div class="space-y-4">
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5" for="setting-slogan">Slogan</label>
+                    <input type="text" id="setting-slogan" class="filter-input" placeholder="Ví dụ: Think Smart - Grow Faster" />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5" for="setting-contact-manager">Quản lý dự án / Kỹ thuật</label>
+                    <input type="text" id="setting-contact-manager" class="filter-input" placeholder="Nhập tên" />
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5" for="setting-contact-ops">Vận hành</label>
+                    <input type="text" id="setting-contact-ops" class="filter-input" placeholder="Nhập tên" />
+                  </div>
+                </div>
+              </div>
+              <div>
+                <button id="save-settings-btn" class="task-btn btn-complete">💾 Lưu Cài Đặt</button>
               </div>
             </div>
           </section>
@@ -429,8 +502,8 @@
 <!-- Code chính của bạn bắt đầu từ đây (Dòng 357) -->
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-  // ... (code còn lại của bạn)
   import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+  import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
 
   document.addEventListener('DOMContentLoaded', () => {
     // ========= CONSTANTS =========
@@ -449,6 +522,16 @@
     ];
     const defaultCustomTypes = ['Ý tưởng','Việc cần làm','Rủi ro','Khác'];
     const STATIC_PROJECT_ID = 'thinksmart-main-plan';
+    const defaultSettings = {
+      slogan: '',
+      contactManager: '',
+      contactOps: '',
+      logoUrl: '',
+      logoStoragePath: '',
+      faviconUrl: '',
+      faviconStoragePath: '',
+    };
+    const NOTE_TRUNCATE_LIMIT = 160;
 
     // ========= DATA =========
     const tasksData = [
@@ -650,15 +733,22 @@
     let customTypes = defaultCustomTypes.slice();
     let selectedNoteType = customTypes[0] || '';
     let db = null;
+    let storage = null;
     let projectRef = null;
     let isProjectReady = false;
     let hasShownSyncWarning = false;
     let progressChart;
+    let noteStatsChart = null;
     let taskInputs = [];
     let completeButtons = [];
     let viewButtons = [];
     let debouncedSyncTaskState = () => {};
     let activityLogShowAll = false;
+    let currentSettings = { ...defaultSettings };
+    let noteDetailModal = null;
+    let noteModalContent = null;
+    let noteModalAttachment = null;
+    let noteModalCloseBtn = null;
     const linkFeedbackTimers = {};
     let noteTypeFeedbackTimer = null;
 
@@ -731,6 +821,193 @@
         clearTimeout(timeout);
         timeout = setTimeout(() => fn.apply(null, args), wait);
       };
+    }
+    function escapeHtml(value){
+      if(value == null) return '';
+      const map = { '&':'&amp;', '<':'&lt;', '>':'&gt;' };
+      map['"'] = '&quot;';
+      map["'"] = '&#39;';
+      return String(value).replace(/[&<>"']/g, ch => map[ch] || ch);
+    }
+    function readFileAsDataURL(file){
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error || new Error('Không thể đọc file'));
+        reader.readAsDataURL(file);
+      });
+    }
+    async function uploadAsset(file, folder){
+      if(!file) return { url:null, storagePath:'' };
+      const safeName = (file.name || `asset-${Date.now()}`).replace(/[^a-zA-Z0-9._-]/g, '_');
+      const path = `${folder}/${Date.now()}-${safeName}`;
+      if(storage){
+        try {
+          const ref = storageRef(storage, path);
+          await uploadBytes(ref, file);
+          const url = await getDownloadURL(ref);
+          return { url, storagePath: ref.fullPath };
+        } catch(error){
+          console.error('Upload asset thất bại, sẽ dùng phương án dự phòng.', error);
+        }
+      }
+      try {
+        const base64 = await readFileAsDataURL(file);
+        return { url: base64, storagePath: '' };
+      } catch(error){
+        console.error('Không thể đọc file đính kèm:', error);
+        return { url:null, storagePath:'' };
+      }
+    }
+    function applyFavicon(url){
+      let link = document.querySelector('link[rel="icon"]');
+      if(!link){
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.head.appendChild(link);
+      }
+      if(url){
+        link.href = url;
+      } else if(link){
+        link.removeAttribute('href');
+      }
+    }
+    function renderCoverPage(settings = {}){
+      const logoEl = $('#cover-logo');
+      const logoWrapper = $('#cover-logo-wrapper');
+      const sloganEl = $('#cover-slogan');
+      const managerEl = $('#cover-contact-manager');
+      const opsEl = $('#cover-contact-ops');
+      const logoUrl = (settings.logoUrl || '').trim();
+      if(logoEl){
+        if(logoUrl){
+          logoEl.src = logoUrl;
+          logoEl.classList.remove('hidden');
+          if(logoWrapper) logoWrapper.classList.remove('hidden');
+        } else {
+          logoEl.src = '';
+          logoEl.classList.add('hidden');
+          if(logoWrapper) logoWrapper.classList.add('hidden');
+        }
+      }
+      if(sloganEl){
+        const slogan = (settings.slogan || '').trim();
+        if(slogan){
+          sloganEl.textContent = slogan;
+          sloganEl.classList.remove('hidden');
+        } else {
+          sloganEl.textContent = '';
+          sloganEl.classList.add('hidden');
+        }
+      }
+      if(managerEl){
+        const manager = (settings.contactManager || '').trim() || '[Chưa cập nhật]';
+        managerEl.textContent = `Quản lý dự án / Kỹ thuật: ${manager}`;
+      }
+      if(opsEl){
+        const ops = (settings.contactOps || '').trim() || '[Chưa cập nhật]';
+        opsEl.textContent = `Vận hành: ${ops}`;
+      }
+    }
+    function renderSidebar(settings = {}){
+      const logoEl = $('#sidebar-logo');
+      const brandingTitle = $('#sidebar-branding-title');
+      const logoUrl = (settings.logoUrl || '').trim();
+      if(logoEl){
+        if(logoUrl){
+          logoEl.src = logoUrl;
+          logoEl.alt = settings.slogan ? `Logo - ${settings.slogan}` : 'Logo dự án';
+          logoEl.classList.remove('hidden');
+        } else {
+          logoEl.src = '';
+          logoEl.classList.add('hidden');
+        }
+      }
+      if(brandingTitle){
+        brandingTitle.textContent = 'Master Plan (A-Z+)';
+      }
+    }
+    function populateSettingsForm(settings = {}){
+      const sloganInput = $('#setting-slogan');
+      const managerInput = $('#setting-contact-manager');
+      const opsInput = $('#setting-contact-ops');
+      if(sloganInput) sloganInput.value = settings.slogan || '';
+      if(managerInput) managerInput.value = settings.contactManager || '';
+      if(opsInput) opsInput.value = settings.contactOps || '';
+      const logoInput = $('#setting-logo-upload'); if(logoInput) logoInput.value = '';
+      const faviconInput = $('#setting-favicon-upload'); if(faviconInput) faviconInput.value = '';
+    }
+    async function saveSettings(){
+      if(!ensureProjectReady()) return;
+      const sloganInput = $('#setting-slogan');
+      const managerInput = $('#setting-contact-manager');
+      const opsInput = $('#setting-contact-ops');
+      const logoInput = $('#setting-logo-upload');
+      const faviconInput = $('#setting-favicon-upload');
+
+      const nextSettings = { ...currentSettings };
+      nextSettings.slogan = sloganInput ? sloganInput.value.trim() : '';
+      nextSettings.contactManager = managerInput ? managerInput.value.trim() : '';
+      nextSettings.contactOps = opsInput ? opsInput.value.trim() : '';
+
+      if(logoInput && logoInput.files && logoInput.files[0]){
+        const uploadResult = await uploadAsset(logoInput.files[0], 'branding/logos');
+        if(uploadResult.url){
+          nextSettings.logoUrl = uploadResult.url;
+          nextSettings.logoStoragePath = uploadResult.storagePath || '';
+        } else {
+          alert('Không thể tải lên logo mới. Logo cũ sẽ được giữ nguyên.');
+        }
+      }
+
+      if(faviconInput && faviconInput.files && faviconInput.files[0]){
+        const uploadResult = await uploadAsset(faviconInput.files[0], 'branding/favicon');
+        if(uploadResult.url){
+          nextSettings.faviconUrl = uploadResult.url;
+          nextSettings.faviconStoragePath = uploadResult.storagePath || '';
+        } else {
+          alert('Không thể tải lên favicon mới. Favicon cũ sẽ được giữ nguyên.');
+        }
+      }
+
+      try {
+        await updateProjectData({ settings: nextSettings });
+        currentSettings = { ...nextSettings };
+        renderCoverPage(currentSettings);
+        renderSidebar(currentSettings);
+        applyFavicon(currentSettings.faviconUrl || '');
+        populateSettingsForm(currentSettings);
+        alert('Đã lưu cài đặt');
+      } catch(error){
+        console.error('Không thể lưu cài đặt:', error);
+        alert('Không thể lưu cài đặt. Vui lòng thử lại.');
+      }
+    }
+    function openNoteDetailModal(note){
+      if(!noteDetailModal || !noteModalContent || !note) return;
+      noteModalContent.textContent = note.content || '';
+      if(noteModalAttachment){
+        if(note.attachmentUrl){
+          const isImage = (note.attachmentMime || '').startsWith('image/');
+          const safeName = escapeHtml(note.attachmentName || 'Tệp đính kèm');
+          if(isImage){
+            noteModalAttachment.innerHTML = `<div class="space-y-2"><div class="text-sm font-medium text-slate-600">Tệp đính kèm:</div><img src="${note.attachmentUrl}" alt="${safeName}" class="w-full max-h-96 object-contain rounded-lg border border-slate-200" loading="lazy" /></div>`;
+          } else {
+            noteModalAttachment.innerHTML = `<div class="space-y-2"><div class="text-sm font-medium text-slate-600">Tệp đính kèm:</div><a href="${note.attachmentUrl}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 text-blue-600 font-semibold"><span>📎</span><span>${safeName}</span></a></div>`;
+          }
+        } else {
+          noteModalAttachment.innerHTML = '';
+        }
+      }
+      noteDetailModal.classList.add('active');
+      noteDetailModal.setAttribute('aria-hidden','false');
+    }
+    function closeNoteDetailModal(){
+      if(!noteDetailModal) return;
+      noteDetailModal.classList.remove('active');
+      noteDetailModal.setAttribute('aria-hidden','true');
+      if(noteModalContent) noteModalContent.textContent = '';
+      if(noteModalAttachment) noteModalAttachment.innerHTML = '';
     }
     function evaluateDeadline(deadline, completed){
       if(!deadline) return null;
@@ -1022,6 +1299,10 @@
     const deleteNoteModal = $('#delete-note-modal');
     const confirmDeleteNoteBtn = $('#confirm-delete-note-btn');
     const cancelDeleteNoteBtn = $('#cancel-delete-note-btn');
+    noteDetailModal = $('#note-detail-modal');
+    noteModalContent = $('#note-modal-content');
+    noteModalAttachment = $('#note-modal-attachment');
+    noteModalCloseBtn = $('#note-modal-close');
 
     let currentDeleteTaskId = null;
     let currentDeleteNoteId = null;
@@ -1350,6 +1631,7 @@
             countdownSpan.textContent = deadlineInfo && deadlineInfo.text ? deadlineInfo.text : '';
           }
         }
+        updateCompleteButtonState(task.id);
       });
 
       const totalText = $('#total-progress-text');
@@ -1379,19 +1661,10 @@
     // ========= NOTES =========
     function renderNoteStatistics(){
       const totalEl = $('#note-stats-total');
-      const breakdownContainer = $('#note-stats-breakdown');
-      if(!totalEl || !breakdownContainer) return;
-
-      totalEl.textContent = `Tổng số ghi chú: ${notes.length}`;
-      breakdownContainer.innerHTML = '';
-
-      if(!notes.length){
-        const empty = document.createElement('p');
-        empty.className = 'text-sm text-gray-500';
-        empty.textContent = 'Chưa có dữ liệu thống kê.';
-        breakdownContainer.appendChild(empty);
-        return;
-      }
+      if(totalEl) totalEl.textContent = `Tổng số ghi chú: ${notes.length}`;
+      const canvas = document.getElementById('note-stats-chart');
+      if(!canvas) return;
+      const ctx = canvas.getContext('2d');
 
       const counts = notes.reduce((acc, note) => {
         const type = (note.type || '').trim() || 'Khác';
@@ -1399,12 +1672,41 @@
         return acc;
       }, {});
 
-      Object.keys(counts).sort((a, b) => a.localeCompare(b, 'vi')).forEach(type => {
-        const item = document.createElement('div');
-        item.className = 'flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700';
-        item.innerHTML = `<span>${type}</span><span class="font-semibold text-gray-900">${counts[type]}</span>`;
-        breakdownContainer.appendChild(item);
-      });
+      let labels = Object.keys(counts).sort((a, b) => a.localeCompare(b, 'vi'));
+      let data = labels.map(label => counts[label]);
+      if(labels.length === 0){
+        labels = ['Chưa có dữ liệu'];
+        data = [0];
+      }
+      const colors = labels.map(() => '#2563eb');
+
+      if(!noteStatsChart){
+        noteStatsChart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [{
+              label: 'Số ghi chú',
+              data,
+              backgroundColor: colors,
+              borderRadius: 6,
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: { beginAtZero: true, ticks: { precision: 0 } },
+            },
+            plugins: { legend: { display: false } },
+          },
+        });
+      } else {
+        noteStatsChart.data.labels = labels;
+        noteStatsChart.data.datasets[0].data = data;
+        noteStatsChart.data.datasets[0].backgroundColor = colors;
+        noteStatsChart.update();
+      }
     }
 
     function renderNotes(){
@@ -1415,17 +1717,73 @@
         return;
       }
       filteredNotes.slice().reverse().forEach(n => {
+        const noteId = String(n.id);
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${n.date}</td>
-                        <td><span class="custom-type-item">${n.type}</span></td>
-                        <td style="white-space:pre-wrap;">${n.content.replace(/\n/g,'<br>')}</td>
-                        <td style="text-align:center;"><span class="note-delete-btn" data-note-id="${n.id}">🗑️</span></td>`;
+
+        const dateTd = document.createElement('td');
+        dateTd.textContent = n.date || '';
+
+        const typeTd = document.createElement('td');
+        const typeBadge = document.createElement('span');
+        typeBadge.className = 'custom-type-item';
+        typeBadge.textContent = n.type || 'Khác';
+        typeTd.appendChild(typeBadge);
+
+        const contentTd = document.createElement('td');
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'note-content-clamp text-gray-700';
+        contentDiv.textContent = n.content || '';
+        contentTd.appendChild(contentDiv);
+
+        const hasAttachment = !!(n.attachmentUrl);
+        if(hasAttachment){
+          const chip = document.createElement('div');
+          chip.className = 'note-attachment-chip';
+          chip.innerHTML = `<span>📎</span><span class="font-medium">${escapeHtml(n.attachmentName || 'Tệp đính kèm')}</span>`;
+          contentTd.appendChild(chip);
+        }
+
+        const requiresReadMore = (n.content || '').length > NOTE_TRUNCATE_LIMIT || hasAttachment;
+        if(requiresReadMore){
+          const moreBtn = document.createElement('button');
+          moreBtn.type = 'button';
+          moreBtn.className = 'note-read-more-btn';
+          moreBtn.dataset.noteId = noteId;
+          moreBtn.innerHTML = '<span>🔎</span><span>Xem thêm</span>';
+          contentTd.appendChild(moreBtn);
+        }
+
+        const deleteTd = document.createElement('td');
+        deleteTd.style.textAlign = 'center';
+        const deleteBtn = document.createElement('span');
+        deleteBtn.className = 'note-delete-btn cursor-pointer';
+        deleteBtn.dataset.noteId = noteId;
+        deleteBtn.textContent = '🗑️';
+        deleteTd.appendChild(deleteBtn);
+
+        tr.appendChild(dateTd);
+        tr.appendChild(typeTd);
+        tr.appendChild(contentTd);
+        tr.appendChild(deleteTd);
         tbody.appendChild(tr);
       });
+
       $$('.note-delete-btn').forEach(btn => btn.addEventListener('click', e => {
-        currentDeleteNoteId = e.target.dataset.noteId;
-        deleteNoteModal.classList.add('active');
-        deleteNoteModal.setAttribute('aria-hidden','false');
+        e.preventDefault();
+        currentDeleteNoteId = e.currentTarget.dataset.noteId;
+        if(deleteNoteModal){
+          deleteNoteModal.classList.add('active');
+          deleteNoteModal.setAttribute('aria-hidden','false');
+        }
+      }));
+
+      $$('.note-read-more-btn').forEach(btn => btn.addEventListener('click', e => {
+        e.preventDefault();
+        const noteId = e.currentTarget.dataset.noteId;
+        const note = notes.find(item => String(item.id) === String(noteId));
+        if(note){
+          openNoteDetailModal(note);
+        }
       }));
     }
 
@@ -1500,7 +1858,8 @@
     function applyFilters(){
       const type = $('#filter-type');
       const keywordInput = $('#filter-keyword');
-      const keyword = keywordInput && keywordInput.value ? keywordInput.value.trim().toLowerCase() : '';
+      const keywordValue = keywordInput && keywordInput.value ? keywordInput.value.trim() : '';
+      const keyword = keywordValue.length >= 4 ? keywordValue.toLowerCase() : '';
 
       let fromDate = null;
       let toDate = null;
@@ -1518,11 +1877,20 @@
       }
 
       filteredNotes = notes.filter(n => {
-        const [d,m,y] = n.date.split(' ')[0].split('/').map(Number);
-        const noteDate = new Date(y, m-1, d);
-        noteDate.setHours(0,0,0,0);
-        if(fromDate && noteDate < fromDate) return false;
-        if(toDate && noteDate > toDate) return false;
+        let noteDate = null;
+        if(typeof n.date === 'string'){
+          const datePart = n.date.split(' ')[0];
+          const parts = datePart.split('/').map(Number);
+          if(parts.length === 3 && parts.every(Number.isFinite)){
+            const [d, m, y] = parts;
+            if(d && m && y){
+              noteDate = new Date(y, m - 1, d);
+              noteDate.setHours(0,0,0,0);
+            }
+          }
+        }
+        if(fromDate && (!noteDate || noteDate < fromDate)) return false;
+        if(toDate && (!noteDate || noteDate > toDate)) return false;
         if(type && type.value && n.type !== type.value) return false;
         const content = (n.content || '').toLowerCase();
         if(keyword && !content.includes(keyword)) return false;
@@ -1538,9 +1906,7 @@
       if(type) type.value = '';
       if(keywordInput) keywordInput.value = '';
       setQuickDateRange('all');
-      filteredNotes = notes.slice();
-      renderNotes();
-      renderNoteStatistics();
+      applyFilters();
     }
 
     async function saveNewNote(){
@@ -1549,30 +1915,67 @@
       const content = textarea.value.trim();
       if(!content){ alert('Vui lòng nhập nội dung ghi chú'); return; }
       if(!selectedNoteType){ alert('Vui lòng chọn loại ghi chú'); return; }
+
+      const fileInput = $('#note-file-upload');
+      const file = fileInput && fileInput.files ? fileInput.files[0] : null;
+
+      let attachmentUrl = null;
+      let attachmentStoragePath = '';
+      let attachmentName = '';
+      let attachmentMime = '';
+
+      if(file){
+        attachmentName = file.name;
+        attachmentMime = file.type || '';
+        const uploadResult = await uploadAsset(file, 'notes_attachments');
+        if(uploadResult.url){
+          attachmentUrl = uploadResult.url;
+          attachmentStoragePath = uploadResult.storagePath || '';
+        } else {
+          alert('Không thể tải lên tệp đính kèm. Ghi chú sẽ được lưu không có tệp.');
+        }
+      }
+
       const now = new Date();
       const id = now.getTime();
       const date = now.toLocaleString('vi-VN',{ day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
-      notes.push({ id, date, type:selectedNoteType, content });
+
+      notes.push({
+        id,
+        date,
+        type: selectedNoteType,
+        content,
+        attachmentUrl: attachmentUrl || null,
+        attachmentName: attachmentName,
+        attachmentMime,
+        attachmentStoragePath,
+      });
+
       textarea.value = '';
+      if(fileInput) fileInput.value = '';
       applyFilters();
       await updateProjectData({ notes });
     }
 
     async function confirmDeleteNote(){
       if(!currentDeleteNoteId) return;
-      notes = notes.filter(n => String(n.id) !== String(currentDeleteNoteId));
+      const idToRemove = currentDeleteNoteId;
+      notes = notes.filter(n => String(n.id) !== String(idToRemove));
       currentDeleteNoteId = null;
       if(deleteNoteModal){
         deleteNoteModal.classList.remove('active');
         deleteNoteModal.setAttribute('aria-hidden','true');
       }
+      closeNoteDetailModal();
       applyFilters();
       if(isProjectReady) await updateProjectData({ notes });
     }
     function cancelDeleteNote(){
       currentDeleteNoteId = null;
-      deleteNoteModal.classList.remove('active');
-      deleteNoteModal.setAttribute('aria-hidden','true');
+      if(deleteNoteModal){
+        deleteNoteModal.classList.remove('active');
+        deleteNoteModal.setAttribute('aria-hidden','true');
+      }
     }
 
     // ========= NOTE TYPE DROPDOWN =========
@@ -1775,6 +2178,7 @@
       gd3: '/giaidoan3',
       gd4: '/giaidoan4',
       notes: '/ghichu',
+      'settings-page': '/cai-dat',
     };
     const DEFAULT_NAV_HREF = sectionToPath.overview;
     const routeConfig = {
@@ -1785,6 +2189,7 @@
       '/giaidoan3': { layout: 'app', section: 'gd3', navHref: sectionToPath.gd3 },
       '/giaidoan4': { layout: 'app', section: 'gd4', navHref: sectionToPath.gd4 },
       '/ghichu': { layout: 'app', section: 'notes', navHref: sectionToPath.notes },
+      '/cai-dat': { layout: 'app', section: 'settings-page', navHref: sectionToPath['settings-page'] },
     };
     let router = null;
 
@@ -1935,6 +2340,7 @@
           notes: [],
           customTypes: defaultCustomTypes,
           selectedNoteType: defaultCustomTypes[0] || '',
+          settings: defaultSettings,
           meta: {
             projectId,
             projectStart: formatDate(projectPlanStart),
@@ -1961,6 +2367,9 @@
         if(needsUpdate){
           await updateDoc(projectRef, { taskState: normalized, updatedAt: serverTimestamp() });
         }
+        if(!data.settings){
+          await updateDoc(projectRef, { settings: defaultSettings, updatedAt: serverTimestamp() });
+        }
       }
     }
 
@@ -1978,6 +2387,7 @@
 
       const app = initializeApp(firebaseConfig);
       db = getFirestore(app);
+      storage = getStorage(app);
       const projectId = ensureProjectId();
       projectRef = doc(db, 'projects', projectId);
       await ensureProjectDocument(projectId);
@@ -1991,13 +2401,18 @@
         if(customTypes.length === 0) customTypes = defaultCustomTypes.slice();
         selectedNoteType = data.selectedNoteType && customTypes.includes(data.selectedNoteType) ? data.selectedNoteType : (customTypes[0] || '');
         filteredNotes = notes.slice();
+        currentSettings = { ...defaultSettings, ...(data.settings || {}) };
         isProjectReady = true;
         debouncedSyncTaskState = debounce(syncTaskState, 400);
         renderNoteTypeDropdown();
         updateTypeFilterOptions();
         applyFilters();
+        renderCoverPage(currentSettings);
+        renderSidebar(currentSettings);
+        applyFavicon(currentSettings.faviconUrl || '');
+        populateSettingsForm(currentSettings);
         updateUI();
-        updateShareLink(projectId);
+        updateShareLink();
       }, error => {
         console.error('Lỗi đồng bộ dữ liệu thời gian thực:', error);
       });
@@ -2012,6 +2427,9 @@
     const deleteNoteModalEl = $('#delete-note-modal');
     if(deleteTaskModalEl) deleteTaskModalEl.addEventListener('click', e => { if(e.target === deleteTaskModalEl) cancelDeleteTask(); });
     if(deleteNoteModalEl) deleteNoteModalEl.addEventListener('click', e => { if(e.target === deleteNoteModalEl) cancelDeleteNote(); });
+    if(noteModalCloseBtn) noteModalCloseBtn.addEventListener('click', e => { e.preventDefault(); closeNoteDetailModal(); });
+    if(noteDetailModal) noteDetailModal.addEventListener('click', e => { if(e.target === noteDetailModal) closeNoteDetailModal(); });
+    document.addEventListener('keydown', e => { if(e.key === 'Escape') closeNoteDetailModal(); });
 
     // ========= BOOT =========
     router = createRouter(routeConfig);
@@ -2028,10 +2446,15 @@
     renderNoteTypeDropdown();
     bindNoteTypeDropdown();
     updateTypeFilterOptions();
+    renderCoverPage(currentSettings);
+    renderSidebar(currentSettings);
+    applyFavicon(currentSettings.faviconUrl || '');
+    populateSettingsForm(currentSettings);
 
     if(router) router.handleCurrent();
 
     setQuickDateRange('all');
+    applyFilters();
 
     const startPlanBtn = $('#start-plan-btn');
     if(startPlanBtn) startPlanBtn.addEventListener('click', e => {
@@ -2041,7 +2464,8 @@
 
     const quickDateButtons = $$('#quick-date-buttons .quick-date-btn');
     quickDateButtons.forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', e => {
+        e.preventDefault();
         const range = btn.dataset.range || 'all';
         setQuickDateRange(range);
         if(range === 'custom'){
@@ -2054,8 +2478,21 @@
     });
 
     const saveNoteBtn = $('#save-note-btn'); if(saveNoteBtn) saveNoteBtn.addEventListener('click', saveNewNote);
-    const applyFilterBtn = $('#apply-filter-btn'); if(applyFilterBtn) applyFilterBtn.addEventListener('click', applyFilters);
-    const resetFilterBtn = $('#reset-filter-btn'); if(resetFilterBtn) resetFilterBtn.addEventListener('click', resetFilters);
+    const resetFilterBtn = $('#reset-filter-btn'); if(resetFilterBtn) resetFilterBtn.addEventListener('click', e => { e.preventDefault(); resetFilters(); });
+    const filterTypeSelect = $('#filter-type'); if(filterTypeSelect) filterTypeSelect.addEventListener('change', applyFilters);
+    const keywordInputEl = $('#filter-keyword');
+    if(keywordInputEl){
+      const triggerKeywordFilter = debounce(() => applyFilters(), 250);
+      keywordInputEl.addEventListener('input', () => {
+        const value = keywordInputEl.value.trim();
+        if(value.length === 0 || value.length >= 4){
+          triggerKeywordFilter();
+        }
+      });
+    }
+    const filterDateFrom = $('#filter-date-from'); if(filterDateFrom) filterDateFrom.addEventListener('change', () => { if(selectedQuickRange === 'custom') applyFilters(); });
+    const filterDateTo = $('#filter-date-to'); if(filterDateTo) filterDateTo.addEventListener('change', () => { if(selectedQuickRange === 'custom') applyFilters(); });
+    const saveSettingsBtn = $('#save-settings-btn'); if(saveSettingsBtn) saveSettingsBtn.addEventListener('click', async e => { e.preventDefault(); await saveSettings(); });
     const activityLogToggleBtn = $('#activity-log-toggle'); if(activityLogToggleBtn) activityLogToggleBtn.addEventListener('click', () => { activityLogShowAll = true; renderActivityLog(); });
     const activityLogBody = $('#activity-log-body'); if(activityLogBody) activityLogBody.addEventListener('click', e => {
       const trigger = e.target.closest('[data-jump-task]');
