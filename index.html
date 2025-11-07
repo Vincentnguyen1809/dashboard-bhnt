@@ -1685,6 +1685,118 @@
       });
     }
 
+    function ensureProjectId(){
+      const params = new URLSearchParams(window.location.search);
+      let id = params.get('projectId');
+      if(!id){
+        id = `proj-${Math.random().toString(36).slice(2,6)}${Date.now().toString(36)}`;
+        params.set('projectId', id);
+        const newUrl = `${window.location.pathname}?${params.toString()}`;
+        window.history.replaceState({}, '', newUrl);
+      }
+      return id;
+    }
+
+    async function updateProjectData(partial){
+      if(!projectRef) return;
+      try {
+        await updateDoc(projectRef, { ...partial, updatedAt: serverTimestamp() });
+      } catch(error){
+        console.error('Không thể cập nhật dữ liệu dự án:', error);
+      }
+    }
+
+    async function syncTaskState(){
+      if(!isProjectReady) return;
+      await updateProjectData({ taskState });
+    }
+
+    async function ensureProjectDocument(projectId){
+      if(!projectRef) return;
+      const snapshot = await getDoc(projectRef);
+      if(!snapshot.exists()){
+        await setDoc(projectRef, {
+          taskState: buildDefaultTaskState(),
+          notes: [],
+          customTypes: defaultCustomTypes,
+          selectedNoteType: defaultCustomTypes[0] || '',
+          meta: {
+            projectId,
+            projectStart: formatDate(projectPlanStart),
+            launchDate: formatDate(projectLaunchDate),
+            createdAt: serverTimestamp(),
+          },
+          updatedAt: serverTimestamp(),
+        }, { merge:true });
+      } else {
+        const data = snapshot.data() || {};
+        const defaults = buildDefaultTaskState();
+        const current = data.taskState || {};
+        let needsUpdate = false;
+        Object.keys(defaults).forEach(id => {
+          if(!current[id]){
+            current[id] = defaults[id];
+            needsUpdate = true;
+          } else {
+            current[id].completed = !!current[id].completed;
+            current[id].link = (current[id].link || '').trim();
+          }
+        });
+        if(needsUpdate){
+          await updateDoc(projectRef, { taskState: current, updatedAt: serverTimestamp() });
+        }
+      }
+    }
+
+    async function initializeRealtimePersistence(){
+      const firebaseConfig = window.FIREBASE_CONFIG;
+      if(!firebaseConfig){
+        console.error('Thiếu cấu hình Firebase. Vui lòng gán window.FIREBASE_CONFIG.');
+        const shareInfo = $('#project-share-info');
+        if(shareInfo){
+          shareInfo.classList.remove('hidden');
+          shareInfo.innerHTML = '<span class="text-red-500">Thiếu cấu hình Firebase (window.FIREBASE_CONFIG).</span>';
+        }
+        return;
+      }
+
+      const app = initializeApp(firebaseConfig);
+      db = getFirestore(app);
+      const projectId = ensureProjectId();
+      projectRef = doc(db, 'projects', projectId);
+      await ensureProjectDocument(projectId);
+
+      onSnapshot(projectRef, snapshot => {
+        if(!snapshot.exists()) return;
+        const data = snapshot.data() || {};
+        const defaults = buildDefaultTaskState();
+        const incomingState = data.taskState || {};
+        Object.keys(defaults).forEach(id => {
+          if(!incomingState[id]){
+            incomingState[id] = defaults[id];
+          } else {
+            incomingState[id].completed = !!incomingState[id].completed;
+            incomingState[id].link = (incomingState[id].link || '').trim();
+          }
+        });
+        taskState = incomingState;
+        notes = Array.isArray(data.notes) ? data.notes.map(note => ({ ...note })) : [];
+        customTypes = Array.isArray(data.customTypes) && data.customTypes.length ? data.customTypes.slice(0,10) : defaultCustomTypes.slice();
+        if(customTypes.length === 0) customTypes = defaultCustomTypes.slice();
+        selectedNoteType = data.selectedNoteType && customTypes.includes(data.selectedNoteType) ? data.selectedNoteType : (customTypes[0] || '');
+        filteredNotes = notes.slice();
+        isProjectReady = true;
+        debouncedSyncTaskState = debounce(syncTaskState, 400);
+        renderNoteTypeDropdown();
+        updateTypeFilterOptions();
+        applyFilters();
+        updateUI();
+        updateShareLink(projectId);
+      }, error => {
+        console.error('Lỗi đồng bộ dữ liệu thời gian thực:', error);
+      });
+    }
+
     // ========= MODALS WIRING =========
     if(confirmDeleteTaskBtn) confirmDeleteTaskBtn.addEventListener('click', confirmDeleteTask);
     if(cancelDeleteTaskBtn) cancelDeleteTaskBtn.addEventListener('click', cancelDeleteTask);
@@ -1727,3 +1839,4 @@
   </script>
 </body>
 </html>
+
