@@ -122,25 +122,6 @@
     .modal-title{ font-size:1.25rem; font-weight:700; color:#111827; margin-bottom:0.75rem; }
     .modal-message{ color:#6b7280; margin-bottom:1.5rem; line-height:1.5; }
     .modal-buttons{ display:flex; gap:0.75rem; justify-content:flex-end; }
-    #toast-notification{ max-width:400px; min-width:280px; }
-    #toast-notification.show{ display:block; animation:slideInRight 0.3s ease-out; }
-    #toast-notification.hide{ animation:slideOutRight 0.3s ease-in; }
-    @keyframes slideInRight{ from{ opacity:0; transform:translateX(100%); } to{ opacity:1; transform:translateX(0); } }
-    @keyframes slideOutRight{ from{ opacity:1; transform:translateX(0); } to{ opacity:0; transform:translateX(100%); } }
-    .toast-content{ display:flex; align-items:center; gap:0.75rem; padding:1rem 1.25rem; border-radius:0.5rem; box-shadow:0 10px 25px -5px rgba(0,0,0,.15); background:#fff; border-left:4px solid; }
-    .toast-content.success{ border-left-color:#10b981; background:#f0fdf4; }
-    .toast-content.error{ border-left-color:#ef4444; background:#fef2f2; }
-    .toast-icon{ font-size:1.25rem; line-height:1; }
-    .toast-message{ flex:1; font-size:0.875rem; font-weight:500; }
-    .toast-content.success .toast-message{ color:#166534; }
-    .toast-content.error .toast-message{ color:#991b1b; }
-    .card-section{ background:#fff; border-radius:0.5rem; padding:1.5rem; margin-bottom:1.5rem; border:1px solid #e5e7eb; }
-    .card-title{ font-size:1.125rem; font-weight:600; color:#111827; }
-    .stat-card{ background:#fff; border-radius:0.5rem; padding:1.5rem; border:1px solid #e5e7eb; }
-    @media (max-width:768px){
-      .card-section, .stat-card{ padding:1rem; }
-      #toast-notification{ right:1rem; left:1rem; max-width:none; }
-    }
   </style>
 </head>
 <body class="text-gray-800">
@@ -181,9 +162,6 @@
       <div id="note-modal-attachment" class="mt-6"></div>
     </div>
   </div>
-
-  <!-- Toast Notification -->
-  <div id="toast-notification" class="fixed top-4 right-4 z-50 hidden transition-all duration-300 transform translate-x-0"></div>
 
   <section id="cover-page" class="min-h-screen flex flex-col items-center justify-center bg-sky-100 text-center px-6 py-16">
     <div class="max-w-4xl mx-auto space-y-8">
@@ -300,16 +278,7 @@
                 <h3 class="card-title">Ghi Chú Thống Kê</h3>
                 <span id="note-stats-total" class="text-sm text-gray-600">Tổng số ghi chú: 0</span>
               </div>
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h4 class="text-sm font-semibold text-gray-700 mb-3">Phân loại ghi chú</h4>
-                  <div id="note-stats-text" class="space-y-2 text-sm text-gray-600"></div>
-                </div>
-                <div>
-                  <h4 class="text-sm font-semibold text-gray-700 mb-3">Biểu đồ cột</h4>
-                  <canvas id="note-stats-chart" class="w-full" height="320"></canvas>
-                </div>
-              </div>
+              <canvas id="note-stats-chart" class="w-full" height="320"></canvas>
             </div>
 
             <div id="activity-log-section" class="card-section">
@@ -877,11 +846,9 @@
           const ref = storageRef(storage, path);
           await uploadBytes(ref, file);
           const url = await getDownloadURL(ref);
-          showToast(`Đã tải lên "${file.name}" thành công`, 'success');
           return { url, storagePath: ref.fullPath };
         } catch(error){
           console.error('Upload asset thất bại, sẽ dùng phương án dự phòng.', error);
-          showToast(`Không thể tải lên "${file.name}"`, 'error');
         }
       }
       try {
@@ -889,7 +856,6 @@
         return { url: base64, storagePath: '' };
       } catch(error){
         console.error('Không thể đọc file đính kèm:', error);
-        showToast(`Không thể đọc file "${file.name}"`, 'error');
         return { url:null, storagePath:'' };
       }
     }
@@ -905,23 +871,6 @@
       } else if(link){
         link.removeAttribute('href');
       }
-    }
-    function showToast(message, type = 'success'){
-      const toastContainer = $('#toast-notification');
-      if(!toastContainer) return;
-      const icon = type === 'success' ? '✅' : '❌';
-      toastContainer.innerHTML = `<div class="toast-content ${type}"><span class="toast-icon">${icon}</span><span class="toast-message">${escapeHtml(message)}</span></div>`;
-      toastContainer.classList.remove('hidden', 'hide');
-      toastContainer.classList.add('show');
-      setTimeout(() => {
-        toastContainer.classList.remove('show');
-        toastContainer.classList.add('hide');
-        setTimeout(() => {
-          toastContainer.classList.add('hidden');
-          toastContainer.classList.remove('hide');
-          toastContainer.innerHTML = '';
-        }, 300);
-      }, 3000);
     }
     function renderCoverPage(settings = {}){
       const logoEl = $('#cover-logo');
@@ -1006,6 +955,8 @@
         if(uploadResult.url){
           nextSettings.logoUrl = uploadResult.url;
           nextSettings.logoStoragePath = uploadResult.storagePath || '';
+        } else {
+          alert('Không thể tải lên logo mới. Logo cũ sẽ được giữ nguyên.');
         }
       }
 
@@ -1014,6 +965,8 @@
         if(uploadResult.url){
           nextSettings.faviconUrl = uploadResult.url;
           nextSettings.faviconStoragePath = uploadResult.storagePath || '';
+        } else {
+          alert('Không thể tải lên favicon mới. Favicon cũ sẽ được giữ nguyên.');
         }
       }
 
@@ -1024,10 +977,10 @@
         renderSidebar(currentSettings);
         applyFavicon(currentSettings.faviconUrl || '');
         populateSettingsForm(currentSettings);
-        showToast('Đã lưu cài đặt thành công', 'success');
+        alert('Đã lưu cài đặt');
       } catch(error){
         console.error('Không thể lưu cài đặt:', error);
-        showToast('Không thể lưu cài đặt. Vui lòng thử lại.', 'error');
+        alert('Không thể lưu cài đặt. Vui lòng thử lại.');
       }
     }
     function openNoteDetailModal(note){
@@ -1709,6 +1662,9 @@
     function renderNoteStatistics(){
       const totalEl = $('#note-stats-total');
       if(totalEl) totalEl.textContent = `Tổng số ghi chú: ${notes.length}`;
+      const canvas = document.getElementById('note-stats-chart');
+      if(!canvas) return;
+      const ctx = canvas.getContext('2d');
 
       const counts = notes.reduce((acc, note) => {
         const type = (note.type || '').trim() || 'Khác';
@@ -1722,27 +1678,6 @@
         labels = ['Chưa có dữ liệu'];
         data = [0];
       }
-
-      // Update text column
-      const textContainer = $('#note-stats-text');
-      if(textContainer){
-        if(labels.length === 0 || (labels.length === 1 && labels[0] === 'Chưa có dữ liệu')){
-          textContainer.innerHTML = '<div class="text-gray-500 italic">Chưa có ghi chú nào.</div>';
-        } else {
-          textContainer.innerHTML = labels.map((label, index) => {
-            const count = data[index];
-            return `<div class="flex items-center justify-between py-1.5 px-3 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors">
-              <span class="font-medium text-gray-800">${escapeHtml(label)}</span>
-              <span class="text-blue-600 font-semibold">${count}</span>
-            </div>`;
-          }).join('');
-        }
-      }
-
-      // Update chart
-      const canvas = document.getElementById('note-stats-chart');
-      if(!canvas) return;
-      const ctx = canvas.getContext('2d');
       const colors = labels.map(() => '#2563eb');
 
       if(!noteStatsChart){
@@ -1996,6 +1931,8 @@
         if(uploadResult.url){
           attachmentUrl = uploadResult.url;
           attachmentStoragePath = uploadResult.storagePath || '';
+        } else {
+          alert('Không thể tải lên tệp đính kèm. Ghi chú sẽ được lưu không có tệp.');
         }
       }
 
@@ -2018,7 +1955,6 @@
       if(fileInput) fileInput.value = '';
       applyFilters();
       await updateProjectData({ notes });
-      showToast('Đã lưu ghi chú thành công', 'success');
     }
 
     async function confirmDeleteNote(){
