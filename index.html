@@ -262,7 +262,10 @@
               <h3 class="card-title">Tổng Tiến Độ (Toàn Dự Án)</h3>
               <div class="flex items-center justify-between mb-2">
                 <span class="text-sm font-medium text-gray-600">Tiến độ</span>
-                <span id="total-progress-text" class="text-sm font-bold text-blue-600">0 / 0 Tasks</span>
+                <div class="flex items-center gap-3">
+                  <span id="total-progress-text" class="text-sm font-bold text-blue-600">0 / 0 Tasks</span>
+                  <span id="total-progress-percent" class="text-2xl font-bold text-blue-600">0%</span>
+                </div>
               </div>
               <div class="progress-bar"><div id="total-progress-bar" class="progress-bar-inner" style="width:0%"></div></div>
             </div>
@@ -307,7 +310,9 @@
                 </div>
                 <div>
                   <h4 class="text-sm font-semibold text-gray-700 mb-3">Biểu đồ cột</h4>
-                  <canvas id="note-stats-chart" class="w-full" height="320"></canvas>
+                  <div style="position: relative; max-height: 350px; height: 300px;">
+                    <canvas id="note-stats-chart"></canvas>
+                  </div>
                 </div>
               </div>
             </div>
@@ -477,10 +482,12 @@
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1.5" for="setting-logo-upload">Logo (hiển thị ở Cover & Sidebar)</label>
                     <input type="file" id="setting-logo-upload" class="w-full text-sm text-gray-600" accept="image/*" />
+                    <p class="text-xs text-gray-500 mt-1">Lưu ý: Nếu upload file lỗi, bạn cần cấu hình CORS trên Firebase Storage.</p>
                   </div>
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1.5" for="setting-favicon-upload">Favicon</label>
                     <input type="file" id="setting-favicon-upload" class="w-full text-sm text-gray-600" accept="image/*" />
+                    <p class="text-xs text-gray-500 mt-1">Lưu ý: Nếu upload file lỗi, bạn cần cấu hình CORS trên Firebase Storage.</p>
                   </div>
                 </div>
                 <div class="space-y-4">
@@ -877,19 +884,21 @@
           const ref = storageRef(storage, path);
           await uploadBytes(ref, file);
           const url = await getDownloadURL(ref);
-          showToast(`Đã tải lên "${file.name}" thành công`, 'success');
+          showToast(`Upload successful! "${file.name}"`, 'success');
           return { url, storagePath: ref.fullPath };
         } catch(error){
-          console.error('Upload asset thất bại, sẽ dùng phương án dự phòng.', error);
-          showToast(`Không thể tải lên "${file.name}"`, 'error');
+          console.error('Upload failed. Check Firebase Storage CORS settings:', error);
+          showToast(`Upload failed. Check permissions. "${file.name}"`, 'error');
+          return { url:null, storagePath:'' };
         }
       }
       try {
         const base64 = await readFileAsDataURL(file);
+        showToast(`File loaded locally (not uploaded): "${file.name}"`, 'success');
         return { url: base64, storagePath: '' };
       } catch(error){
-        console.error('Không thể đọc file đính kèm:', error);
-        showToast(`Không thể đọc file "${file.name}"`, 'error');
+        console.error('Cannot read file:', error);
+        showToast(`Cannot read file: "${file.name}"`, 'error');
         return { url:null, storagePath:'' };
       }
     }
@@ -1683,15 +1692,18 @@
 
       const totalText = $('#total-progress-text');
       const totalBar = $('#total-progress-bar');
+      const totalPercent = $('#total-progress-percent');
+      const totalPct = total > 0 ? Math.round((done/total)*100) : 0;
       if(totalText) totalText.textContent = `${done} / ${total} Tasks`;
-      if(totalBar) totalBar.style.width = (total > 0 ? (done/total)*100 : 0) + '%';
+      if(totalBar) totalBar.style.width = totalPct + '%';
+      if(totalPercent) totalPercent.textContent = totalPct + '%';
 
       ['gd1','gd2','gd3','gd4'].forEach(ph => {
         const d = phaseCounts[ph];
-        const pct = d.total > 0 ? (d.completed/d.total)*100 : 0;
+        const pct = d.total > 0 ? Math.round((d.completed/d.total)*100) : 0;
         const t = document.getElementById(`${ph}-progress-text`);
         const b = document.getElementById(`${ph}-progress-bar`);
-        if(t) t.textContent = `${d.completed} / ${d.total}`;
+        if(t) t.textContent = `${d.completed} / ${d.total} (${pct}%)`;
         if(b) b.style.width = pct + '%';
       });
 
