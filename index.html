@@ -44,9 +44,13 @@
     .task-btn:disabled{ opacity:.5; cursor:not-allowed; }
     .btn-complete{ background:#10b981; color:#fff; }
     .btn-complete:hover:not(:disabled){ background:#059669; }
-    .btn-edit-dropdown{ background:#3b82f6; color:#fff; position:relative; padding-right:2rem; }
-    .btn-edit-dropdown:hover{ background:#2563eb; }
-    .btn-edit-dropdown::after{ content:'▼'; position:absolute; right:0.5rem; font-size:0.625rem; }
+    .btn-view{ background:#0ea5e9; color:#fff; }
+    .btn-view:hover:not(:disabled){ background:#0284c7; }
+    .task-completed-actions{ display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; }
+    .task-icon-btn{ width:2.5rem; height:2.5rem; border-radius:0.375rem; border:1px solid #d1d5db; background:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:.2s; }
+    .task-icon-btn:hover{ background:#e5e7eb; }
+    .task-icon-btn:disabled{ cursor:not-allowed; opacity:.5; }
+    .task-icon-btn svg{ width:1.1rem; height:1.1rem; color:#374151; }
     .edit-dropdown-wrapper{ position:relative; display:inline-block; }
     .edit-dropdown-menu{ display:none; position:absolute; top:100%; right:0; margin-top:0.25rem; background:#fff; border:1px solid #e5e7eb; border-radius:0.375rem; box-shadow:0 4px 6px -1px rgba(0,0,0,.1); min-width:150px; z-index:10; }
     .edit-dropdown-menu.show{ display:block; }
@@ -68,8 +72,22 @@
     .notes-table td{ padding:0.75rem; border-bottom:1px solid #f3f4f6; color:#6b7280; }
     .notes-table tr:hover{ background:#f9fafb; }
     .custom-type-item{ display:inline-flex; align-items:center; gap:0.375rem; padding:0.25rem 0.75rem; background:#dbeafe; border-radius:9999px; margin:0.25rem; font-size:0.8125rem; color:#1e40af; }
-    .custom-type-remove{ color:#ef4444; cursor:pointer; font-weight:700; font-size:1rem; line-height:1; padding:0 0.25rem; }
-    .custom-type-remove:hover{ color:#dc2626; }
+    .note-type-dropdown{ position:relative; margin-top:0.75rem; }
+    .note-type-trigger{ width:100%; display:flex; justify-content:space-between; align-items:center; border:1px solid #d1d5db; border-radius:0.375rem; padding:0.6rem 0.75rem; background:#fff; font-size:0.875rem; color:#374151; cursor:pointer; transition:.2s; }
+    .note-type-trigger:hover{ border-color:#3b82f6; }
+    .note-type-trigger svg{ width:1rem; height:1rem; color:#6b7280; transition:transform .2s; }
+    .note-type-dropdown.open .note-type-trigger svg{ transform:rotate(180deg); }
+    .note-type-panel{ position:absolute; inset:calc(100% + 0.25rem) 0 auto 0; background:#fff; border:1px solid #e5e7eb; border-radius:0.5rem; box-shadow:0 10px 25px -10px rgba(15,23,42,.35); padding:0.75rem; z-index:30; display:none; }
+    .note-type-dropdown.open .note-type-panel{ display:block; }
+    .note-type-new{ display:flex; gap:0.5rem; margin-bottom:0.75rem; }
+    .note-type-new input{ flex:1; border:1px solid #d1d5db; border-radius:0.375rem; padding:0.45rem 0.6rem; font-size:0.875rem; }
+    .note-type-new input:focus{ outline:none; border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.12); }
+    .note-type-options{ max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:0.35rem; }
+    .note-type-option{ display:flex; justify-content:space-between; align-items:center; padding:0.45rem 0.6rem; border-radius:0.375rem; background:#f9fafb; font-size:0.875rem; cursor:pointer; }
+    .note-type-option.active{ background:#dbeafe; color:#1d4ed8; font-weight:600; }
+    .note-type-option span{ pointer-events:none; }
+    .note-type-remove{ border:none; background:none; color:#ef4444; font-size:1rem; cursor:pointer; padding:0.125rem; line-height:1; }
+    .note-type-remove:hover{ color:#b91c1c; }
     .filter-container{ display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1.5rem; }
     .filter-input, .form-select{ width:100%; border:1px solid #d1d5db; border-radius:0.375rem; padding:0.5rem 0.75rem; font-size:0.875rem; background:#fff; }
     .filter-input:focus, .form-select:focus{ outline:none; border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.1); }
@@ -132,9 +150,14 @@
         <button id="open-menu" class="mobile-menu-button lg:hidden text-gray-600 hover:text-gray-900" aria-label="Mở menu">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
         </button>
-        <div class="ml-auto text-right">
+        <div class="ml-auto flex flex-col items-end gap-1 text-right">
           <div class="text-sm font-medium text-gray-700">Ngày Ra Mắt (D-Day)</div>
           <div class="text-base font-bold text-red-600">15/03/2026</div>
+          <div id="project-share-info" class="text-xs text-gray-500 hidden leading-snug max-w-xs">
+            <span class="font-medium text-gray-600 block">Chia sẻ dự án</span>
+            <span id="project-id-label" class="block text-gray-600"></span>
+            <span id="project-share-url" class="block text-blue-600 break-words"></span>
+          </div>
         </div>
       </header>
 
@@ -235,22 +258,23 @@
           <section id="notes" class="content-section hidden">
             <h2 class="section-title">Ghi Chú Dự Án</h2>
             <div class="card-section">
-              <h3 class="card-title">Quản Lý Loại Ghi Chú</h3>
-              <p class="text-sm text-gray-600 mb-3">Tối đa 10 loại ghi chú tùy chỉnh</p>
-              <div class="flex gap-2 mb-3">
-                <input type="text" id="custom-type-input" class="flex-1 filter-input" placeholder="VD: Meeting, Bug, Feature..."/>
-                <button id="add-custom-type-btn" class="task-btn btn-complete">Thêm Loại</button>
-              </div>
-              <div class="bg-gray-50 p-3 rounded-lg">
-                <div class="text-sm font-medium text-gray-700 mb-2">Các loại hiện có:</div>
-                <div id="custom-types-list"></div>
-              </div>
-            </div>
-
-            <div class="card-section">
               <h3 class="card-title">Ghi Chú Mới</h3>
               <textarea id="notes-textarea" class="notes-textarea" placeholder="Nhập ghi chú của bạn hôm nay..."></textarea>
-              <select id="note-type-select" class="form-select mt-3"></select>
+              <div class="note-type-dropdown" id="note-type-dropdown">
+                <button type="button" class="note-type-trigger" id="note-type-trigger" aria-haspopup="true" aria-expanded="false">
+                  <span id="note-type-trigger-label">Chọn loại ghi chú</span>
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div class="note-type-panel" id="note-type-panel" role="menu">
+                  <div class="note-type-new">
+                    <input type="text" id="note-type-new-input" placeholder="Thêm loại mới..."/>
+                    <button type="button" id="note-type-create-btn" class="task-btn btn-complete">Thêm</button>
+                  </div>
+                  <div class="note-type-options" id="note-type-options"></div>
+                  <p class="text-xs text-gray-500 mt-2">Tối đa 10 loại ghi chú. Xóa hoặc tạo loại mới trực tiếp tại đây.</p>
+                </div>
+              </div>
+              <p class="text-xs text-gray-500 mt-2">Chọn loại ghi chú hoặc tạo mới ngay trong danh sách.</p>
               <button id="save-note-btn" class="task-btn btn-complete w-full mt-3">💾 Lưu Ghi Chú</button>
             </div>
 
@@ -298,8 +322,27 @@
     </main>
   </div>
 
-  <script>
+  <script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+  import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
   document.addEventListener('DOMContentLoaded', () => {
+    // ========= CONSTANTS =========
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const projectPlanStart = new Date(2025, 10, 10);
+    const projectLaunchDate = new Date(2026, 2, 15);
+    const timelineSegments = [
+      { week:'gd1-week1-2', duration:14 },
+      { week:'gd1-week3-4', duration:14 },
+      { week:'gd2-week5-8', duration:28 },
+      { week:'gd2-week9-11', duration:21 },
+      { week:'gd2-week12-13', duration:14 },
+      { week:'gd3-week14-15', duration:14 },
+      { week:'gd3-week16-17', duration:14 },
+      { week:'gd4-week18', duration:7 },
+    ];
+    const defaultCustomTypes = ['Ý tưởng','Việc cần làm','Rủi ro','Khác'];
+
     // ========= DATA =========
     const tasksData = [
       // GĐ1 – Tuần 1-2
@@ -480,20 +523,32 @@
     ];
 
     // ========= STATE =========
-    const storageKey = 'projectPlanState_BHNT_v12_final';
-    const notesStorageKey = 'projectNotes_BHNT_v8_final';
-    const customTypesKey = 'customNoteTypes_BHNT_v5';
-
     let taskState = {};
     let allTasks = [];
     let notes = [];
     let filteredNotes = [];
-    let customTypes = ['Ý tưởng','Việc cần làm','Rủi ro','Khác'];
+    let customTypes = defaultCustomTypes.slice();
+    let selectedNoteType = customTypes[0] || '';
+    let db = null;
+    let projectRef = null;
+    let isProjectReady = false;
+    let hasShownSyncWarning = false;
+    let progressChart;
+    let taskInputs = [];
+    let completeButtons = [];
+    let viewButtons = [];
+    let debouncedSyncTaskState = () => {};
 
     // ========= HELPERS =========
     const $ = (sel, ctx=document) => ctx.querySelector(sel);
     const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
 
+    function formatDate(date){
+      const d = String(date.getDate()).padStart(2,'0');
+      const m = String(date.getMonth()+1).padStart(2,'0');
+      const y = date.getFullYear();
+      return `${d}/${m}/${y}`;
+    }
     function parseDate(ddmmyyyy){
       if(!ddmmyyyy) return null;
       const [d,m,y] = ddmmyyyy.split('/').map(Number);
@@ -506,11 +561,68 @@
       const d = parseDate(deadline); if(!d) return false;
       return d < today;
     }
-    function saveState(){ localStorage.setItem(storageKey, JSON.stringify(taskState)); }
-    function loadState(){
-      const raw = localStorage.getItem(storageKey);
-      taskState = raw ? JSON.parse(raw) : {};
-      tasksData.forEach(t => { if(!(t.id in taskState)) taskState[t.id] = { completed:false, link:'' }; });
+    function computeTaskSchedule(){
+      const segmentTimeline = {};
+      let cursor = new Date(projectPlanStart);
+      timelineSegments.forEach((segment, index) => {
+        const start = new Date(cursor);
+        let end = new Date(start);
+        end.setDate(end.getDate() + segment.duration - 1);
+        if(index === timelineSegments.length - 1){
+          end = new Date(projectLaunchDate);
+        }
+        segmentTimeline[segment.week] = { start, end };
+        cursor = new Date(end);
+        cursor.setDate(cursor.getDate() + 1);
+      });
+
+      const tasksByWeek = tasksData.reduce((acc, task) => {
+        if(!acc[task.week]) acc[task.week] = [];
+        acc[task.week].push(task);
+        return acc;
+      }, {});
+
+      Object.entries(tasksByWeek).forEach(([week, list]) => {
+        const timeline = segmentTimeline[week];
+        if(!timeline) return;
+        const segmentStart = new Date(timeline.start);
+        const segmentEnd = new Date(timeline.end);
+        const segmentDuration = Math.max(1, Math.round((segmentEnd - segmentStart) / DAY_MS) + 1);
+        const baseDuration = Math.max(1, Math.floor(segmentDuration / list.length));
+        let remainder = segmentDuration - baseDuration * list.length;
+        let currentStart = new Date(segmentStart);
+
+        list.forEach((task, index) => {
+          let duration = baseDuration;
+          if(remainder > 0){
+            duration += 1;
+            remainder -= 1;
+          }
+          const taskStart = new Date(currentStart);
+          let taskEnd = new Date(taskStart);
+          if(index === list.length - 1){
+            taskEnd = new Date(segmentEnd);
+          } else {
+            taskEnd.setDate(taskEnd.getDate() + duration - 1);
+          }
+          task.startDate = formatDate(taskStart);
+          task.endDate = formatDate(taskEnd);
+          task.deadline = task.endDate;
+          task.durationDays = Math.max(1, Math.round((taskEnd - taskStart) / DAY_MS) + 1);
+          currentStart = new Date(taskEnd);
+          currentStart.setDate(currentStart.getDate() + 1);
+        });
+      });
+    }
+
+    computeTaskSchedule();
+
+    function buildDefaultTaskState(){
+      const state = {};
+      tasksData.forEach(t => {
+        state[t.id] = { completed:false, link:'' };
+      });
+      return state;
     }
 
     // ========= RENDER =========
@@ -518,6 +630,8 @@
       const card = document.createElement('div');
       card.className = 'task-card';
       card.id = 'task-card-' + t.id;
+      card.dataset.start = t.startDate || '';
+      card.dataset.end = t.endDate || '';
       card.innerHTML = `
         <div class="task-header">
           <h4 class="task-title">${t.title}</h4>
@@ -528,20 +642,27 @@
           <ul class="task-detail-list">${t.details.map(d=>`<li>${d}</li>`).join('')}</ul>
         </div>
         <div class="task-meta">
-          <span>Deadline: ${t.deadline}</span><span>|</span>
+          <span>Bắt đầu: <strong>${t.startDate}</strong></span><span>|</span>
+          <span>Hoàn thành dự kiến: <strong>${t.endDate}</strong></span><span>|</span>
+          <span>Thời lượng: ${t.durationDays || 1} ngày</span><span>|</span>
           <span>Phụ trách: ${t.owner}</span>
           <span class="deadline-countdown" data-deadline="${t.deadline}"></span>
         </div>
         <div class="task-action-area">
           <div class="task-input-group" data-input-group="${t.id}">
-            <input type="text" class="task-link-input" data-task-id="${t.id}" data-phase="${t.phase}" placeholder="Dán link (tài liệu, file, trang kết quả...)"/>
-            <button class="task-btn btn-complete task-complete-btn" data-task-id="${t.id}" disabled>Hoàn Thành</button>
+            <input type="url" class="task-link-input" data-task-id="${t.id}" data-phase="${t.phase}" placeholder="Dán link (tài liệu, file, trang kết quả...)"/>
+            <button type="button" class="task-btn btn-complete task-complete-btn" data-task-id="${t.id}" disabled>Hoàn Thành</button>
           </div>
-          <div class="edit-dropdown-wrapper hidden" data-edit-wrapper="${t.id}">
-            <button class="task-btn btn-edit-dropdown" data-dropdown-btn="${t.id}">Edit</button>
-            <div class="edit-dropdown-menu" data-dropdown-menu="${t.id}">
-              <div class="dropdown-item" data-action="edit" data-task-id="${t.id}"><span>✏️</span><span>Chỉnh sửa</span></div>
-              <div class="dropdown-item delete" data-action="delete" data-task-id="${t.id}"><span>🗑️</span><span>Xóa</span></div>
+          <div class="task-completed-actions hidden" data-completed-actions="${t.id}">
+            <button type="button" class="task-btn btn-view task-view-btn" data-view-btn="${t.id}" disabled>View</button>
+            <div class="edit-dropdown-wrapper">
+              <button type="button" class="task-icon-btn" data-dropdown-btn="${t.id}" aria-label="Tùy chọn chỉnh sửa task">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M16.768 3.768a2 2 0 112.828 2.828L7 19.192 3 21l1.808-4z"></path></svg>
+              </button>
+              <div class="edit-dropdown-menu" data-dropdown-menu="${t.id}">
+                <div class="dropdown-item" data-action="edit" data-task-id="${t.id}"><span>✏️</span><span>Chỉnh sửa</span></div>
+                <div class="dropdown-item delete" data-action="delete" data-task-id="${t.id}"><span>🗑️</span><span>Xóa</span></div>
+              </div>
             </div>
           </div>
         </div>`;
@@ -569,16 +690,45 @@
           id: input.dataset.taskId,
           phase: input.dataset.phase,
           deadline: deadlineSpan ? deadlineSpan.dataset.deadline : null,
-          title: card ? card.querySelector('.task-title').textContent : ''
+          title: card ? card.querySelector('.task-title').textContent : '',
+          startDate: card ? card.dataset.start : null,
+          endDate: card ? card.dataset.end : null,
         };
       });
     }
 
-    // ========= UI / LOGIC =========
-    let progressChart;
-    let taskInputs;
-    let completeButtons;
+    function updateShareLink(projectId){
+      const shareInfo = $('#project-share-info');
+      const shareUrlEl = $('#project-share-url');
+      const idLabel = $('#project-id-label');
+      if(!shareInfo || !shareUrlEl || !idLabel) return;
+      const url = new URL(window.location.href);
+      url.searchParams.set('projectId', projectId);
+      shareUrlEl.textContent = url.toString();
+      idLabel.textContent = `Mã dự án: ${projectId}`;
+      shareInfo.classList.remove('hidden');
+    }
 
+    function ensureProjectReady(showAlert = true){
+      if(isProjectReady) return true;
+      if(showAlert && !hasShownSyncWarning){
+        alert('Hệ thống đang kết nối cơ sở dữ liệu. Vui lòng thử lại sau ít phút.');
+        hasShownSyncWarning = true;
+      }
+      return false;
+    }
+
+    function handleViewLink(id){
+      if(!ensureProjectReady(false)) return;
+      const state = taskState[id];
+      if(state && state.link){
+        window.open(state.link, '_blank', 'noopener');
+      } else {
+        alert('Chưa có link để xem cho task này.');
+      }
+    }
+
+    // ========= UI / LOGIC =========
     const deleteTaskModal = $('#delete-task-modal');
     const confirmDeleteTaskBtn = $('#confirm-delete-task-btn');
     const cancelDeleteTaskBtn = $('#cancel-delete-task-btn');
@@ -592,31 +742,40 @@
     function bindTaskEvents(){
       taskInputs = $$('.task-link-input');
       completeButtons = $$('.task-complete-btn');
+      viewButtons = $$('.task-view-btn');
 
       taskInputs.forEach(inp => {
         inp.addEventListener('input', e => {
           const id = e.target.dataset.taskId;
           const link = e.target.value.trim();
-          if(taskState[id]){
-            taskState[id].link = link;
-            saveState();
-            const group = document.querySelector(`[data-input-group="${id}"]`);
-            const btn = group ? group.querySelector('.task-complete-btn') : null;
-            if(btn) btn.disabled = link === '';
-          }
+          if(!taskState[id]) return;
+          taskState[id].link = link;
+          const group = document.querySelector(`[data-input-group="${id}"]`);
+          const btn = group ? group.querySelector('.task-complete-btn') : null;
+          if(btn) btn.disabled = !isProjectReady || link === '';
+          if(isProjectReady) debouncedSyncTaskState();
         });
       });
 
       completeButtons.forEach(btn => {
         btn.addEventListener('click', e => {
-          const id = e.target.dataset.taskId;
-          if(taskState[id] && taskState[id].link){
-            taskState[id].completed = true;
-            saveState();
+          if(!ensureProjectReady()) return;
+          const id = e.currentTarget.dataset.taskId;
+          const state = taskState[id];
+          if(state && state.link){
+            state.completed = true;
             updateUI();
+            syncTaskState();
           } else {
             alert('Vui lòng nhập link trước khi hoàn thành task');
           }
+        });
+      });
+
+      viewButtons.forEach(btn => {
+        btn.addEventListener('click', e => {
+          const id = e.currentTarget.dataset.viewBtn;
+          handleViewLink(id);
         });
       });
     }
@@ -649,10 +808,11 @@
     }
 
     function handleEditTask(id){
+      if(!ensureProjectReady()) return;
       if(taskState[id]){
         taskState[id].completed = false;
-        saveState();
         updateUI();
+        syncTaskState();
         setTimeout(() => {
           const input = document.querySelector(`[data-task-id="${id}"]`);
           if(input){ input.focus(); input.select(); }
@@ -660,25 +820,30 @@
       }
     }
     function handleDeleteTaskClick(id){
+      if(!ensureProjectReady()) return;
       currentDeleteTaskId = id;
-      deleteTaskModal.classList.add('active');
-      deleteTaskModal.setAttribute('aria-hidden','false');
+      if(deleteTaskModal){
+        deleteTaskModal.classList.add('active');
+        deleteTaskModal.setAttribute('aria-hidden','false');
+      }
     }
     function confirmDeleteTask(){
-      if(currentDeleteTaskId && taskState[currentDeleteTaskId]){
-        taskState[currentDeleteTaskId].link = '';
-        taskState[currentDeleteTaskId].completed = false;
-        saveState();
-        updateUI();
-        currentDeleteTaskId = null;
+      if(!currentDeleteTaskId || !taskState[currentDeleteTaskId]) return;
+      taskState[currentDeleteTaskId] = { completed:false, link:'' };
+      updateUI();
+      syncTaskState();
+      currentDeleteTaskId = null;
+      if(deleteTaskModal){
         deleteTaskModal.classList.remove('active');
         deleteTaskModal.setAttribute('aria-hidden','true');
       }
     }
     function cancelDeleteTask(){
       currentDeleteTaskId = null;
-      deleteTaskModal.classList.remove('active');
-      deleteTaskModal.setAttribute('aria-hidden','true');
+      if(deleteTaskModal){
+        deleteTaskModal.classList.remove('active');
+        deleteTaskModal.setAttribute('aria-hidden','true');
+      }
     }
 
     function initChart(){
@@ -743,15 +908,16 @@
       const phaseCounts = { gd1:{total:0,completed:0}, gd2:{total:0,completed:0}, gd3:{total:0,completed:0}, gd4:{total:0,completed:0} };
 
       allTasks.forEach(task => {
-        const state = taskState[task.id]; if(!state) return;
+        const state = taskState[task.id] || { completed:false, link:'' };
         total++;
         if(phaseCounts[task.phase]) phaseCounts[task.phase].total++;
 
         const card = document.getElementById('task-card-'+task.id);
         const statusBadge = document.getElementById('task-status-'+task.id);
-        const input = document.querySelector(`[data-task-id="${task.id}"].task-link-input`);
+        const input = document.querySelector(`[data-task-id="${task.id}"]`);
         const inputGroup = document.querySelector(`[data-input-group="${task.id}"]`);
-        const editWrapper = document.querySelector(`[data-edit-wrapper="${task.id}"]`);
+        const actions = document.querySelector(`[data-completed-actions="${task.id}"]`);
+        const viewBtn = actions ? actions.querySelector('[data-view-btn]') : null;
 
         if(input) input.value = state.link || '';
 
@@ -762,17 +928,30 @@
           if(card){ card.classList.add('completed'); card.classList.remove('overdue'); }
           if(statusBadge){ statusBadge.className = 'task-status status-completed'; statusBadge.textContent = 'Đã xong'; }
           if(inputGroup) inputGroup.classList.add('hidden');
-          if(editWrapper) editWrapper.classList.remove('hidden');
+          if(actions) actions.classList.remove('hidden');
           if(input) input.disabled = true;
+          if(viewBtn){
+            const disabled = !isProjectReady || (state.link || '').trim() === '';
+            viewBtn.disabled = disabled;
+            viewBtn.setAttribute('aria-disabled', disabled ? 'true' : 'false');
+          }
         } else {
-          if(card){ card.classList.remove('completed'); if(overdue) card.classList.add('overdue'); else card.classList.remove('overdue'); }
-          if(statusBadge){ statusBadge.className = 'task-status ' + (overdue ? 'status-overdue' : 'status-pending'); statusBadge.textContent = overdue ? 'Quá hạn' : 'Chưa xong'; }
+          if(card){
+            card.classList.remove('completed');
+            if(overdue) card.classList.add('overdue'); else card.classList.remove('overdue');
+          }
+          if(statusBadge){
+            statusBadge.className = 'task-status ' + (overdue ? 'status-overdue' : 'status-pending');
+            statusBadge.textContent = overdue ? 'Quá hạn' : 'Chưa xong';
+          }
           if(inputGroup) inputGroup.classList.remove('hidden');
-          if(editWrapper) editWrapper.classList.add('hidden');
-          if(input){
-            input.disabled = false;
-            const btn = inputGroup ? inputGroup.querySelector('.task-complete-btn') : null;
-            if(btn) btn.disabled = (state.link||'').trim() === '';
+          if(actions) actions.classList.add('hidden');
+          if(input) input.disabled = !isProjectReady;
+          const btn = inputGroup ? inputGroup.querySelector('.task-complete-btn') : null;
+          if(btn) btn.disabled = !isProjectReady || (state.link || '').trim() === '';
+          if(viewBtn){
+            viewBtn.disabled = true;
+            viewBtn.setAttribute('aria-disabled','true');
           }
         }
       });
@@ -800,9 +979,6 @@
     }
 
     // ========= NOTES =========
-    function loadNotes(){ const raw = localStorage.getItem(notesStorageKey); notes = raw ? JSON.parse(raw) : []; filteredNotes = notes.slice(); renderNotes(); }
-    function saveNotes(){ localStorage.setItem(notesStorageKey, JSON.stringify(notes)); }
-
     function renderNotes(){
       const tbody = $('#notes-list-container'); if(!tbody) return;
       tbody.innerHTML = '';
@@ -843,24 +1019,31 @@
       filteredNotes = notes.slice(); renderNotes();
     }
 
-    function saveNewNote(){
-      const textarea = $('#notes-textarea'); const typeSel = $('#note-type-select'); if(!textarea || !typeSel) return;
-      const content = textarea.value.trim(); if(!content){ alert('Vui lòng nhập nội dung ghi chú'); return; }
+    async function saveNewNote(){
+      if(!ensureProjectReady()) return;
+      const textarea = $('#notes-textarea'); if(!textarea) return;
+      const content = textarea.value.trim();
+      if(!content){ alert('Vui lòng nhập nội dung ghi chú'); return; }
+      if(!selectedNoteType){ alert('Vui lòng chọn loại ghi chú'); return; }
       const now = new Date();
       const id = now.getTime();
       const date = now.toLocaleString('vi-VN',{ day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
-      notes.push({ id, date, type:typeSel.value, content });
-      saveNotes(); filteredNotes = notes.slice(); renderNotes(); textarea.value = '';
+      notes.push({ id, date, type:selectedNoteType, content });
+      textarea.value = '';
+      applyFilters();
+      await updateProjectData({ notes });
     }
 
-    function confirmDeleteNote(){
-      if(currentDeleteNoteId){
-        notes = notes.filter(n => String(n.id) !== String(currentDeleteNoteId));
-        saveNotes(); applyFilters();
-        currentDeleteNoteId = null;
+    async function confirmDeleteNote(){
+      if(!currentDeleteNoteId) return;
+      notes = notes.filter(n => String(n.id) !== String(currentDeleteNoteId));
+      currentDeleteNoteId = null;
+      if(deleteNoteModal){
         deleteNoteModal.classList.remove('active');
         deleteNoteModal.setAttribute('aria-hidden','true');
       }
+      applyFilters();
+      if(isProjectReady) await updateProjectData({ notes });
     }
     function cancelDeleteNote(){
       currentDeleteNoteId = null;
@@ -868,38 +1051,166 @@
       deleteNoteModal.setAttribute('aria-hidden','true');
     }
 
-    // ========= CUSTOM TYPES =========
-    function loadCustomTypes(){ const raw = localStorage.getItem(customTypesKey); if(raw) customTypes = JSON.parse(raw); renderCustomTypes(); updateTypeSelects(); }
-    function saveCustomTypes(){ localStorage.setItem(customTypesKey, JSON.stringify(customTypes)); }
-    function renderCustomTypes(){
-      const c = $('#custom-types-list'); if(!c) return;
-      c.innerHTML = '';
-      customTypes.forEach(t => {
-        const item = document.createElement('span');
-        item.className = 'custom-type-item';
-        item.innerHTML = `${t}<span class="custom-type-remove" data-type="${t}">×</span>`;
-        c.appendChild(item);
-      });
-      $$('.custom-type-remove').forEach(btn => btn.addEventListener('click', e => {
-        const t = e.target.dataset.type;
-        if(confirm(`Xóa loại "${t}"?`)){
-          customTypes = customTypes.filter(x => x !== t);
-          saveCustomTypes(); renderCustomTypes(); updateTypeSelects();
+    // ========= NOTE TYPE DROPDOWN =========
+    function renderNoteTypeDropdown(){
+      const dropdown = $('#note-type-dropdown');
+      const triggerLabel = $('#note-type-trigger-label');
+      const optionsContainer = $('#note-type-options');
+      const input = $('#note-type-new-input');
+      const createBtn = $('#note-type-create-btn');
+
+      if(triggerLabel){
+        triggerLabel.textContent = selectedNoteType ? `Loại: ${selectedNoteType}` : 'Chọn loại ghi chú';
+      }
+
+      if(optionsContainer){
+        optionsContainer.innerHTML = '';
+        if(customTypes.length === 0){
+          const empty = document.createElement('div');
+          empty.className = 'text-sm text-gray-500 py-2';
+          empty.textContent = 'Chưa có loại ghi chú.';
+          optionsContainer.appendChild(empty);
+        } else {
+          customTypes.forEach(type => {
+            const option = document.createElement('div');
+            option.className = 'note-type-option' + (selectedNoteType === type ? ' active' : '');
+            option.setAttribute('data-note-type-option', type);
+            option.innerHTML = `<span>${type}</span><button type="button" class="note-type-remove" data-remove-type="${type}" title="Xóa ${type}">🗑️</button>`;
+            optionsContainer.appendChild(option);
+          });
         }
-      }));
+      }
+
+      const atLimit = customTypes.length >= 10;
+      if(input){
+        input.disabled = atLimit;
+        if(atLimit) input.value = '';
+        input.placeholder = atLimit ? 'Đã đạt giới hạn 10 loại' : 'Thêm loại mới...';
+      }
+      if(createBtn) createBtn.disabled = atLimit;
+
+      if(dropdown){
+        const trigger = $('#note-type-trigger');
+        if(trigger) trigger.setAttribute('aria-expanded', dropdown.classList.contains('open') ? 'true' : 'false');
+      }
     }
-    function updateTypeSelects(){
-      const noteSel = $('#note-type-select'); const filterSel = $('#filter-type');
-      if(noteSel){ noteSel.innerHTML = ''; customTypes.forEach(t => { const o = document.createElement('option'); o.value = t; o.textContent = t; noteSel.appendChild(o); }); }
-      if(filterSel){ filterSel.innerHTML = '<option value="">Tất cả loại</option>'; customTypes.forEach(t => { const o = document.createElement('option'); o.value = t; o.textContent = t; filterSel.appendChild(o); }); }
+
+    function updateTypeFilterOptions(){
+      const filterSel = $('#filter-type');
+      if(!filterSel) return;
+      const previous = filterSel.value;
+      filterSel.innerHTML = '<option value="">Tất cả loại</option>';
+      customTypes.forEach(type => {
+        const option = document.createElement('option');
+        option.value = type;
+        option.textContent = type;
+        filterSel.appendChild(option);
+      });
+      if(previous && customTypes.includes(previous)){
+        filterSel.value = previous;
+      }
     }
-    function handleAddCustomType(){
-      const inp = $('#custom-type-input'); if(!inp) return;
-      const v = (inp.value || '').trim();
-      if(!v){ alert('Vui lòng nhập tên loại ghi chú'); return; }
-      if(customTypes.includes(v)){ alert('Loại này đã tồn tại'); return; }
-      if(customTypes.length >= 10){ alert('Đã đạt giới hạn 10 loại'); return; }
-      customTypes.push(v); saveCustomTypes(); renderCustomTypes(); updateTypeSelects(); inp.value = '';
+
+    function closeNoteTypeDropdown(){
+      const dropdown = $('#note-type-dropdown');
+      const trigger = $('#note-type-trigger');
+      if(dropdown) dropdown.classList.remove('open');
+      if(trigger) trigger.setAttribute('aria-expanded','false');
+    }
+
+    async function setSelectedNoteType(type){
+      if(!type || !customTypes.includes(type)) return;
+      if(selectedNoteType === type) return;
+      selectedNoteType = type;
+      renderNoteTypeDropdown();
+      if(isProjectReady) await updateProjectData({ selectedNoteType });
+    }
+
+    async function addNewNoteType(value){
+      const name = (value || '').trim();
+      if(!name){ alert('Vui lòng nhập tên loại ghi chú'); return; }
+      const exists = customTypes.some(t => t.toLowerCase() === name.toLowerCase());
+      if(exists){ alert('Loại ghi chú này đã tồn tại'); return; }
+      if(customTypes.length >= 10){ alert('Đã đạt giới hạn 10 loại ghi chú'); return; }
+      customTypes.push(name);
+      selectedNoteType = name;
+      renderNoteTypeDropdown();
+      updateTypeFilterOptions();
+      closeNoteTypeDropdown();
+      if(isProjectReady) await updateProjectData({ customTypes, selectedNoteType });
+    }
+
+    async function removeNoteType(type){
+      if(!customTypes.includes(type)) return;
+      if(customTypes.length <= 1){
+        alert('Cần ít nhất 1 loại ghi chú');
+        return;
+      }
+      customTypes = customTypes.filter(t => t !== type);
+      const fallback = customTypes[0] || defaultCustomTypes[0] || 'Khác';
+      notes = notes.map(note => note.type === type ? { ...note, type: fallback } : note);
+      if(selectedNoteType === type) selectedNoteType = fallback;
+      renderNoteTypeDropdown();
+      updateTypeFilterOptions();
+      applyFilters();
+      if(isProjectReady) await updateProjectData({ customTypes, notes, selectedNoteType });
+    }
+
+    function bindNoteTypeDropdown(){
+      const dropdown = $('#note-type-dropdown');
+      const trigger = $('#note-type-trigger');
+      const optionsContainer = $('#note-type-options');
+      const input = $('#note-type-new-input');
+      const createBtn = $('#note-type-create-btn');
+
+      if(trigger){
+        trigger.addEventListener('click', e => {
+          e.preventDefault();
+          if(!dropdown) return;
+          dropdown.classList.toggle('open');
+          trigger.setAttribute('aria-expanded', dropdown.classList.contains('open') ? 'true' : 'false');
+        });
+      }
+
+      if(optionsContainer){
+        optionsContainer.addEventListener('click', e => {
+          const removeBtn = e.target.closest('[data-remove-type]');
+          const option = e.target.closest('[data-note-type-option]');
+          if(removeBtn){
+            e.stopPropagation();
+            if(!ensureProjectReady()) return;
+            removeNoteType(removeBtn.getAttribute('data-remove-type'));
+          } else if(option){
+            const type = option.getAttribute('data-note-type-option');
+            setSelectedNoteType(type);
+            closeNoteTypeDropdown();
+          }
+        });
+      }
+
+      if(createBtn && input){
+        createBtn.addEventListener('click', () => {
+          if(!ensureProjectReady()) return;
+          addNewNoteType(input.value);
+        });
+        input.addEventListener('keypress', e => {
+          if(e.key === 'Enter'){
+            e.preventDefault();
+            if(!ensureProjectReady()) return;
+            addNewNoteType(input.value);
+          }
+        });
+      }
+
+      document.addEventListener('click', e => {
+        if(dropdown && !dropdown.contains(e.target)){
+          closeNoteTypeDropdown();
+        }
+      });
+
+      document.addEventListener('keydown', e => {
+        if(e.key === 'Escape') closeNoteTypeDropdown();
+      });
     }
 
     // ========= NAV =========
@@ -925,6 +1236,118 @@
       });
     }
 
+    function ensureProjectId(){
+      const params = new URLSearchParams(window.location.search);
+      let id = params.get('projectId');
+      if(!id){
+        id = `proj-${Math.random().toString(36).slice(2,6)}${Date.now().toString(36)}`;
+        params.set('projectId', id);
+        const newUrl = `${window.location.pathname}?${params.toString()}`;
+        window.history.replaceState({}, '', newUrl);
+      }
+      return id;
+    }
+
+    async function updateProjectData(partial){
+      if(!projectRef) return;
+      try {
+        await updateDoc(projectRef, { ...partial, updatedAt: serverTimestamp() });
+      } catch(error){
+        console.error('Không thể cập nhật dữ liệu dự án:', error);
+      }
+    }
+
+    async function syncTaskState(){
+      if(!isProjectReady) return;
+      await updateProjectData({ taskState });
+    }
+
+    async function ensureProjectDocument(projectId){
+      if(!projectRef) return;
+      const snapshot = await getDoc(projectRef);
+      if(!snapshot.exists()){
+        await setDoc(projectRef, {
+          taskState: buildDefaultTaskState(),
+          notes: [],
+          customTypes: defaultCustomTypes,
+          selectedNoteType: defaultCustomTypes[0] || '',
+          meta: {
+            projectId,
+            projectStart: formatDate(projectPlanStart),
+            launchDate: formatDate(projectLaunchDate),
+            createdAt: serverTimestamp(),
+          },
+          updatedAt: serverTimestamp(),
+        }, { merge:true });
+      } else {
+        const data = snapshot.data() || {};
+        const defaults = buildDefaultTaskState();
+        const current = data.taskState || {};
+        let needsUpdate = false;
+        Object.keys(defaults).forEach(id => {
+          if(!current[id]){
+            current[id] = defaults[id];
+            needsUpdate = true;
+          } else {
+            current[id].completed = !!current[id].completed;
+            current[id].link = (current[id].link || '').trim();
+          }
+        });
+        if(needsUpdate){
+          await updateDoc(projectRef, { taskState: current, updatedAt: serverTimestamp() });
+        }
+      }
+    }
+
+    async function initializeRealtimePersistence(){
+      const firebaseConfig = window.FIREBASE_CONFIG;
+      if(!firebaseConfig){
+        console.error('Thiếu cấu hình Firebase. Vui lòng gán window.FIREBASE_CONFIG.');
+        const shareInfo = $('#project-share-info');
+        if(shareInfo){
+          shareInfo.classList.remove('hidden');
+          shareInfo.innerHTML = '<span class="text-red-500">Thiếu cấu hình Firebase (window.FIREBASE_CONFIG).</span>';
+        }
+        return;
+      }
+
+      const app = initializeApp(firebaseConfig);
+      db = getFirestore(app);
+      const projectId = ensureProjectId();
+      projectRef = doc(db, 'projects', projectId);
+      await ensureProjectDocument(projectId);
+
+      onSnapshot(projectRef, snapshot => {
+        if(!snapshot.exists()) return;
+        const data = snapshot.data() || {};
+        const defaults = buildDefaultTaskState();
+        const incomingState = data.taskState || {};
+        Object.keys(defaults).forEach(id => {
+          if(!incomingState[id]){
+            incomingState[id] = defaults[id];
+          } else {
+            incomingState[id].completed = !!incomingState[id].completed;
+            incomingState[id].link = (incomingState[id].link || '').trim();
+          }
+        });
+        taskState = incomingState;
+        notes = Array.isArray(data.notes) ? data.notes.map(note => ({ ...note })) : [];
+        customTypes = Array.isArray(data.customTypes) && data.customTypes.length ? data.customTypes.slice(0,10) : defaultCustomTypes.slice();
+        if(customTypes.length === 0) customTypes = defaultCustomTypes.slice();
+        selectedNoteType = data.selectedNoteType && customTypes.includes(data.selectedNoteType) ? data.selectedNoteType : (customTypes[0] || '');
+        filteredNotes = notes.slice();
+        isProjectReady = true;
+        debouncedSyncTaskState = debounce(syncTaskState, 400);
+        renderNoteTypeDropdown();
+        updateTypeFilterOptions();
+        applyFilters();
+        updateUI();
+        updateShareLink(projectId);
+      }, error => {
+        console.error('Lỗi đồng bộ dữ liệu thời gian thực:', error);
+      });
+    }
+
     // ========= MODALS WIRING =========
     if(confirmDeleteTaskBtn) confirmDeleteTaskBtn.addEventListener('click', confirmDeleteTask);
     if(cancelDeleteTaskBtn) cancelDeleteTaskBtn.addEventListener('click', cancelDeleteTask);
@@ -936,7 +1359,6 @@
     if(deleteNoteModalEl) deleteNoteModalEl.addEventListener('click', e => { if(e.target === deleteNoteModalEl) cancelDeleteNote(); });
 
     // ========= BOOT =========
-    loadState();
     renderTasks();
     bindTaskEvents();
     setupDropdowns();
@@ -945,13 +1367,17 @@
     updateUI();
     showSection('overview');
 
-    loadCustomTypes();
-    loadNotes();
+    filteredNotes = notes.slice();
+    renderNotes();
+    renderNoteTypeDropdown();
+    bindNoteTypeDropdown();
+    updateTypeFilterOptions();
+
     const saveNoteBtn = $('#save-note-btn'); if(saveNoteBtn) saveNoteBtn.addEventListener('click', saveNewNote);
-    const addCustomTypeBtn = $('#add-custom-type-btn'); if(addCustomTypeBtn) addCustomTypeBtn.addEventListener('click', handleAddCustomType);
     const applyFilterBtn = $('#apply-filter-btn'); if(applyFilterBtn) applyFilterBtn.addEventListener('click', applyFilters);
     const resetFilterBtn = $('#reset-filter-btn'); if(resetFilterBtn) resetFilterBtn.addEventListener('click', resetFilters);
-    const customTypeInput = $('#custom-type-input'); if(customTypeInput) customTypeInput.addEventListener('keypress', e => { if(e.key === 'Enter') handleAddCustomType(); });
+
+    initializeRealtimePersistence();
   });
   </script>
 </body>
