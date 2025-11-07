@@ -97,9 +97,15 @@
     .task-log-link{ color:#2563eb; font-weight:600; text-decoration:none; }
     .task-log-link:hover{ text-decoration:underline; }
     .activity-table th{ white-space:nowrap; }
-    .filter-container{ display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1.5rem; }
+    .filter-container{ display:flex; flex-direction:column; gap:1rem; margin-bottom:1.5rem; }
+    @media (min-width:768px){
+      .filter-container{ flex-direction:row; flex-wrap:wrap; align-items:flex-end; }
+    }
     .filter-input, .form-select{ width:100%; border:1px solid #d1d5db; border-radius:0.375rem; padding:0.5rem 0.75rem; font-size:0.875rem; background:#fff; }
     .filter-input:focus, .form-select:focus{ outline:none; border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.1); }
+    .quick-date-btn{ padding:0.4rem 0.75rem; border-radius:9999px; border:1px solid #d1d5db; background:#fff; font-size:0.8125rem; color:#374151; cursor:pointer; transition:all .2s; }
+    .quick-date-btn:hover{ background:#e5e7eb; }
+    .quick-date-btn.active{ background:#1d4ed8; border-color:#1d4ed8; color:#fff; }
     .modal-overlay{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:50; align-items:center; justify-content:center; backdrop-filter: blur(2px); }
     .modal-overlay.active{ display:flex; }
     .modal-content{ background:#fff; padding:1.75rem; border-radius:0.75rem; max-width:420px; width:90%; box-shadow:0 20px 25px -5px rgba(0,0,0,.1), 0 10px 10px -5px rgba(0,0,0,.04); }
@@ -133,7 +139,19 @@
     </div>
   </div>
 
-  <div class="flex h-screen overflow-hidden">
+  <section id="cover-page" class="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 via-white to-blue-100 text-center px-6 py-16">
+    <div class="max-w-3xl mx-auto space-y-6">
+      <h1 class="text-3xl md:text-4xl font-bold text-blue-900">Dự án Kế hoạch Dịch vụ Marketing Assistant</h1>
+      <p class="text-lg text-gray-700 leading-relaxed">Cung cấp một lộ trình (master plan) chi tiết, A-Z, để xây dựng và ra mắt dịch vụ Marketing Assistant.</p>
+      <div class="space-y-1 text-gray-600">
+        <p>Quản lý dự án / Kỹ thuật: [Tên Quản lý]</p>
+        <p>Vận hành: [Tên Trưởng nhóm]</p>
+      </div>
+      <button id="start-plan-btn" class="task-btn btn-complete text-lg px-10 py-3">BẮT ĐẦU KẾ HOẠCH</button>
+    </div>
+  </section>
+
+  <div id="app-layout" class="flex h-screen overflow-hidden hidden">
     <!-- Sidebar -->
     <aside id="sidebar" class="sidebar lg:static" aria-label="Thanh điều hướng">
       <div class="flex h-full flex-col">
@@ -214,6 +232,12 @@
               </div>
             </div>
 
+            <div id="note-statistics-card" class="card-section mb-6">
+              <h3 class="card-title">Ghi Chú Thống Kê</h3>
+              <p id="note-stats-total" class="text-sm text-gray-600 mb-4">Tổng số ghi chú: 0</p>
+              <div id="note-stats-breakdown" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 text-sm"></div>
+            </div>
+
             <div id="activity-log-section" class="card-section">
               <div class="flex items-center justify-between mb-3 flex-wrap gap-3">
                 <h3 class="card-title">Tổng Quan Hoạt Động</h3>
@@ -291,43 +315,65 @@
             <div class="card-section">
               <h3 class="card-title">Ghi Chú Mới</h3>
               <textarea id="notes-textarea" class="notes-textarea" placeholder="Nhập ghi chú của bạn hôm nay..."></textarea>
-              <div class="note-type-dropdown" id="note-type-dropdown">
-                <button type="button" class="note-type-trigger" id="note-type-trigger" aria-haspopup="true" aria-expanded="false">
-                  <span id="note-type-trigger-label">Chọn loại ghi chú</span>
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                </button>
-                <div class="note-type-panel" id="note-type-panel" role="menu">
-                  <div class="note-type-new">
-                    <input type="text" id="note-type-new-input" placeholder="Thêm loại mới..."/>
-                    <button type="button" id="note-type-create-btn" class="task-btn btn-complete">Thêm</button>
+              <div class="md:grid md:grid-cols-[minmax(0,1fr)_auto] md:gap-4 md:items-end md:mt-4">
+                <div>
+                  <div class="note-type-dropdown" id="note-type-dropdown">
+                    <button type="button" class="note-type-trigger" id="note-type-trigger" aria-haspopup="true" aria-expanded="false">
+                      <span id="note-type-trigger-label">Chọn loại ghi chú</span>
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="note-type-panel" id="note-type-panel" role="menu">
+                      <div class="note-type-new">
+                        <input type="text" id="note-type-new-input" placeholder="Thêm loại mới..."/>
+                        <button type="button" id="note-type-create-btn" class="task-btn btn-complete">Thêm</button>
+                      </div>
+                      <div class="note-type-options" id="note-type-options"></div>
+                      <p id="note-type-feedback" class="note-type-feedback hidden"></p>
+                      <p class="text-xs text-gray-500 mt-2">Tối đa 10 loại ghi chú. Xóa hoặc tạo loại mới trực tiếp tại đây.</p>
+                    </div>
                   </div>
-                  <div class="note-type-options" id="note-type-options"></div>
-                  <p id="note-type-feedback" class="note-type-feedback hidden"></p>
-                  <p class="text-xs text-gray-500 mt-2">Tối đa 10 loại ghi chú. Xóa hoặc tạo loại mới trực tiếp tại đây.</p>
+                  <p class="text-xs text-gray-500 mt-2">Chọn loại ghi chú hoặc tạo mới ngay trong danh sách.</p>
+                </div>
+                <div class="mt-4 md:mt-0">
+                  <button id="save-note-btn" class="task-btn btn-complete w-full md:w-auto md:px-6">💾 Lưu Ghi Chú</button>
                 </div>
               </div>
-              <p class="text-xs text-gray-500 mt-2">Chọn loại ghi chú hoặc tạo mới ngay trong danh sách.</p>
-              <button id="save-note-btn" class="task-btn btn-complete w-full mt-3">💾 Lưu Ghi Chú</button>
             </div>
+
+            <hr class="my-6"/>
 
             <div class="card-section">
               <h3 class="card-title">Lọc Ghi Chú</h3>
               <div class="filter-container">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1.5">Từ ngày</label>
-                  <input type="date" id="filter-date-from" class="filter-input"/>
+                <div class="flex flex-col gap-1 w-full md:w-1/2">
+                  <label class="text-sm font-medium text-gray-700" for="filter-keyword">Từ khóa</label>
+                  <input type="text" id="filter-keyword" class="filter-input w-full" placeholder="Tìm theo nội dung..." />
                 </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1.5">Đến ngày</label>
-                  <input type="date" id="filter-date-to" class="filter-input"/>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1.5">Loại</label>
+                <div class="flex flex-col gap-1 w-full md:w-60">
+                  <label class="text-sm font-medium text-gray-700" for="filter-type">Loại</label>
                   <select id="filter-type" class="filter-input"><option value="">Tất cả loại</option></select>
                 </div>
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1.5" for="filter-keyword">Từ khóa</label>
-                  <input type="text" id="filter-keyword" class="filter-input" placeholder="Tìm theo nội dung..." />
+                <div class="flex flex-col gap-2 w-full">
+                  <span class="text-sm font-medium text-gray-700">Thời gian</span>
+                  <div id="quick-date-buttons" class="flex flex-wrap gap-2">
+                    <button type="button" class="quick-date-btn" data-range="today">Hôm nay</button>
+                    <button type="button" class="quick-date-btn" data-range="yesterday">Hôm qua</button>
+                    <button type="button" class="quick-date-btn" data-range="7days">7 ngày qua</button>
+                    <button type="button" class="quick-date-btn" data-range="14days">14 ngày qua</button>
+                    <button type="button" class="quick-date-btn" data-range="thisMonth">Tháng này</button>
+                    <button type="button" class="quick-date-btn" data-range="lastMonth">Tháng trước</button>
+                    <button type="button" class="quick-date-btn" data-range="custom">Tùy chọn</button>
+                  </div>
+                  <div id="custom-date-inputs" class="grid grid-cols-1 md:grid-cols-2 gap-3 hidden">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1.5" for="filter-date-from">Từ ngày</label>
+                      <input type="date" id="filter-date-from" class="filter-input"/>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-1.5" for="filter-date-to">Đến ngày</label>
+                      <input type="date" id="filter-date-to" class="filter-input"/>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div class="flex gap-2 mt-3">
@@ -600,6 +646,7 @@
     let allTasks = [];
     let notes = [];
     let filteredNotes = [];
+    let selectedQuickRange = 'all';
     let customTypes = defaultCustomTypes.slice();
     let selectedNoteType = customTypes[0] || '';
     let db = null;
@@ -663,6 +710,20 @@
     function isValidUrl(url){
       if(!url) return false;
       return /^https?:\/\//i.test(url.trim());
+    }
+    function hasValidCompletionLink(state){
+      if(!state) return false;
+      const link = (state.link || '').trim();
+      return link !== '' && isValidUrl(link);
+    }
+    function updateCompleteButtonState(taskId){
+      const group = document.querySelector(`[data-input-group="${taskId}"]`);
+      if(!group) return;
+      const btn = group.querySelector('.task-complete-btn');
+      if(!btn) return;
+      const state = ensureTaskEntry(taskId);
+      const enabled = isProjectReady && hasValidCompletionLink(state);
+      btn.disabled = !enabled;
     }
     function debounce(fn, wait=300){
       let timeout;
@@ -973,6 +1034,7 @@
       taskInputs.forEach(inp => {
         const taskId = inp.dataset.taskId;
         ensureTaskEntry(taskId);
+        updateCompleteButtonState(taskId);
         inp.addEventListener('input', e => {
           const id = e.target.dataset.taskId;
           const link = e.target.value.trim();
@@ -980,9 +1042,7 @@
           const previous = state.link || '';
           state.link = link;
           showLinkFeedback(id, '');
-          const group = document.querySelector(`[data-input-group="${id}"]`);
-          const btn = group ? group.querySelector('.task-complete-btn') : null;
-          if(btn) btn.disabled = !isProjectReady;
+          updateCompleteButtonState(id);
           if(previous !== link){
             state.updatedAt = new Date().toISOString();
             if(isProjectReady) debouncedSyncTaskState();
@@ -1003,9 +1063,8 @@
           if(!ensureProjectReady()) return;
           const id = e.currentTarget.dataset.taskId;
           const state = ensureTaskEntry(id);
-          const link = (state.link || '').trim();
-          if(link && !isValidUrl(link)){
-            showLinkFeedback(id, 'Link phải bắt đầu bằng http:// hoặc https://', 'error');
+          if(!hasValidCompletionLink(state)){
+            showLinkFeedback(id, 'Cần nhập link hợp lệ (http:// hoặc https://) trước khi hoàn thành.', 'error');
             return;
           }
           const nowIso = new Date().toISOString();
@@ -1258,7 +1317,7 @@
           if(actions) actions.classList.remove('hidden');
           if(input) input.disabled = true;
           if(viewBtn){
-            const disabled = !isProjectReady || (state.link || '').trim() === '';
+            const disabled = !isProjectReady || !hasValidCompletionLink(state);
             viewBtn.disabled = disabled;
             viewBtn.setAttribute('aria-disabled', disabled ? 'true' : 'false');
           }
@@ -1281,7 +1340,7 @@
           if(actions) actions.classList.add('hidden');
           if(input) input.disabled = false;
           const btn = inputGroup ? inputGroup.querySelector('.task-complete-btn') : null;
-          if(btn) btn.disabled = !isProjectReady;
+          if(btn) btn.disabled = !(isProjectReady && hasValidCompletionLink(state));
           if(viewBtn){
             viewBtn.disabled = true;
             viewBtn.setAttribute('aria-disabled','true');
@@ -1314,9 +1373,40 @@
 
       calculateDeadlines();
       renderActivityLog();
+      renderNoteStatistics();
     }
 
     // ========= NOTES =========
+    function renderNoteStatistics(){
+      const totalEl = $('#note-stats-total');
+      const breakdownContainer = $('#note-stats-breakdown');
+      if(!totalEl || !breakdownContainer) return;
+
+      totalEl.textContent = `Tổng số ghi chú: ${notes.length}`;
+      breakdownContainer.innerHTML = '';
+
+      if(!notes.length){
+        const empty = document.createElement('p');
+        empty.className = 'text-sm text-gray-500';
+        empty.textContent = 'Chưa có dữ liệu thống kê.';
+        breakdownContainer.appendChild(empty);
+        return;
+      }
+
+      const counts = notes.reduce((acc, note) => {
+        const type = (note.type || '').trim() || 'Khác';
+        acc[type] = (acc[type] || 0) + 1;
+        return acc;
+      }, {});
+
+      Object.keys(counts).sort((a, b) => a.localeCompare(b, 'vi')).forEach(type => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-700';
+        item.innerHTML = `<span>${type}</span><span class="font-semibold text-gray-900">${counts[type]}</span>`;
+        breakdownContainer.appendChild(item);
+      });
+    }
+
     function renderNotes(){
       const tbody = $('#notes-list-container'); if(!tbody) return;
       tbody.innerHTML = '';
@@ -1339,25 +1429,118 @@
       }));
     }
 
+    function startOfDayDate(date){
+      const d = new Date(date);
+      d.setHours(0,0,0,0);
+      return d;
+    }
+    function endOfDayDate(date){
+      const d = new Date(date);
+      d.setHours(23,59,59,999);
+      return d;
+    }
+    function getQuickRangeDates(range){
+      if(!range || range === 'all' || range === 'custom') return null;
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      switch(range){
+        case 'today':
+          return { from: startOfDayDate(today), to: endOfDayDate(today) };
+        case 'yesterday': {
+          const y = new Date(today);
+          y.setDate(y.getDate() - 1);
+          return { from: startOfDayDate(y), to: endOfDayDate(y) };
+        }
+        case '7days': {
+          const start = new Date(today);
+          start.setDate(start.getDate() - 6);
+          return { from: startOfDayDate(start), to: endOfDayDate(today) };
+        }
+        case '14days': {
+          const start = new Date(today);
+          start.setDate(start.getDate() - 13);
+          return { from: startOfDayDate(start), to: endOfDayDate(today) };
+        }
+        case 'thisMonth': {
+          const first = new Date(today.getFullYear(), today.getMonth(), 1);
+          const last = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+          return { from: startOfDayDate(first), to: endOfDayDate(last) };
+        }
+        case 'lastMonth': {
+          const first = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+          const last = new Date(today.getFullYear(), today.getMonth(), 0);
+          return { from: startOfDayDate(first), to: endOfDayDate(last) };
+        }
+        default:
+          return null;
+      }
+    }
+    function parseDateInput(value, isEnd=false){
+      if(!value) return null;
+      const date = new Date(value);
+      if(Number.isNaN(date.getTime())) return null;
+      return isEnd ? endOfDayDate(date) : startOfDayDate(date);
+    }
+    function setQuickDateRange(range){
+      selectedQuickRange = range;
+      const buttons = $$('#quick-date-buttons .quick-date-btn');
+      buttons.forEach(btn => btn.classList.toggle('active', btn.dataset.range === range));
+      const customContainer = $('#custom-date-inputs');
+      if(range === 'custom'){
+        if(customContainer) customContainer.classList.remove('hidden');
+      } else {
+        if(customContainer) customContainer.classList.add('hidden');
+        const fromInput = $('#filter-date-from');
+        const toInput = $('#filter-date-to');
+        if(fromInput) fromInput.value = '';
+        if(toInput) toInput.value = '';
+      }
+    }
+
     function applyFilters(){
-      const from = $('#filter-date-from'); const to = $('#filter-date-to'); const type = $('#filter-type'); const keywordInput = $('#filter-keyword');
+      const type = $('#filter-type');
+      const keywordInput = $('#filter-keyword');
       const keyword = keywordInput && keywordInput.value ? keywordInput.value.trim().toLowerCase() : '';
+
+      let fromDate = null;
+      let toDate = null;
+      if(selectedQuickRange === 'custom'){
+        const fromInput = $('#filter-date-from');
+        const toInput = $('#filter-date-to');
+        fromDate = parseDateInput(fromInput ? fromInput.value : '', false);
+        toDate = parseDateInput(toInput ? toInput.value : '', true);
+      } else {
+        const quickRange = getQuickRangeDates(selectedQuickRange);
+        if(quickRange){
+          fromDate = quickRange.from;
+          toDate = quickRange.to;
+        }
+      }
+
       filteredNotes = notes.filter(n => {
         const [d,m,y] = n.date.split(' ')[0].split('/').map(Number);
-        const nDate = new Date(y, m-1, d);
-        if(from && from.value){ const f = new Date(from.value); if(nDate < f) return false; }
-        if(to && to.value){ const t = new Date(to.value); if(nDate > t) return false; }
+        const noteDate = new Date(y, m-1, d);
+        noteDate.setHours(0,0,0,0);
+        if(fromDate && noteDate < fromDate) return false;
+        if(toDate && noteDate > toDate) return false;
         if(type && type.value && n.type !== type.value) return false;
         const content = (n.content || '').toLowerCase();
         if(keyword && !content.includes(keyword)) return false;
         return true;
       });
       renderNotes();
+      renderNoteStatistics();
     }
     function resetFilters(){
       const from = $('#filter-date-from'), to = $('#filter-date-to'), type = $('#filter-type'), keywordInput = $('#filter-keyword');
-      if(from) from.value = ''; if(to) to.value = ''; if(type) type.value = ''; if(keywordInput) keywordInput.value = '';
-      filteredNotes = notes.slice(); renderNotes();
+      if(from) from.value = '';
+      if(to) to.value = '';
+      if(type) type.value = '';
+      if(keywordInput) keywordInput.value = '';
+      setQuickDateRange('all');
+      filteredNotes = notes.slice();
+      renderNotes();
+      renderNoteStatistics();
     }
 
     async function saveNewNote(){
@@ -1595,13 +1778,13 @@
     };
     const DEFAULT_NAV_HREF = sectionToPath.overview;
     const routeConfig = {
-      '/': { section: 'overview', navHref: DEFAULT_NAV_HREF },
-      '/tongquan': { section: 'overview', navHref: DEFAULT_NAV_HREF },
-      '/giaidoan1': { section: 'gd1', navHref: sectionToPath.gd1 },
-      '/giaidoan2': { section: 'gd2', navHref: sectionToPath.gd2 },
-      '/giaidoan3': { section: 'gd3', navHref: sectionToPath.gd3 },
-      '/giaidoan4': { section: 'gd4', navHref: sectionToPath.gd4 },
-      '/ghichu': { section: 'notes', navHref: sectionToPath.notes },
+      '/': { layout: 'cover', section: null, navHref: null },
+      '/tongquan': { layout: 'app', section: 'overview', navHref: DEFAULT_NAV_HREF },
+      '/giaidoan1': { layout: 'app', section: 'gd1', navHref: sectionToPath.gd1 },
+      '/giaidoan2': { layout: 'app', section: 'gd2', navHref: sectionToPath.gd2 },
+      '/giaidoan3': { layout: 'app', section: 'gd3', navHref: sectionToPath.gd3 },
+      '/giaidoan4': { layout: 'app', section: 'gd4', navHref: sectionToPath.gd4 },
+      '/ghichu': { layout: 'app', section: 'notes', navHref: sectionToPath.notes },
     };
     let router = null;
 
@@ -1611,23 +1794,23 @@
       if(main) main.scrollTop = 0;
     }
 
+    function setLayoutMode(mode){
+      const cover = $('#cover-page');
+      const app = $('#app-layout');
+      const showCover = mode === 'cover';
+      if(cover) cover.classList.toggle('hidden', !showCover);
+      if(app) app.classList.toggle('hidden', showCover);
+    }
+
     function setActiveNavByHref(href){
       const links = $$('.nav-link');
-      let matched = false;
       links.forEach(link => {
-        if(link.getAttribute('href') === href){
+        if(href && link.getAttribute('href') === href){
           link.classList.add('active');
-          matched = true;
         } else {
           link.classList.remove('active');
         }
       });
-      if(!matched){
-        const overviewLink = links.find(link => link.getAttribute('href') === DEFAULT_NAV_HREF);
-        if(overviewLink){
-          overviewLink.classList.add('active');
-        }
-      }
     }
 
     function normalizeRoutePath(pathname){
@@ -1655,8 +1838,11 @@
       function handle(pathname){
         const { path, route } = resolve(pathname);
         if(!route) return path;
-        showSection(route.section);
-        setActiveNavByHref(route.navHref);
+        setLayoutMode(route.layout === 'cover' ? 'cover' : 'app');
+        if(route.layout === 'app' && route.section){
+          showSection(route.section);
+        }
+        setActiveNavByHref(route.navHref || null);
         return path;
       }
       function navigate(pathname){
@@ -1817,110 +2003,6 @@
       });
     }
 
-    function ensureProjectId(){
-      return STATIC_PROJECT_ID;
-    }
-
-    async function updateProjectData(partial){
-      if(!projectRef) return;
-      try {
-        await updateDoc(projectRef, { ...partial, updatedAt: serverTimestamp() });
-      } catch(error){
-        console.error('Không thể cập nhật dữ liệu dự án:', error);
-      }
-    }
-
-    async function syncTaskState(){
-      if(!isProjectReady) return;
-      await updateProjectData({ taskState });
-    }
-
-    async function ensureProjectDocument(projectId){
-      if(!projectRef) return;
-      const snapshot = await getDoc(projectRef);
-      if(!snapshot.exists()){
-        await setDoc(projectRef, {
-          taskState: buildDefaultTaskState(),
-          notes: [],
-          customTypes: defaultCustomTypes,
-          selectedNoteType: defaultCustomTypes[0] || '',
-          meta: {
-            projectId,
-            projectStart: formatDate(projectPlanStart),
-            launchDate: formatDate(projectLaunchDate),
-            createdAt: serverTimestamp(),
-          },
-          updatedAt: serverTimestamp(),
-        }, { merge:true });
-      } else {
-        const data = snapshot.data() || {};
-        const defaults = buildDefaultTaskState();
-        const current = data.taskState || {};
-        let needsUpdate = false;
-        Object.keys(defaults).forEach(id => {
-          if(!current[id]){
-            current[id] = defaults[id];
-            needsUpdate = true;
-          } else {
-            current[id].completed = !!current[id].completed;
-            current[id].link = (current[id].link || '').trim();
-          }
-        });
-        if(needsUpdate){
-          await updateDoc(projectRef, { taskState: current, updatedAt: serverTimestamp() });
-        }
-      }
-    }
-
-    async function initializeRealtimePersistence(){
-      const firebaseConfig = window.FIREBASE_CONFIG;
-      if(!firebaseConfig){
-        console.error('Thiếu cấu hình Firebase. Vui lòng gán window.FIREBASE_CONFIG.');
-        const shareInfo = $('#project-share-info');
-        if(shareInfo){
-          shareInfo.classList.remove('hidden');
-          shareInfo.innerHTML = '<span class="text-red-500">Thiếu cấu hình Firebase (window.FIREBASE_CONFIG).</span>';
-        }
-        return;
-      }
-
-      const app = initializeApp(firebaseConfig);
-      db = getFirestore(app);
-      const projectId = ensureProjectId();
-      projectRef = doc(db, 'projects', projectId);
-      await ensureProjectDocument(projectId);
-
-      onSnapshot(projectRef, snapshot => {
-        if(!snapshot.exists()) return;
-        const data = snapshot.data() || {};
-        const defaults = buildDefaultTaskState();
-        const incomingState = data.taskState || {};
-        Object.keys(defaults).forEach(id => {
-          if(!incomingState[id]){
-            incomingState[id] = defaults[id];
-          } else {
-            incomingState[id].completed = !!incomingState[id].completed;
-            incomingState[id].link = (incomingState[id].link || '').trim();
-          }
-        });
-        taskState = incomingState;
-        notes = Array.isArray(data.notes) ? data.notes.map(note => ({ ...note })) : [];
-        customTypes = Array.isArray(data.customTypes) && data.customTypes.length ? data.customTypes.slice(0,10) : defaultCustomTypes.slice();
-        if(customTypes.length === 0) customTypes = defaultCustomTypes.slice();
-        selectedNoteType = data.selectedNoteType && customTypes.includes(data.selectedNoteType) ? data.selectedNoteType : (customTypes[0] || '');
-        filteredNotes = notes.slice();
-        isProjectReady = true;
-        debouncedSyncTaskState = debounce(syncTaskState, 400);
-        renderNoteTypeDropdown();
-        updateTypeFilterOptions();
-        applyFilters();
-        updateUI();
-        updateShareLink(projectId);
-      }, error => {
-        console.error('Lỗi đồng bộ dữ liệu thời gian thực:', error);
-      });
-    }
-
     // ========= MODALS WIRING =========
     if(confirmDeleteTaskBtn) confirmDeleteTaskBtn.addEventListener('click', confirmDeleteTask);
     if(cancelDeleteTaskBtn) cancelDeleteTaskBtn.addEventListener('click', cancelDeleteTask);
@@ -1942,11 +2024,34 @@
 
     filteredNotes = notes.slice();
     renderNotes();
+    renderNoteStatistics();
     renderNoteTypeDropdown();
     bindNoteTypeDropdown();
     updateTypeFilterOptions();
 
     if(router) router.handleCurrent();
+
+    setQuickDateRange('all');
+
+    const startPlanBtn = $('#start-plan-btn');
+    if(startPlanBtn) startPlanBtn.addEventListener('click', e => {
+      e.preventDefault();
+      if(router) router.navigate('/tongquan');
+    });
+
+    const quickDateButtons = $$('#quick-date-buttons .quick-date-btn');
+    quickDateButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const range = btn.dataset.range || 'all';
+        setQuickDateRange(range);
+        if(range === 'custom'){
+          const fromInput = $('#filter-date-from');
+          if(fromInput) fromInput.focus();
+        } else {
+          applyFilters();
+        }
+      });
+    });
 
     const saveNoteBtn = $('#save-note-btn'); if(saveNoteBtn) saveNoteBtn.addEventListener('click', saveNewNote);
     const applyFilterBtn = $('#apply-filter-btn'); if(applyFilterBtn) applyFilterBtn.addEventListener('click', applyFilters);
