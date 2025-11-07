@@ -322,10 +322,31 @@
     </main>
   </div>
 
-  <script type="module">
-  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-  import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+  <!-- =================================================== -->
+<!-- DÁN "CHÌA KHÓA" FIREBASE CỦA BẠN VÀO ĐÂY -->
+<!-- =================================================== -->
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyDX-XFXDgziXmsHkWHuUH5zlANYm0dehKY", // <-- THAY BẰNG KEY THẬT
+    authDomain: "vincent-nguyen.firebaseapp.com",
+    projectId: "vincent-nguyen",
+    storageBucket: "vincent-nguyen.appspot.com",
+    messagingSenderId: "15594526987",
+    appId: "1:15594526987:web:50e4ecf8548302d598aa0e",
+    measurementId: "G-CV6XDV7WSC"
+  };
+  
+  // Gán "chìa khóa" vào cửa sổ để code ở dưới đọc được
+  window.FIREBASE_CONFIG = firebaseConfig;
+</script>
+<!-- =================================================== -->
 
+
+<!-- Code chính của ứng dụng bắt đầu từ đây (Dòng 325 cũ của bạn) -->
+<script type="module">
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+  //... (code còn lại)
+ 
   document.addEventListener('DOMContentLoaded', () => {
     // ========= CONSTANTS =========
     const DAY_MS = 24 * 60 * 60 * 1000;
@@ -1382,3 +1403,4 @@
   </script>
 </body>
 </html>
+
