@@ -142,12 +142,12 @@
           <button id="close-menu" class="lg:hidden ml-auto text-gray-600 hover:text-gray-900 text-2xl" aria-label="Đóng menu">&times;</button>
         </div>
         <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
-          <a class="nav-link active" data-target="overview"><span class="emoji">📊</span><span>Tổng Quan</span></a>
-          <a class="nav-link" data-target="gd1"><span class="emoji">🎯</span><span>GĐ 1: Nền Tảng</span></a>
-          <a class="nav-link" data-target="gd2"><span class="emoji">🏗️</span><span>GĐ 2: Xây Dựng</span></a>
-          <a class="nav-link" data-target="gd3"><span class="emoji">⚙️</span><span>GĐ 3: Vận Hành & Tối Ưu</span></a>
-          <a class="nav-link" data-target="gd4"><span class="emoji">🚀</span><span>GĐ 4: Ra Mắt</span></a>
-          <a class="nav-link" data-target="notes"><span class="emoji">📝</span><span>Ghi Chú Dự Án</span></a>
+          <a class="nav-link" href="/tongquan"><span class="emoji">📊</span><span>Tổng Quan</span></a>
+          <a class="nav-link" href="/giaidoan1"><span class="emoji">🎯</span><span>GĐ 1: Nền Tảng</span></a>
+          <a class="nav-link" href="/giaidoan2"><span class="emoji">🏗️</span><span>GĐ 2: Xây Dựng</span></a>
+          <a class="nav-link" href="/giaidoan3"><span class="emoji">⚙️</span><span>GĐ 3: Vận Hành & Tối Ưu</span></a>
+          <a class="nav-link" href="/giaidoan4"><span class="emoji">🚀</span><span>GĐ 4: Ra Mắt</span></a>
+          <a class="nav-link" href="/ghichu"><span class="emoji">📝</span><span>Ghi Chú Dự Án</span></a>
         </nav>
       </div>
     </aside>
@@ -223,10 +223,11 @@
                 <table class="notes-table activity-table">
                   <thead>
                     <tr>
-                      <th style="width:20%">Thời Gian Hoàn Thành</th>
-                      <th style="width:20%">Thời Gian Cập nhật</th>
-                      <th style="width:40%">Tên Task</th>
-                      <th style="width:20%">Giai Đoạn</th>
+                      <th style="width:20%">Giai đoạn</th>
+                      <th style="width:15%">Trạng thái</th>
+                      <th style="width:35%">Tên Task</th>
+                      <th style="width:15%">Thời gian hoàn thành</th>
+                      <th style="width:15%">Thời gian cập nhật</th>
                     </tr>
                   </thead>
                   <tbody id="activity-log-body"></tbody>
@@ -324,6 +325,10 @@
                   <label class="block text-sm font-medium text-gray-700 mb-1.5">Loại</label>
                   <select id="filter-type" class="filter-input"><option value="">Tất cả loại</option></select>
                 </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1.5" for="filter-keyword">Từ khóa</label>
+                  <input type="text" id="filter-keyword" class="filter-input" placeholder="Tìm theo nội dung..." />
+                </div>
               </div>
               <div class="flex gap-2 mt-3">
                 <button id="apply-filter-btn" class="task-btn btn-complete">🔍 Lọc</button>
@@ -397,6 +402,7 @@
       { week:'gd4-week18', duration:7 },
     ];
     const defaultCustomTypes = ['Ý tưởng','Việc cần làm','Rủi ro','Khác'];
+    const STATIC_PROJECT_ID = 'thinksmart-main-plan';
 
     // ========= DATA =========
     const tasksData = [
@@ -918,16 +924,15 @@
       });
     }
 
-    function updateShareLink(projectId){
+    function updateShareLink(){
       const shareInfo = $('#project-share-info');
       const shareUrlEl = $('#project-share-url');
       const idLabel = $('#project-id-label');
-      if(!shareInfo || !shareUrlEl || !idLabel) return;
-      const url = new URL(window.location.href);
-      url.searchParams.set('projectId', projectId);
-      shareUrlEl.textContent = url.toString();
-      idLabel.textContent = `Mã dự án: ${projectId}`;
-      shareInfo.classList.remove('hidden');
+      if(shareUrlEl) shareUrlEl.textContent = '';
+      if(idLabel) idLabel.textContent = '';
+      if(shareInfo){
+        shareInfo.classList.add('hidden');
+      }
     }
 
     function ensureProjectReady(showAlert = true){
@@ -1152,17 +1157,17 @@
       if(!tbody) return;
 
       const sanitized = sanitizeTaskState();
+      const toTime = (iso) => {
+        if(!iso) return 0;
+        const time = new Date(iso).getTime();
+        return Number.isFinite(time) ? time : 0;
+      };
       const entries = Object.keys(sanitized).map(id => {
         const state = sanitized[id];
         const meta = taskMap[id] || {};
-        const getTime = (iso) => {
-          if(!iso) return 0;
-          const time = new Date(iso).getTime();
-          return Number.isFinite(time) ? time : 0;
-        };
         const completedAt = state.completedAt || null;
         const updatedAt = state.updatedAt || null;
-        const lastActivity = Math.max(getTime(completedAt), getTime(updatedAt));
+        const lastActivity = Math.max(toTime(completedAt), toTime(updatedAt));
         return {
           id,
           title: meta.title || `Task ${id}`,
@@ -1178,15 +1183,29 @@
 
       tbody.innerHTML = '';
       if(visibleEntries.length === 0){
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-gray-500 py-6">Chưa có hoạt động nào.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-gray-500 py-6">Chưa có hoạt động nào.</td></tr>';
       } else {
         visibleEntries.forEach(entry => {
           const tr = document.createElement('tr');
+          const completedTime = toTime(entry.completedAt);
+          const updatedTime = toTime(entry.updatedAt);
+          let statusText = 'Chưa hoàn thành';
+          let statusClass = 'text-gray-500';
+          if(entry.completedAt){
+            if(entry.updatedAt && updatedTime > completedTime){
+              statusText = 'Đang chỉnh sửa';
+              statusClass = 'text-orange-500 font-semibold';
+            } else {
+              statusText = 'Hoàn thành';
+              statusClass = 'text-green-600 font-semibold';
+            }
+          }
           tr.innerHTML = `
-            <td>${entry.completedAt ? formatDateTime(entry.completedAt) : '-'}</td>
-            <td>${entry.updatedAt ? formatDateTime(entry.updatedAt) : '-'}</td>
+            <td>${phaseLabels[entry.phase] || entry.phase || '-'}</td>
+            <td><span class="${statusClass}">${statusText}</span></td>
             <td><button type="button" class="task-log-link" data-jump-task="${entry.id}">${entry.title}</button></td>
-            <td>${phaseLabels[entry.phase] || entry.phase || '-'}</td>`;
+            <td>${entry.completedAt ? formatDateTime(entry.completedAt) : '-'}</td>
+            <td>${entry.updatedAt ? formatDateTime(entry.updatedAt) : '-'}</td>`;
           tbody.appendChild(tr);
         });
       }
@@ -1321,20 +1340,23 @@
     }
 
     function applyFilters(){
-      const from = $('#filter-date-from'); const to = $('#filter-date-to'); const type = $('#filter-type');
+      const from = $('#filter-date-from'); const to = $('#filter-date-to'); const type = $('#filter-type'); const keywordInput = $('#filter-keyword');
+      const keyword = keywordInput && keywordInput.value ? keywordInput.value.trim().toLowerCase() : '';
       filteredNotes = notes.filter(n => {
         const [d,m,y] = n.date.split(' ')[0].split('/').map(Number);
         const nDate = new Date(y, m-1, d);
         if(from && from.value){ const f = new Date(from.value); if(nDate < f) return false; }
         if(to && to.value){ const t = new Date(to.value); if(nDate > t) return false; }
         if(type && type.value && n.type !== type.value) return false;
+        const content = (n.content || '').toLowerCase();
+        if(keyword && !content.includes(keyword)) return false;
         return true;
       });
       renderNotes();
     }
     function resetFilters(){
-      const from = $('#filter-date-from'), to = $('#filter-date-to'), type = $('#filter-type');
-      if(from) from.value = ''; if(to) to.value = ''; if(type) type.value = '';
+      const from = $('#filter-date-from'), to = $('#filter-date-to'), type = $('#filter-type'), keywordInput = $('#filter-keyword');
+      if(from) from.value = ''; if(to) to.value = ''; if(type) type.value = ''; if(keywordInput) keywordInput.value = '';
       filteredNotes = notes.slice(); renderNotes();
     }
 
@@ -1563,18 +1585,108 @@
     }
 
     // ========= NAV =========
-    function showSection(id){ $$('.content-section').forEach(s => s.classList.toggle('hidden', s.id !== id)); const main = document.querySelector('main'); if(main) main.scrollTop = 0; }
+    const sectionToPath = {
+      overview: '/tongquan',
+      gd1: '/giaidoan1',
+      gd2: '/giaidoan2',
+      gd3: '/giaidoan3',
+      gd4: '/giaidoan4',
+      notes: '/ghichu',
+    };
+    const DEFAULT_NAV_HREF = sectionToPath.overview;
+    const routeConfig = {
+      '/': { section: 'overview', navHref: DEFAULT_NAV_HREF },
+      '/tongquan': { section: 'overview', navHref: DEFAULT_NAV_HREF },
+      '/giaidoan1': { section: 'gd1', navHref: sectionToPath.gd1 },
+      '/giaidoan2': { section: 'gd2', navHref: sectionToPath.gd2 },
+      '/giaidoan3': { section: 'gd3', navHref: sectionToPath.gd3 },
+      '/giaidoan4': { section: 'gd4', navHref: sectionToPath.gd4 },
+      '/ghichu': { section: 'notes', navHref: sectionToPath.notes },
+    };
+    let router = null;
+
+    function showSection(id){
+      $$('.content-section').forEach(s => s.classList.toggle('hidden', s.id !== id));
+      const main = document.querySelector('main');
+      if(main) main.scrollTop = 0;
+    }
+
+    function setActiveNavByHref(href){
+      const links = $$('.nav-link');
+      let matched = false;
+      links.forEach(link => {
+        if(link.getAttribute('href') === href){
+          link.classList.add('active');
+          matched = true;
+        } else {
+          link.classList.remove('active');
+        }
+      });
+      if(!matched){
+        const overviewLink = links.find(link => link.getAttribute('href') === DEFAULT_NAV_HREF);
+        if(overviewLink){
+          overviewLink.classList.add('active');
+        }
+      }
+    }
+
+    function normalizeRoutePath(pathname){
+      if(!pathname) return '/';
+      let normalized = pathname;
+      const indexSuffix = '/index.html';
+      if(normalized.endsWith(indexSuffix)){
+        normalized = normalized.slice(0, -indexSuffix.length) || '/';
+      }
+      if(normalized.length > 1 && normalized.endsWith('/')){
+        normalized = normalized.slice(0, -1);
+      }
+      return normalized || '/';
+    }
+
+    function createRouter(config){
+      const defaultRoute = config['/'];
+      function resolve(pathname){
+        const normalized = normalizeRoutePath(pathname);
+        if(config[normalized]){
+          return { path: normalized, route: config[normalized] };
+        }
+        return { path: '/', route: defaultRoute };
+      }
+      function handle(pathname){
+        const { path, route } = resolve(pathname);
+        if(!route) return path;
+        showSection(route.section);
+        setActiveNavByHref(route.navHref);
+        return path;
+      }
+      function navigate(pathname){
+        const { path, route } = resolve(pathname);
+        if(!route) return;
+        const currentPath = normalizeRoutePath(window.location.pathname);
+        if(currentPath !== path){
+          window.history.pushState({}, '', path);
+        }
+        handle(path);
+      }
+      window.addEventListener('popstate', () => handle(window.location.pathname));
+      return {
+        navigate,
+        handleCurrent: () => handle(window.location.pathname),
+      };
+    }
+
     function navigateToTask(taskId){
       if(!taskId) return;
       const meta = taskMap[taskId];
       const sectionId = meta ? meta.phase : null;
       if(sectionId){
-        const navLink = document.querySelector(`.nav-link[data-target="${sectionId}"]`);
-        if(navLink){
-          $$('.nav-link').forEach(n => n.classList.remove('active'));
-          navLink.classList.add('active');
+        const targetPath = sectionToPath[sectionId] || DEFAULT_NAV_HREF;
+        if(router){
+          router.navigate(targetPath);
+        } else {
+          setActiveNavByHref(targetPath);
+          showSection(sectionId);
         }
-        showSection(sectionId);
       }
       const card = document.getElementById('task-card-' + taskId);
       if(card){
@@ -1585,14 +1697,18 @@
         }, 2000);
       }
     }
+
     function bindNav(){
       $$('.nav-link').forEach(link => link.addEventListener('click', e => {
         e.preventDefault();
-        const targetId = link.getAttribute('data-target');
-        $$('.nav-link').forEach(n => n.classList.remove('active'));
-        link.classList.add('active');
-        showSection(targetId);
-        if(window.innerWidth < 1024){ const sidebar = $('#sidebar'); if(sidebar) sidebar.classList.remove('open'); }
+        const targetPath = link.getAttribute('href');
+        if(router && targetPath){
+          router.navigate(targetPath);
+        }
+        if(window.innerWidth < 1024){
+          const sidebar = $('#sidebar');
+          if(sidebar) sidebar.classList.remove('open');
+        }
       }));
       const openBtn = $('#open-menu'), closeBtn = $('#close-menu'), sidebar = $('#sidebar');
       if(openBtn) openBtn.addEventListener('click', e => { e.stopPropagation(); if(sidebar) sidebar.classList.add('open'); });
@@ -1607,15 +1723,7 @@
     }
 
     function ensureProjectId(){
-      const params = new URLSearchParams(window.location.search);
-      let id = params.get('projectId');
-      if(!id){
-        id = `proj-${Math.random().toString(36).slice(2,6)}${Date.now().toString(36)}`;
-        params.set('projectId', id);
-        const newUrl = `${window.location.pathname}?${params.toString()}`;
-        window.history.replaceState({}, '', newUrl);
-      }
-      return id;
+      return STATIC_PROJECT_ID;
     }
 
     async function updateProjectData(partial){
@@ -1710,15 +1818,7 @@
     }
 
     function ensureProjectId(){
-      const params = new URLSearchParams(window.location.search);
-      let id = params.get('projectId');
-      if(!id){
-        id = `proj-${Math.random().toString(36).slice(2,6)}${Date.now().toString(36)}`;
-        params.set('projectId', id);
-        const newUrl = `${window.location.pathname}?${params.toString()}`;
-        window.history.replaceState({}, '', newUrl);
-      }
-      return id;
+      return STATIC_PROJECT_ID;
     }
 
     async function updateProjectData(partial){
@@ -1832,19 +1932,21 @@
     if(deleteNoteModalEl) deleteNoteModalEl.addEventListener('click', e => { if(e.target === deleteNoteModalEl) cancelDeleteNote(); });
 
     // ========= BOOT =========
+    router = createRouter(routeConfig);
     renderTasks();
     bindTaskEvents();
     setupDropdowns();
     bindNav();
     initChart();
     updateUI();
-    showSection('overview');
 
     filteredNotes = notes.slice();
     renderNotes();
     renderNoteTypeDropdown();
     bindNoteTypeDropdown();
     updateTypeFilterOptions();
+
+    if(router) router.handleCurrent();
 
     const saveNoteBtn = $('#save-note-btn'); if(saveNoteBtn) saveNoteBtn.addEventListener('click', saveNewNote);
     const applyFilterBtn = $('#apply-filter-btn'); if(applyFilterBtn) applyFilterBtn.addEventListener('click', applyFilters);
