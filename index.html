@@ -3579,35 +3579,70 @@
       await seedDefaultAdmin();
     }
 
-    // ========= TASK 10: SEED DEFAULT ADMIN =========
+    // ========= TASK 10: SEED DEFAULT ADMIN (ENHANCED) =========
     async function seedDefaultAdmin(){
       const DEFAULT_ADMIN_EMAIL = 'xuanthuongqtkd@gmail.com';
       const DEFAULT_ADMIN_PASSWORD = 'Vincent1809$$';
       const DEFAULT_ADMIN_NAME = 'Xuan Thuong';
 
-      try {
-        // Check if admin already exists in Firestore
-        const usersSnapshot = await getDocs(collection(db, 'users'));
-        let adminExists = false;
+      console.log('🔍 Checking for default admin user...');
 
-        usersSnapshot.forEach(doc => {
-          const userData = doc.data();
+      try {
+        // Step 1: Check if admin exists in Firestore
+        const usersSnapshot = await getDocs(collection(db, 'users'));
+        let adminFirestoreDoc = null;
+        let adminExistsInFirestore = false;
+
+        usersSnapshot.forEach(docSnap => {
+          const userData = docSnap.data();
           if(userData.email === DEFAULT_ADMIN_EMAIL){
-            adminExists = true;
+            adminExistsInFirestore = true;
+            adminFirestoreDoc = { id: docSnap.id, ...userData };
           }
         });
 
-        if(adminExists){
-          console.log('Default admin user already exists.');
+        if(adminExistsInFirestore){
+          console.log('✅ Default admin user exists in Firestore.');
+          console.log(`   Email: ${DEFAULT_ADMIN_EMAIL}`);
+          console.log(`   Role: ${adminFirestoreDoc.role}`);
+          console.log(`   Display Name: ${adminFirestoreDoc.displayName}`);
           return;
         }
 
-        // Create the admin user in Firebase Auth
-        console.log('Creating default admin user...');
-        const userCredential = await createUserWithEmailAndPassword(auth, DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD);
+        // Step 2: Admin doesn't exist in Firestore, try to create in Auth
+        console.log('⚠️ Default admin not found in Firestore. Creating...');
+        console.log(`   Email: ${DEFAULT_ADMIN_EMAIL}`);
+        console.log(`   Password: Vincent1809$$ (auto-generated)`);
 
-        // Create the user document in Firestore
-        await setDoc(doc(db, 'users', userCredential.user.uid), {
+        let userCredential;
+        try {
+          // Try to create user in Firebase Auth
+          userCredential = await createUserWithEmailAndPassword(auth, DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD);
+          console.log('✅ Created user in Firebase Authentication');
+        } catch(authError){
+          if(authError.code === 'auth/email-already-in-use'){
+            // User exists in Auth but not in Firestore - this is the problem!
+            console.log('⚠️ User exists in Firebase Auth but not in Firestore!');
+            console.log('   This causes login failures. Creating Firestore document...');
+
+            // We need to get the UID from Firebase Auth
+            // Sign in to get the user object
+            try {
+              userCredential = await signInWithEmailAndPassword(auth, DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD);
+              console.log('✅ Signed in successfully to get UID');
+            } catch(signInError){
+              console.error('❌ Cannot sign in with default password:', signInError);
+              console.log('💡 SOLUTION: Run resetAdminPassword() in console to reset password');
+              throw signInError;
+            }
+          } else {
+            throw authError;
+          }
+        }
+
+        // Step 3: Create the user document in Firestore
+        const uid = userCredential.user.uid;
+        await setDoc(doc(db, 'users', uid), {
           email: DEFAULT_ADMIN_EMAIL,
           displayName: DEFAULT_ADMIN_NAME,
           role: 'admin',
@@ -3615,20 +3650,73 @@
           updatedAt: serverTimestamp()
         });
 
-        console.log('Default admin user created successfully!');
+        console.log('✅ Default admin user created successfully!');
+        console.log(`   UID: ${uid}`);
+        console.log(`   Email: ${DEFAULT_ADMIN_EMAIL}`);
+        console.log(`   Password: Vincent1809$$`);
+        console.log(`   Role: admin`);
+        console.log('');
+        console.log('🎉 You can now log in with these credentials!');
 
       } catch(error){
-        // If user already exists in Auth, that's okay
-        if(error.code === 'auth/email-already-in-use'){
-          console.log('Default admin email already registered in Auth.');
-          console.log('⚠️ If you cannot log in with the default password, please:');
-          console.log('   1. Use the "Forgot Password?" link on the login page, OR');
-          console.log('   2. Run resetAdminPassword() in the browser console');
-        } else {
-          console.error('Error seeding default admin:', error);
-        }
+        console.error('❌ Error seeding default admin:', error);
+        console.log('');
+        console.log('📋 TROUBLESHOOTING:');
+        console.log('   1. Check Firebase Console > Authentication to see if user exists');
+        console.log('   2. Check Firestore > users collection');
+        console.log('   3. Run createAdminUser() in console to force creation');
+        console.log('   4. Run resetAdminPassword() to send password reset email');
       }
     }
+
+    // ========= CONSOLE UTILITY: FORCE CREATE ADMIN USER =========
+    // Call this from console if seedDefaultAdmin fails
+    window.createAdminUser = async function(){
+      const DEFAULT_ADMIN_EMAIL = 'xuanthuongqtkd@gmail.com';
+      const DEFAULT_ADMIN_PASSWORD = 'Vincent1809$$';
+      const DEFAULT_ADMIN_NAME = 'Xuan Thuong';
+
+      console.log('🔧 FORCE CREATING admin user...');
+
+      try {
+        // Try to create in Firebase Auth
+        let userCredential;
+        try {
+          userCredential = await createUserWithEmailAndPassword(auth, DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD);
+          console.log('✅ Created in Firebase Auth');
+        } catch(error){
+          if(error.code === 'auth/email-already-in-use'){
+            console.log('⚠️ User already exists in Auth, signing in...');
+            userCredential = await signInWithEmailAndPassword(auth, DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD);
+          } else {
+            throw error;
+          }
+        }
+
+        // Create/update Firestore document
+        const uid = userCredential.user.uid;
+        await setDoc(doc(db, 'users', uid), {
+          email: DEFAULT_ADMIN_EMAIL,
+          displayName: DEFAULT_ADMIN_NAME,
+          role: 'admin',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+
+        console.log('✅ Admin user created/updated successfully!');
+        console.log(`   UID: ${uid}`);
+        console.log(`   Email: ${DEFAULT_ADMIN_EMAIL}`);
+        console.log(`   Password: Vincent1809$$`);
+        console.log('');
+        console.log('🎉 Try logging in now!');
+        return 'Success!';
+
+      } catch(error){
+        console.error('❌ Error:', error);
+        console.log('💡 Try resetAdminPassword() instead');
+        return 'Error: ' + error.message;
+      }
+    };
 
     // ========= CONSOLE UTILITY: RESET ADMIN PASSWORD =========
     // Call this function from browser console if you need to reset the admin password
@@ -3741,16 +3829,35 @@
         await signInWithEmailAndPassword(auth, email, password);
         // Auth state listener will handle the rest
       } catch(error){
-        console.error('Login error:', error);
-        let errorMessage = 'Đăng nhập thất bại';
+        console.error('❌ Login error:', error);
+        console.log('Error code:', error.code);
+        console.log('Error message:', error.message);
 
-        if(error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password'){
+        let errorMessage = 'Đăng nhập thất bại';
+        let consoleTroubleshooting = '';
+
+        if(error.code === 'auth/user-not-found'){
           errorMessage = 'Email hoặc mật khẩu không đúng';
+          consoleTroubleshooting = '💡 SOLUTION: Run createAdminUser() in console to create the default admin user\n   Email: xuanthuongqtkd@gmail.com\n   Password: Vincent1809$$';
+        } else if(error.code === 'auth/wrong-password'){
+          errorMessage = 'Email hoặc mật khẩu không đúng';
+          consoleTroubleshooting = '💡 SOLUTION: Run resetAdminPassword() in console to reset your password\n   Or click "Forgot Password?" link';
         } else if(error.code === 'auth/invalid-email'){
           errorMessage = 'Email không hợp lệ';
+          consoleTroubleshooting = '💡 Check email format';
         } else if(error.code === 'auth/too-many-requests'){
           errorMessage = 'Quá nhiều lần đăng nhập thất bại. Vui lòng thử lại sau';
+          consoleTroubleshooting = '💡 Wait a few minutes, or click "Forgot Password?" to reset';
+        } else if(error.code === 'auth/network-request-failed'){
+          errorMessage = 'Lỗi kết nối mạng';
+          consoleTroubleshooting = '💡 Check your internet connection';
+        } else {
+          consoleTroubleshooting = '💡 Unknown error. Check Firebase Console > Authentication';
         }
+
+        console.log('');
+        console.log('📋 TROUBLESHOOTING:');
+        console.log(consoleTroubleshooting);
 
         errorEl.textContent = errorMessage;
         errorEl.classList.remove('hidden');
@@ -3843,17 +3950,81 @@
       }
     }
 
-    // ========= TASK 12: FORGOT PASSWORD =========
-    // TASK 12 REFINEMENT: Email Sender Configuration
-    // To configure the "From" email address (xuanthuongqtkd@gmail.com or no-reply@your-domain.com):
-    // 1. Go to Firebase Console > Authentication > Templates
-    // 2. Click "Password reset" template
-    // 3. Customize the sender name and email (requires custom domain setup)
-    // 4. For production: Set up custom SMTP in Firebase Console (requires Blaze plan)
+    // ========= TASK 12 & 14: FORGOT PASSWORD & EMAIL CONFIGURATION =========
     //
-    // The email will be sent from: noreply@<your-firebase-project>.firebaseapp.com by default
-    // With custom domain: no-reply@your-domain.com or xuanthuongqtkd@gmail.com
-
+    // ⚠️ IMPORTANT NOTE ABOUT TASK 14 (Nodemailer/Gmail):
+    // ====================================================
+    // This is a CLIENT-SIDE ONLY application (pure HTML/JavaScript).
+    // Nodemailer is a NODE.JS SERVER-SIDE library and CANNOT be used here.
+    //
+    // Using Nodemailer would require:
+    // 1. Creating a separate Node.js backend server
+    // 2. Deploying it to a hosting service (Vercel, Railway, etc.)
+    // 3. Creating API endpoints for password reset
+    // 4. Storing GMAIL_USER and GMAIL_APP_PASSWORD on the server
+    // 5. Completely rewriting the authentication architecture
+    //
+    // RECOMMENDED SOLUTION: Use Firebase Authentication's built-in email system
+    // =========================================================================
+    //
+    // 📧 HOW TO CONFIGURE FIREBASE AUTH EMAILS (TASK 14 ALTERNATIVE):
+    //
+    // STEP 1: Go to Firebase Console
+    // - Navigate to: https://console.firebase.google.com/
+    // - Select your project
+    // - Go to "Authentication" > "Templates" tab
+    //
+    // STEP 2: Customize Email Templates
+    // - Click "Password reset" template
+    // - Edit the email subject and body
+    // - Customize the sender name (e.g., "Xuan Thuong" or your company name)
+    //
+    // STEP 3: Enable Email Provider
+    // - Go to "Authentication" > "Sign-in method"
+    // - Make sure "Email/Password" is ENABLED
+    //
+    // STEP 4: (OPTIONAL) Custom Email Domain
+    // - For emails from xuanthuongqtkd@gmail.com instead of noreply@*.firebaseapp.com:
+    // - Upgrade to Firebase Blaze plan (pay-as-you-go)
+    // - Go to "Authentication" > "Templates"
+    // - Click "Customize action URL"
+    // - Set up custom SMTP (requires domain ownership verification)
+    //
+    // DEFAULT BEHAVIOR:
+    // - Emails sent from: noreply@<your-project-id>.firebaseapp.com
+    // - Subject: "Reset your password"
+    // - Contains a link to reset password
+    //
+    // 🔧 TROUBLESHOOTING "Error sending email":
+    // ========================================
+    // 1. Check Firebase Console > Authentication > Sign-in method
+    //    → Make sure Email/Password is ENABLED
+    //
+    // 2. Check Firebase Console > Authentication > Users
+    //    → Verify the user exists (xuanthuongqtkd@gmail.com)
+    //
+    // 3. Check browser console for detailed error codes:
+    //    - auth/user-not-found: User doesn't exist (run createAdminUser())
+    //    - auth/invalid-email: Email format is wrong
+    //    - auth/too-many-requests: Rate limited, wait a few minutes
+    //
+    // 4. Check your Firebase project quota:
+    //    → Free plan: 100 emails/day limit
+    //    → If exceeded, upgrade to Blaze plan or wait 24 hours
+    //
+    // 5. Verify Firebase SDK is initialized correctly:
+    //    → Check window.FIREBASE_CONFIG is set
+    //    → Check browser console for initialization errors
+    //
+    // 📝 ENVIRONMENT VARIABLES (For server-side implementation only):
+    // ===============================================================
+    // If you decide to build a Node.js backend in the future, use:
+    // - GMAIL_USER: Your Gmail address (e.g., xuanthuongqtkd@gmail.com)
+    // - GMAIL_APP_PASSWORD: 16-character app password from Google
+    //   (Generate at: https://myaccount.google.com/apppasswords)
+    //
+    // But for THIS client-side app, Firebase Auth handles everything automatically.
+    //
     async function handleForgotPassword(e){
       e.preventDefault();
 
@@ -3896,16 +4067,36 @@
         }, 3000);
 
       } catch(error){
-        console.error('Forgot password error:', error);
+        console.error('❌ Forgot password error:', error);
+        console.log('Error code:', error.code);
+        console.log('Error message:', error.message);
+
         let errorMessage = 'Lỗi khi gửi email';
+        let consoleTroubleshooting = '';
 
         if(error.code === 'auth/user-not-found'){
           errorMessage = 'Email không tồn tại trong hệ thống';
+          consoleTroubleshooting = '💡 SOLUTION: Run createAdminUser() in console to create the admin user';
         } else if(error.code === 'auth/invalid-email'){
           errorMessage = 'Email không hợp lệ';
+          consoleTroubleshooting = '💡 Check email format';
         } else if(error.code === 'auth/too-many-requests'){
           errorMessage = 'Quá nhiều yêu cầu. Vui lòng thử lại sau';
+          consoleTroubleshooting = '💡 Wait a few minutes before trying again';
+        } else if(error.code === 'auth/network-request-failed'){
+          errorMessage = 'Lỗi kết nối mạng';
+          consoleTroubleshooting = '💡 Check your internet connection';
+        } else if(error.code === 'auth/invalid-api-key'){
+          errorMessage = 'Lỗi cấu hình Firebase';
+          consoleTroubleshooting = '💡 Check Firebase configuration in window.FIREBASE_CONFIG';
+        } else {
+          consoleTroubleshooting = '💡 Check Firebase Console > Authentication > Sign-in method\n   Make sure Email/Password is ENABLED';
         }
+
+        console.log('');
+        console.log('📋 TROUBLESHOOTING:');
+        console.log(consoleTroubleshooting);
+        console.log('   Or check the detailed documentation above handleForgotPassword()');
 
         errorEl.textContent = errorMessage;
         errorEl.classList.remove('hidden');
