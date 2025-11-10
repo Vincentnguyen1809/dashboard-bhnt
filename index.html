@@ -3733,7 +3733,7 @@
       return true;
     }
 
-    // Dynamic Menus Management (Placeholder - Full implementation below)
+    // ========= MENU MANAGEMENT =========
     async function loadDynamicMenus(){
       if(!db) return;
       try {
@@ -3749,16 +3749,482 @@
       }
     }
 
+    async function renderDynamicMenus(){
+      const container = $('#menus-container');
+      const noMenusMessage = $('#no-menus-message');
+      if(!container) return;
+
+      if(dynamicMenus.length === 0){
+        container.innerHTML = '';
+        if(noMenusMessage) noMenusMessage.classList.remove('hidden');
+        return;
+      }
+
+      if(noMenusMessage) noMenusMessage.classList.add('hidden');
+
+      container.innerHTML = dynamicMenus.map((menu, index) => `
+        <div class="menu-item" draggable="${isAdmin}" data-menu-id="${menu.id}" data-order="${menu.order}">
+          <div class="menu-item-header">
+            <div class="menu-item-left">
+              ${isAdmin ? '<span class="drag-handle">☰</span>' : ''}
+              <span class="menu-item-icon">${menu.icon}</span>
+              <div>
+                <div class="menu-item-name">${menu.name}</div>
+                <span class="menu-item-type">${menu.type === 'external-link' ? 'External Link' : 'Task List'}</span>
+                ${menu.type === 'external-link' ? `<div class="text-xs text-gray-500 mt-1">${menu.link}</div>` : ''}
+              </div>
+            </div>
+            <div class="menu-item-actions">
+              ${menu.type === 'task-list' ? `
+                <button class="menu-item-btn" onclick="toggleMenuTasks('${menu.id}')">
+                  <span id="toggle-icon-${menu.id}">▼</span> Tasks
+                </button>
+              ` : ''}
+              ${isAdmin ? `
+                ${menu.type === 'task-list' ? `<button class="menu-item-btn" onclick="showAddTaskModal('${menu.id}')">+ Task</button>` : ''}
+                <button class="menu-item-btn" onclick="editMenu('${menu.id}')">✏️ Sửa</button>
+                <button class="menu-item-btn danger" onclick="deleteMenu('${menu.id}')">🗑️ Xóa</button>
+              ` : ''}
+            </div>
+          </div>
+          ${menu.type === 'task-list' ? `
+            <div class="tasks-list" id="tasks-${menu.id}">
+              <div id="tasks-loading-${menu.id}" class="text-sm text-gray-500">Đang tải tasks...</div>
+            </div>
+          ` : ''}
+        </div>
+      `).join('');
+
+      // Setup drag and drop if admin
+      if(isAdmin){
+        setupMenuDragAndDrop();
+      }
+
+      // Load tasks for each task-list menu
+      for(const menu of dynamicMenus){
+        if(menu.type === 'task-list'){
+          await loadMenuTasks(menu.id);
+        }
+      }
+    }
+
+    async function showAddMenuModal(){
+      if(!checkAdminPermission()) return;
+
+      currentEditingMenuId = null;
+      $('#menu-modal-title').textContent = 'Thêm Menu Mới';
+      $('#menu-name').value = '';
+      $('#menu-icon').value = '';
+      $('#menu-type').value = 'task-list';
+      $('#menu-link').value = '';
+      $('#menu-link-field').classList.add('hidden');
+      $('#menu-error-message').classList.add('hidden');
+      $('#menu-modal').classList.add('active');
+    }
+
+    async function editMenu(menuId){
+      if(!checkAdminPermission()) return;
+
+      const menu = dynamicMenus.find(m => m.id === menuId);
+      if(!menu) return;
+
+      currentEditingMenuId = menuId;
+      $('#menu-modal-title').textContent = 'Chỉnh Sửa Menu';
+      $('#menu-name').value = menu.name;
+      $('#menu-icon').value = menu.icon;
+      $('#menu-type').value = menu.type;
+      $('#menu-link').value = menu.link || '';
+
+      if(menu.type === 'external-link'){
+        $('#menu-link-field').classList.remove('hidden');
+      } else {
+        $('#menu-link-field').classList.add('hidden');
+      }
+
+      $('#menu-error-message').classList.add('hidden');
+      $('#menu-modal').classList.add('active');
+    }
+
+    async function handleMenuFormSubmit(e){
+      e.preventDefault();
+      if(!checkAdminPermission()) return;
+
+      const name = $('#menu-name').value.trim();
+      const icon = $('#menu-icon').value.trim();
+      const type = $('#menu-type').value;
+      const link = $('#menu-link').value.trim();
+      const errorEl = $('#menu-error-message');
+      const submitBtn = $('#menu-submit-btn');
+
+      if(!name || !icon){
+        errorEl.textContent = 'Vui lòng nhập đầy đủ thông tin';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      if(type === 'external-link' && !link){
+        errorEl.textContent = 'Vui lòng nhập URL cho External Link';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        submitBtn.disabled = true;
+        errorEl.classList.add('hidden');
+
+        const projectId = ensureProjectId();
+        const menuData = {
+          name,
+          icon,
+          type,
+          link: type === 'external-link' ? link : null,
+          updatedAt: serverTimestamp()
+        };
+
+        if(currentEditingMenuId){
+          // Update
+          await updateDoc(doc(db, 'projects', projectId, 'menus', currentEditingMenuId), menuData);
+          showToast('Cập nhật menu thành công', 'success');
+        } else {
+          // Create
+          const maxOrder = dynamicMenus.length > 0 ? Math.max(...dynamicMenus.map(m => m.order || 0)) : 0;
+          menuData.order = maxOrder + 1;
+          menuData.createdAt = serverTimestamp();
+
+          await addDoc(collection(db, 'projects', projectId, 'menus'), menuData);
+          showToast('Thêm menu thành công', 'success');
+        }
+
+        $('#menu-modal').classList.remove('active');
+        await loadDynamicMenus();
+      } catch(error){
+        console.error('Error saving menu:', error);
+        errorEl.textContent = 'Lỗi khi lưu menu';
+        errorEl.classList.remove('hidden');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    }
+
+    let menuToDelete = null;
+    async function deleteMenu(menuId){
+      if(!checkAdminPermission()) return;
+
+      menuToDelete = menuId;
+      $('#delete-menu-modal').classList.add('active');
+    }
+
+    async function confirmDeleteMenu(){
+      if(!menuToDelete || !checkAdminPermission()) return;
+
+      try {
+        const projectId = ensureProjectId();
+
+        // Delete all tasks in this menu first
+        const tasksSnapshot = await getDocs(collection(db, 'projects', projectId, 'menus', menuToDelete, 'tasks'));
+        const batch = writeBatch(db);
+        tasksSnapshot.forEach(taskDoc => {
+          batch.delete(taskDoc.ref);
+        });
+        await batch.commit();
+
+        // Delete the menu
+        await deleteDoc(doc(db, 'projects', projectId, 'menus', menuToDelete));
+
+        showToast('Xóa menu thành công', 'success');
+        $('#delete-menu-modal').classList.remove('active');
+        await loadDynamicMenus();
+        menuToDelete = null;
+      } catch(error){
+        console.error('Error deleting menu:', error);
+        showToast('Lỗi khi xóa menu', 'error');
+      }
+    }
+
+    function setupMenuDragAndDrop(){
+      const menuItems = $$('.menu-item');
+      let draggedItem = null;
+
+      menuItems.forEach(item => {
+        item.addEventListener('dragstart', (e) => {
+          draggedItem = item;
+          item.classList.add('dragging');
+        });
+
+        item.addEventListener('dragend', (e) => {
+          item.classList.remove('dragging');
+        });
+
+        item.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          const afterElement = getDragAfterElement(e.clientY);
+          const container = $('#menus-container');
+          if(afterElement == null){
+            container.appendChild(draggedItem);
+          } else {
+            container.insertBefore(draggedItem, afterElement);
+          }
+        });
+
+        item.addEventListener('drop', async (e) => {
+          e.preventDefault();
+          await saveMenuOrder();
+        });
+      });
+    }
+
+    function getDragAfterElement(y){
+      const draggableElements = [...$$('.menu-item:not(.dragging)')];
+
+      return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+
+        if(offset < 0 && offset > closest.offset){
+          return { offset: offset, element: child };
+        } else {
+          return closest;
+        }
+      }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    async function saveMenuOrder(){
+      if(!checkAdminPermission()) return;
+
+      try {
+        const projectId = ensureProjectId();
+        const menuItems = $$('.menu-item');
+        const batch = writeBatch(db);
+
+        menuItems.forEach((item, index) => {
+          const menuId = item.dataset.menuId;
+          const menuRef = doc(db, 'projects', projectId, 'menus', menuId);
+          batch.update(menuRef, { order: index + 1 });
+        });
+
+        await batch.commit();
+        showToast('Cập nhật thứ tự thành công', 'success');
+        await loadDynamicMenus();
+      } catch(error){
+        console.error('Error saving menu order:', error);
+        showToast('Lỗi khi lưu thứ tự', 'error');
+      }
+    }
+
+    // ========= TASK MANAGEMENT =========
+    async function loadMenuTasks(menuId){
+      if(!db) return;
+
+      try {
+        const projectId = ensureProjectId();
+        const tasksSnapshot = await getDocs(query(
+          collection(db, 'projects', projectId, 'menus', menuId, 'tasks'),
+          orderBy('order')
+        ));
+
+        const tasks = [];
+        tasksSnapshot.forEach(doc => {
+          tasks.push({ id: doc.id, menuId, ...doc.data() });
+        });
+
+        dynamicTasks[menuId] = tasks;
+        renderMenuTasks(menuId);
+      } catch(error){
+        console.error('Error loading tasks:', error);
+        const container = $(`#tasks-${menuId}`);
+        if(container){
+          container.innerHTML = '<p class="text-sm text-red-500">Lỗi tải tasks</p>';
+        }
+      }
+    }
+
+    function renderMenuTasks(menuId){
+      const container = $(`#tasks-${menuId}`);
+      if(!container) return;
+
+      const tasks = dynamicTasks[menuId] || [];
+
+      if(tasks.length === 0){
+        container.innerHTML = '<p class="text-sm text-gray-500 py-2">Chưa có task nào</p>';
+        return;
+      }
+
+      container.innerHTML = tasks.map(task => {
+        const assignee = assignees.find(a => a.id === task.assigneeId);
+        const assigneeName = assignee ? assignee.name : 'Chưa gán';
+
+        return `
+          <div class="task-item">
+            <div class="task-item-header">
+              <div class="task-item-title">${task.name}</div>
+              <div class="task-item-actions">
+                ${isAdmin ? `
+                  <button class="task-item-btn" onclick="editTask('${menuId}', '${task.id}')">✏️</button>
+                  <button class="task-item-btn danger" onclick="deletePlanTask('${menuId}', '${task.id}')">🗑️</button>
+                ` : ''}
+              </div>
+            </div>
+            <div class="task-item-meta">
+              ${task.description ? `<div class="mb-1" style="white-space: pre-wrap;">${task.description}</div>` : ''}
+              <div>📅 Deadline: ${task.endDate ? formatDateFromISO(task.endDate) : 'Chưa đặt'}</div>
+              <div>👤 Phụ trách: ${assigneeName}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleMenuTasks(menuId){
+      const container = $(`#tasks-${menuId}`);
+      const icon = $(`#toggle-icon-${menuId}`);
+
+      if(!container) return;
+
+      const isExpanded = container.classList.contains('expanded');
+      container.classList.toggle('expanded');
+
+      if(icon){
+        icon.textContent = isExpanded ? '▼' : '▲';
+      }
+    }
+
+    async function showAddTaskModal(menuId){
+      if(!checkAdminPermission()) return;
+
+      currentMenuIdForTask = menuId;
+      currentEditingTaskId = null;
+
+      $('#task-modal-title').textContent = 'Thêm Task Mới';
+      $('#task-name').value = '';
+      $('#task-description').value = '';
+      $('#task-start-date').value = '';
+      $('#task-end-date').value = '';
+      $('#task-assignee').value = '';
+      $('#task-error-message').classList.add('hidden');
+
+      populateAssigneeDropdown();
+      $('#task-modal').classList.add('active');
+    }
+
+    async function editTask(menuId, taskId){
+      if(!checkAdminPermission()) return;
+
+      const tasks = dynamicTasks[menuId] || [];
+      const task = tasks.find(t => t.id === taskId);
+      if(!task) return;
+
+      currentMenuIdForTask = menuId;
+      currentEditingTaskId = taskId;
+
+      $('#task-modal-title').textContent = 'Chỉnh Sửa Task';
+      $('#task-name').value = task.name;
+      $('#task-description').value = task.description || '';
+      $('#task-start-date').value = task.startDate || '';
+      $('#task-end-date').value = task.endDate || '';
+      $('#task-assignee').value = task.assigneeId || '';
+      $('#task-error-message').classList.add('hidden');
+
+      populateAssigneeDropdown();
+      $('#task-modal').classList.add('active');
+    }
+
+    async function handleTaskFormSubmit(e){
+      e.preventDefault();
+      if(!checkAdminPermission()) return;
+
+      const name = $('#task-name').value.trim();
+      const description = $('#task-description').value.trim();
+      const startDate = $('#task-start-date').value;
+      const endDate = $('#task-end-date').value;
+      const assigneeId = $('#task-assignee').value;
+      const errorEl = $('#task-error-message');
+      const submitBtn = $('#task-submit-btn');
+
+      if(!name || !endDate || !assigneeId){
+        errorEl.textContent = 'Vui lòng nhập đầy đủ thông tin bắt buộc';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        submitBtn.disabled = true;
+        errorEl.classList.add('hidden');
+
+        const projectId = ensureProjectId();
+        const taskData = {
+          name,
+          description,
+          startDate,
+          endDate,
+          assigneeId,
+          updatedAt: serverTimestamp()
+        };
+
+        if(currentEditingTaskId){
+          // Update
+          await updateDoc(doc(db, 'projects', projectId, 'menus', currentMenuIdForTask, 'tasks', currentEditingTaskId), taskData);
+          showToast('Cập nhật task thành công', 'success');
+        } else {
+          // Create
+          const existingTasks = dynamicTasks[currentMenuIdForTask] || [];
+          const maxOrder = existingTasks.length > 0 ? Math.max(...existingTasks.map(t => t.order || 0)) : 0;
+          taskData.order = maxOrder + 1;
+          taskData.createdAt = serverTimestamp();
+
+          await addDoc(collection(db, 'projects', projectId, 'menus', currentMenuIdForTask, 'tasks'), taskData);
+          showToast('Thêm task thành công', 'success');
+        }
+
+        $('#task-modal').classList.remove('active');
+        await loadMenuTasks(currentMenuIdForTask);
+        await renderDynamicMenus();
+      } catch(error){
+        console.error('Error saving task:', error);
+        errorEl.textContent = 'Lỗi khi lưu task';
+        errorEl.classList.remove('hidden');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    }
+
+    let taskToDelete = { menuId: null, taskId: null };
+    async function deletePlanTask(menuId, taskId){
+      if(!checkAdminPermission()) return;
+
+      taskToDelete = { menuId, taskId };
+      $('#delete-plan-task-modal').classList.add('active');
+    }
+
+    async function confirmDeletePlanTask(){
+      if(!taskToDelete.menuId || !taskToDelete.taskId || !checkAdminPermission()) return;
+
+      try {
+        const projectId = ensureProjectId();
+        await deleteDoc(doc(db, 'projects', projectId, 'menus', taskToDelete.menuId, 'tasks', taskToDelete.taskId));
+
+        showToast('Xóa task thành công', 'success');
+        $('#delete-plan-task-modal').classList.remove('active');
+        await loadMenuTasks(taskToDelete.menuId);
+        await renderDynamicMenus();
+        taskToDelete = { menuId: null, taskId: null };
+      } catch(error){
+        console.error('Error deleting task:', error);
+        showToast('Lỗi khi xóa task', 'error');
+      }
+    }
+
+    function formatDateFromISO(isoDate){
+      if(!isoDate) return '';
+      const date = new Date(isoDate);
+      return formatDate(date);
+    }
+
     function renderSidebarDynamic(){
       // Will implement dynamic sidebar rendering
       // For now, keep static sidebar
     }
 
-    async function renderDynamicMenus(){
-      // Will implement full rendering in Plan Manager
-    }
-
-    // Assignees Management (Placeholder - Full implementation below)
+    // ========= ASSIGNEE MANAGEMENT =========
     async function loadAssignees(){
       if(!db) return;
       try {
@@ -3775,11 +4241,103 @@
     }
 
     function renderAssigneesList(){
-      // Will implement assignees list rendering
+      const container = $('#assignees-list');
+      if(!container) return;
+
+      if(assignees.length === 0){
+        container.innerHTML = '<p class="text-sm text-gray-500">Chưa có phụ trách nào. Nhấn "Thêm Phụ Trách" để bắt đầu.</p>';
+        return;
+      }
+
+      container.innerHTML = assignees.map(assignee => `
+        <div class="assignee-chip">
+          <span>${assignee.name}</span>
+          ${isAdmin ? `<button onclick="deleteAssignee('${assignee.id}')" title="Xóa">&times;</button>` : ''}
+        </div>
+      `).join('');
     }
 
     function populateAssigneeDropdown(){
-      // Will populate the task assignee dropdown
+      const dropdown = $('#task-assignee');
+      if(!dropdown) return;
+
+      const currentValue = dropdown.value;
+
+      dropdown.innerHTML = '<option value="">-- Chọn phụ trách --</option>' +
+        assignees.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+
+      if(currentValue) dropdown.value = currentValue;
+    }
+
+    async function showAddAssigneeModal(){
+      if(!checkAdminPermission()) return;
+
+      currentEditingAssigneeId = null;
+      $('#assignee-name').value = '';
+      $('#assignee-error-message').classList.add('hidden');
+      $('#assignee-modal').classList.add('active');
+    }
+
+    async function handleAssigneeFormSubmit(e){
+      e.preventDefault();
+      if(!checkAdminPermission()) return;
+
+      const name = $('#assignee-name').value.trim();
+      const errorEl = $('#assignee-error-message');
+      const submitBtn = $('#assignee-submit-btn');
+
+      if(!name){
+        errorEl.textContent = 'Vui lòng nhập tên phụ trách';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        submitBtn.disabled = true;
+        errorEl.classList.add('hidden');
+
+        const projectId = ensureProjectId();
+
+        await addDoc(collection(db, 'projects', projectId, 'assignees'), {
+          name,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+
+        showToast('Thêm phụ trách thành công', 'success');
+        $('#assignee-modal').classList.remove('active');
+        await loadAssignees();
+      } catch(error){
+        console.error('Error saving assignee:', error);
+        errorEl.textContent = 'Lỗi khi lưu phụ trách';
+        errorEl.classList.remove('hidden');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    }
+
+    let assigneeToDelete = null;
+    async function deleteAssignee(assigneeId){
+      if(!checkAdminPermission()) return;
+
+      assigneeToDelete = assigneeId;
+      $('#delete-assignee-modal').classList.add('active');
+    }
+
+    async function confirmDeleteAssignee(){
+      if(!assigneeToDelete || !checkAdminPermission()) return;
+
+      try {
+        const projectId = ensureProjectId();
+        await deleteDoc(doc(db, 'projects', projectId, 'assignees', assigneeToDelete));
+        showToast('Xóa phụ trách thành công', 'success');
+        $('#delete-assignee-modal').classList.remove('active');
+        await loadAssignees();
+        assigneeToDelete = null;
+      } catch(error){
+        console.error('Error deleting assignee:', error);
+        showToast('Lỗi khi xóa phụ trách', 'error');
+      }
     }
 
     async function initializeRealtimePersistence(){
@@ -4118,9 +4676,135 @@
       }
     });
 
+    // ========= PLAN MANAGER EVENT LISTENERS =========
+    const addMenuBtn = $('#add-menu-btn');
+    const menuForm = $('#menu-form');
+    const menuCancelBtn = $('#menu-cancel-btn');
+    const menuModal = $('#menu-modal');
+    const deleteMenuModal = $('#delete-menu-modal');
+    const cancelDeleteMenuBtn = $('#cancel-delete-menu-btn');
+    const confirmDeleteMenuBtn = $('#confirm-delete-menu-btn');
+
+    const addTaskBtn = $('#add-task-btn'); // This won't exist, tasks are added via menu-specific buttons
+    const taskForm = $('#task-form');
+    const taskCancelBtn = $('#task-cancel-btn');
+    const taskModal = $('#task-modal');
+    const deletePlanTaskModal = $('#delete-plan-task-modal');
+    const cancelDeletePlanTaskBtn = $('#cancel-delete-plan-task-btn');
+    const confirmDeletePlanTaskBtn = $('#confirm-delete-plan-task-btn');
+
+    const addAssigneeBtn = $('#add-assignee-btn');
+    const assigneeForm = $('#assignee-form');
+    const assigneeCancelBtn = $('#assignee-cancel-btn');
+    const assigneeModal = $('#assignee-modal');
+    const deleteAssigneeModal = $('#delete-assignee-modal');
+    const cancelDeleteAssigneeBtn = $('#cancel-delete-assignee-btn');
+    const confirmDeleteAssigneeBtn = $('#confirm-delete-assignee-btn');
+
+    // Menu events
+    if(addMenuBtn) addMenuBtn.addEventListener('click', showAddMenuModal);
+    if(menuForm) menuForm.addEventListener('submit', handleMenuFormSubmit);
+    if(menuCancelBtn) menuCancelBtn.addEventListener('click', () => {
+      $('#menu-modal').classList.remove('active');
+    });
+    if(menuModal) menuModal.addEventListener('click', e => {
+      if(e.target === menuModal) $('#menu-modal').classList.remove('active');
+    });
+    if(cancelDeleteMenuBtn) cancelDeleteMenuBtn.addEventListener('click', () => {
+      $('#delete-menu-modal').classList.remove('active');
+      menuToDelete = null;
+    });
+    if(confirmDeleteMenuBtn) confirmDeleteMenuBtn.addEventListener('click', confirmDeleteMenu);
+    if(deleteMenuModal) deleteMenuModal.addEventListener('click', e => {
+      if(e.target === deleteMenuModal){
+        $('#delete-menu-modal').classList.remove('active');
+        menuToDelete = null;
+      }
+    });
+
+    // Menu type change event (show/hide link field)
+    const menuTypeSelect = $('#menu-type');
+    if(menuTypeSelect){
+      menuTypeSelect.addEventListener('change', (e) => {
+        const linkField = $('#menu-link-field');
+        if(e.target.value === 'external-link'){
+          linkField.classList.remove('hidden');
+        } else {
+          linkField.classList.add('hidden');
+        }
+      });
+    }
+
+    // Emoji picker
+    const emojiPickerBtn = $('#emoji-picker-btn');
+    const emojiPicker = $('#emoji-picker');
+    if(emojiPickerBtn){
+      emojiPickerBtn.addEventListener('click', () => {
+        emojiPicker.classList.toggle('hidden');
+      });
+    }
+    if(emojiPicker){
+      const emojiOptions = $$('.emoji-option', emojiPicker);
+      emojiOptions.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const emoji = e.target.textContent;
+          $('#menu-icon').value = emoji;
+          emojiPicker.classList.add('hidden');
+        });
+      });
+    }
+
+    // Task events
+    if(taskForm) taskForm.addEventListener('submit', handleTaskFormSubmit);
+    if(taskCancelBtn) taskCancelBtn.addEventListener('click', () => {
+      $('#task-modal').classList.remove('active');
+    });
+    if(taskModal) taskModal.addEventListener('click', e => {
+      if(e.target === taskModal) $('#task-modal').classList.remove('active');
+    });
+    if(cancelDeletePlanTaskBtn) cancelDeletePlanTaskBtn.addEventListener('click', () => {
+      $('#delete-plan-task-modal').classList.remove('active');
+      taskToDelete = { menuId: null, taskId: null };
+    });
+    if(confirmDeletePlanTaskBtn) confirmDeletePlanTaskBtn.addEventListener('click', confirmDeletePlanTask);
+    if(deletePlanTaskModal) deletePlanTaskModal.addEventListener('click', e => {
+      if(e.target === deletePlanTaskModal){
+        $('#delete-plan-task-modal').classList.remove('active');
+        taskToDelete = { menuId: null, taskId: null };
+      }
+    });
+
+    // Assignee events
+    if(addAssigneeBtn) addAssigneeBtn.addEventListener('click', showAddAssigneeModal);
+    if(assigneeForm) assigneeForm.addEventListener('submit', handleAssigneeFormSubmit);
+    if(assigneeCancelBtn) assigneeCancelBtn.addEventListener('click', () => {
+      $('#assignee-modal').classList.remove('active');
+    });
+    if(assigneeModal) assigneeModal.addEventListener('click', e => {
+      if(e.target === assigneeModal) $('#assignee-modal').classList.remove('active');
+    });
+    if(cancelDeleteAssigneeBtn) cancelDeleteAssigneeBtn.addEventListener('click', () => {
+      $('#delete-assignee-modal').classList.remove('active');
+      assigneeToDelete = null;
+    });
+    if(confirmDeleteAssigneeBtn) confirmDeleteAssigneeBtn.addEventListener('click', confirmDeleteAssignee);
+    if(deleteAssigneeModal) deleteAssigneeModal.addEventListener('click', e => {
+      if(e.target === deleteAssigneeModal){
+        $('#delete-assignee-modal').classList.remove('active');
+        assigneeToDelete = null;
+      }
+    });
+
     // Expose functions to global scope for onclick handlers
     window.editUser = editUser;
     window.deleteUser = deleteUser;
+    window.editMenu = editMenu;
+    window.deleteMenu = deleteMenu;
+    window.toggleMenuTasks = toggleMenuTasks;
+    window.showAddTaskModal = showAddTaskModal;
+    window.editTask = editTask;
+    window.deletePlanTask = deletePlanTask;
+    window.deleteAssignee = deleteAssignee;
 
     // Initialize authentication
     initializeAuthentication();
