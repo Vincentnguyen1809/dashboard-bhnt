@@ -204,6 +204,37 @@
       .card-section, .stat-card{ padding:1rem; }
       #toast-notification{ right:1rem; left:1rem; max-width:none; }
     }
+    /* Plan Manager Styles */
+    .menu-item{ background:#fff; border:1px solid #e5e7eb; border-radius:0.5rem; padding:1rem; margin-bottom:0.75rem; cursor:move; }
+    .menu-item.dragging{ opacity:0.5; }
+    .menu-item-header{ display:flex; align-items:center; justify-content:space-between; }
+    .menu-item-left{ display:flex; align-items:center; gap:1rem; flex:1; }
+    .menu-item-icon{ font-size:1.5rem; }
+    .menu-item-name{ font-size:1rem; font-weight:600; color:#1f2937; }
+    .menu-item-type{ font-size:0.75rem; color:#6b7280; background:#f3f4f6; padding:0.25rem 0.5rem; border-radius:0.25rem; }
+    .menu-item-actions{ display:flex; gap:0.5rem; }
+    .menu-item-btn{ padding:0.375rem 0.75rem; font-size:0.8125rem; border-radius:0.375rem; border:1px solid #d1d5db; background:#fff; cursor:pointer; transition:all .2s; }
+    .menu-item-btn:hover{ background:#f3f4f6; }
+    .menu-item-btn.danger{ color:#dc2626; border-color:#fca5a5; }
+    .menu-item-btn.danger:hover{ background:#fef2f2; }
+    .tasks-list{ margin-top:1rem; padding-top:1rem; border-top:1px solid #e5e7eb; display:none; }
+    .tasks-list.expanded{ display:block; }
+    .task-item{ background:#f9fafb; border:1px solid #e5e7eb; border-radius:0.375rem; padding:0.875rem; margin-bottom:0.5rem; }
+    .task-item-header{ display:flex; align-items:start; justify-content:space-between; gap:1rem; }
+    .task-item-title{ font-size:0.9375rem; font-weight:500; color:#374151; flex:1; }
+    .task-item-meta{ font-size:0.8125rem; color:#6b7280; margin-top:0.5rem; }
+    .task-item-actions{ display:flex; gap:0.5rem; }
+    .task-item-btn{ padding:0.25rem 0.625rem; font-size:0.75rem; border-radius:0.25rem; border:1px solid #d1d5db; background:#fff; cursor:pointer; transition:all .2s; }
+    .task-item-btn:hover{ background:#e5e7eb; }
+    .task-item-btn.danger{ color:#dc2626; }
+    .task-item-btn.danger:hover{ background:#fef2f2; border-color:#fca5a5; }
+    .assignee-chip{ display:inline-flex; align-items:center; gap:0.5rem; background:#dbeafe; color:#1e40af; padding:0.375rem 0.75rem; border-radius:9999px; font-size:0.8125rem; font-weight:500; }
+    .assignee-chip button{ background:none; border:none; color:#1e40af; cursor:pointer; font-size:1rem; line-height:1; padding:0; margin-left:0.25rem; }
+    .assignee-chip button:hover{ color:#1e3a8a; }
+    .drag-handle{ cursor:grab; color:#9ca3af; font-size:1.25rem; padding:0.25rem; }
+    .drag-handle:active{ cursor:grabbing; }
+    .toggle-tasks-btn{ font-size:0.875rem; color:#2563eb; background:none; border:none; cursor:pointer; padding:0.5rem 0; }
+    .toggle-tasks-btn:hover{ text-decoration:underline; }
   </style>
 </head>
 <body class="text-gray-800">
@@ -248,6 +279,210 @@
   <!-- Toast Notification -->
   <div id="toast-notification" class="fixed top-4 right-4 z-50 hidden transition-all duration-300 transform translate-x-0"></div>
 
+  <!-- User Add/Edit Modal -->
+  <div id="user-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true" style="max-width: 500px;">
+      <h3 id="user-modal-title" class="modal-title">Thêm Người Dùng</h3>
+      <form id="user-form" class="space-y-4">
+        <div>
+          <label for="user-email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <input type="email" id="user-email" class="filter-input" required />
+        </div>
+        <div>
+          <label for="user-display-name" class="block text-sm font-medium text-gray-700 mb-1">Tên hiển thị</label>
+          <input type="text" id="user-display-name" class="filter-input" required />
+        </div>
+        <div>
+          <label for="user-password" class="block text-sm font-medium text-gray-700 mb-1">Mật khẩu</label>
+          <input type="password" id="user-password" class="filter-input" minlength="6" required />
+          <p class="text-xs text-gray-500 mt-1">Tối thiểu 6 ký tự</p>
+        </div>
+        <div>
+          <label for="user-role" class="block text-sm font-medium text-gray-700 mb-1">Vai trò</label>
+          <select id="user-role" class="filter-input" required>
+            <option value="employee">Employee</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div id="user-error-message" class="text-red-600 text-sm hidden"></div>
+        <div class="modal-buttons">
+          <button type="button" id="user-cancel-btn" class="task-btn btn-cancel">Hủy</button>
+          <button type="submit" id="user-submit-btn" class="task-btn btn-complete">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Delete User Confirmation Modal -->
+  <div id="delete-user-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true">
+      <h3 class="modal-title">Xác nhận xóa người dùng</h3>
+      <p class="modal-message">Bạn có chắc chắn muốn xóa người dùng này không? Hành động này không thể hoàn tác.</p>
+      <div class="modal-buttons">
+        <button id="cancel-delete-user-btn" class="task-btn btn-cancel">Không</button>
+        <button id="confirm-delete-user-btn" class="task-btn" style="background-color:#ef4444; color:#fff;">Có, Xóa</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Menu Add/Edit Modal -->
+  <div id="menu-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true" style="max-width: 600px;">
+      <h3 id="menu-modal-title" class="modal-title">Thêm Menu Mới</h3>
+      <form id="menu-form" class="space-y-4">
+        <div>
+          <label for="menu-name" class="block text-sm font-medium text-gray-700 mb-1">Tên Menu</label>
+          <input type="text" id="menu-name" class="filter-input" placeholder="VD: GĐ 5: Triển Khai" required />
+        </div>
+        <div>
+          <label for="menu-icon" class="block text-sm font-medium text-gray-700 mb-1">Icon (Emoji)</label>
+          <div class="flex gap-2">
+            <input type="text" id="menu-icon" class="filter-input" placeholder="📌" maxlength="2" required />
+            <button type="button" id="emoji-picker-btn" class="task-btn btn-view px-4">Chọn Emoji</button>
+          </div>
+          <div id="emoji-picker" class="hidden mt-2 p-3 border border-gray-300 rounded-lg bg-white max-h-60 overflow-y-auto">
+            <div class="grid grid-cols-8 gap-2 text-2xl">
+              <button type="button" class="emoji-option hover:bg-gray-100 p-2 rounded">📊</button>
+              <button type="button" class="emoji-option hover:bg-gray-100 p-2 rounded">🎯</button>
+              <button type="button" class="emoji-option hover:bg-gray-100 p-2 rounded">🏗️</button>
+              <button type="button" class="emoji-option hover:bg-gray-100 p-2 rounded">⚙️</button>
+              <button type="button" class="emoji-option hover:bg-gray-100 p-2 rounded">🚀</button>
+              <button type="button" class="emoji-option hover:bg-gray-100 p-2 rounded">📝</button>
+              <button type="button" class="emoji-option hover:bg-gray-100 p-2 rounded">🔧</button>
+              <button type="button" class="emoji-option hover:bg-gray-100 p-2 rounded">🗂️</button>
+              <button type="button" class="emoji-option hover:bg-gray-100 p-2 rounded">📌</button>
+              <button type="button" class="emoji-option hover:bg-gray-100 p-2 rounded">⭐</button>
+              <button type="button" class="emoji-option hover:bg-gray-100 p-2 rounded">💼</button>
+              <button type="button" class="emoji-option hover:bg-gray-100 p-2 rounded">📈</button>
+              <button type="button" class="emoji-option hover:bg-gray-100 p-2 rounded">💡</button>
+              <button type="button" class="emoji-option hover:bg-gray-100 p-2 rounded">🎨</button>
+              <button type="button" class="emoji-option hover:bg-gray-100 p-2 rounded">📱</button>
+              <button type="button" class="emoji-option hover:bg-gray-100 p-2 rounded">🌟</button>
+              <button type="button" class="emoji-option hover:bg-gray-100 p-2 rounded">🔥</button>
+              <button type="button" class="emoji-option hover:bg-gray-100 p-2 rounded">✨</button>
+              <button type="button" class="emoji-option hover:bg-gray-100 p-2 rounded">🎁</button>
+              <button type="button" class="emoji-option hover:bg-gray-100 p-2 rounded">🏆</button>
+              <button type="button" class="emoji-option hover:bg-gray-100 p-2 rounded">📚</button>
+              <button type="button" class="emoji-option hover:bg-gray-100 p-2 rounded">🎓</button>
+              <button type="button" class="emoji-option hover:bg-gray-100 p-2 rounded">🔔</button>
+              <button type="button" class="emoji-option hover:bg-gray-100 p-2 rounded">📧</button>
+            </div>
+          </div>
+        </div>
+        <div>
+          <label for="menu-type" class="block text-sm font-medium text-gray-700 mb-1">Loại Menu</label>
+          <select id="menu-type" class="filter-input" required>
+            <option value="task-list">Task List (Danh sách công việc)</option>
+            <option value="external-link">External Link (Liên kết ngoài)</option>
+          </select>
+        </div>
+        <div id="menu-link-field" class="hidden">
+          <label for="menu-link" class="block text-sm font-medium text-gray-700 mb-1">URL Liên kết</label>
+          <input type="url" id="menu-link" class="filter-input" placeholder="https://example.com" />
+        </div>
+        <div id="menu-error-message" class="text-red-600 text-sm hidden"></div>
+        <div class="modal-buttons">
+          <button type="button" id="menu-cancel-btn" class="task-btn btn-cancel">Hủy</button>
+          <button type="submit" id="menu-submit-btn" class="task-btn btn-complete">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Delete Menu Confirmation Modal -->
+  <div id="delete-menu-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true">
+      <h3 class="modal-title">Xác nhận xóa menu</h3>
+      <p class="modal-message">Bạn có chắc chắn muốn xóa menu này và tất cả tasks bên trong không? Hành động này không thể hoàn tác.</p>
+      <div class="modal-buttons">
+        <button id="cancel-delete-menu-btn" class="task-btn btn-cancel">Không</button>
+        <button id="confirm-delete-menu-btn" class="task-btn" style="background-color:#ef4444; color:#fff;">Có, Xóa</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Task Add/Edit Modal -->
+  <div id="task-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true" style="max-width: 650px;">
+      <h3 id="task-modal-title" class="modal-title">Thêm Task Mới</h3>
+      <form id="task-form" class="space-y-4">
+        <div>
+          <label for="task-name" class="block text-sm font-medium text-gray-700 mb-1">Tên Task</label>
+          <input type="text" id="task-name" class="filter-input" placeholder="VD: Task 1.1: Nghiên cứu thị trường" required />
+        </div>
+        <div>
+          <label for="task-description" class="block text-sm font-medium text-gray-700 mb-1">Mô tả (từng dòng)</label>
+          <textarea id="task-description" class="filter-input" rows="5" placeholder="Mỗi dòng là một mục công việc chi tiết&#10;Dòng 1: Công việc A&#10;Dòng 2: Công việc B"></textarea>
+          <p class="text-xs text-gray-500 mt-1">Mỗi dòng sẽ hiển thị như một bullet point</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label for="task-start-date" class="block text-sm font-medium text-gray-700 mb-1">Ngày bắt đầu</label>
+            <input type="date" id="task-start-date" class="filter-input" />
+          </div>
+          <div>
+            <label for="task-end-date" class="block text-sm font-medium text-gray-700 mb-1">Deadline</label>
+            <input type="date" id="task-end-date" class="filter-input" required />
+          </div>
+        </div>
+        <div>
+          <label for="task-assignee" class="block text-sm font-medium text-gray-700 mb-1">Phụ Trách</label>
+          <select id="task-assignee" class="filter-input" required>
+            <option value="">-- Chọn phụ trách --</option>
+            <!-- Assignees will be populated dynamically -->
+          </select>
+        </div>
+        <div id="task-error-message" class="text-red-600 text-sm hidden"></div>
+        <div class="modal-buttons">
+          <button type="button" id="task-cancel-btn" class="task-btn btn-cancel">Hủy</button>
+          <button type="submit" id="task-submit-btn" class="task-btn btn-complete">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Delete Task from Plan Manager Confirmation Modal -->
+  <div id="delete-plan-task-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true">
+      <h3 class="modal-title">Xác nhận xóa task</h3>
+      <p class="modal-message">Bạn có chắc chắn muốn xóa task này không? Hành động này không thể hoàn tác.</p>
+      <div class="modal-buttons">
+        <button id="cancel-delete-plan-task-btn" class="task-btn btn-cancel">Không</button>
+        <button id="confirm-delete-plan-task-btn" class="task-btn" style="background-color:#ef4444; color:#fff;">Có, Xóa</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Assignee Add Modal -->
+  <div id="assignee-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true">
+      <h3 class="modal-title">Thêm Phụ Trách Mới</h3>
+      <form id="assignee-form" class="space-y-4">
+        <div>
+          <label for="assignee-name" class="block text-sm font-medium text-gray-700 mb-1">Tên Bộ Phận/Nhóm</label>
+          <input type="text" id="assignee-name" class="filter-input" placeholder="VD: Marketing, Technical Team" required />
+        </div>
+        <div id="assignee-error-message" class="text-red-600 text-sm hidden"></div>
+        <div class="modal-buttons">
+          <button type="button" id="assignee-cancel-btn" class="task-btn btn-cancel">Hủy</button>
+          <button type="submit" id="assignee-submit-btn" class="task-btn btn-complete">Lưu</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Delete Assignee Confirmation Modal -->
+  <div id="delete-assignee-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true">
+      <h3 class="modal-title">Xác nhận xóa phụ trách</h3>
+      <p class="modal-message">Bạn có chắc chắn muốn xóa phụ trách này không?</p>
+      <div class="modal-buttons">
+        <button id="cancel-delete-assignee-btn" class="task-btn btn-cancel">Không</button>
+        <button id="confirm-delete-assignee-btn" class="task-btn" style="background-color:#ef4444; color:#fff;">Có, Xóa</button>
+      </div>
+    </div>
+  </div>
+
   <section id="cover-page" class="min-h-screen flex flex-col items-center justify-center bg-sky-100 text-center px-6 py-16">
     <div class="max-w-4xl mx-auto space-y-8">
       <div id="cover-logo-wrapper" class="flex justify-center">
@@ -268,6 +503,52 @@
     </div>
   </section>
 
+  <!-- Login Page -->
+  <section id="login-page" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-6 py-16 hidden">
+    <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md">
+      <div class="text-center mb-8">
+        <div id="login-logo-wrapper" class="flex justify-center mb-4">
+          <img id="login-logo" class="h-16 w-auto hidden" alt="Logo" />
+        </div>
+        <h2 class="text-2xl font-bold text-gray-800">Đăng Nhập</h2>
+        <p class="text-gray-600 mt-2">Đăng nhập để truy cập kế hoạch dự án</p>
+      </div>
+      <form id="login-form" class="space-y-6">
+        <div>
+          <label for="login-email" class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+          <input
+            type="email"
+            id="login-email"
+            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="your@email.com"
+            required
+          />
+        </div>
+        <div>
+          <label for="login-password" class="block text-sm font-medium text-gray-700 mb-2">Mật khẩu</label>
+          <input
+            type="password"
+            id="login-password"
+            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            placeholder="••••••••"
+            required
+          />
+        </div>
+        <div id="login-error" class="text-red-600 text-sm hidden"></div>
+        <button
+          type="submit"
+          id="login-btn"
+          class="w-full bg-blue-600 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        >
+          Đăng Nhập
+        </button>
+      </form>
+      <div class="mt-6 text-center">
+        <p class="text-sm text-gray-600">Liên hệ Admin để được cấp tài khoản</p>
+      </div>
+    </div>
+  </section>
+
   <div id="app-layout" class="flex h-screen overflow-hidden hidden">
     <!-- Sidebar -->
     <aside id="sidebar" class="sidebar lg:static" aria-label="Thanh điều hướng">
@@ -279,13 +560,20 @@
           <button id="close-menu" class="lg:hidden ml-auto text-gray-600 hover:text-gray-900 text-2xl" aria-label="Đóng menu">&times;</button>
         </div>
         <div class="px-5 py-3 text-xs font-semibold uppercase tracking-wider text-gray-500" id="sidebar-branding-title">Master Plan (A-Z+)</div>
-        <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
+        <nav id="main-navigation" class="flex-1 p-3 space-y-1 overflow-y-auto">
+          <!-- Dynamic menu items will be inserted here -->
           <a class="nav-link" href="/tongquan"><span class="emoji">📊</span><span>Tổng Quan</span></a>
           <a class="nav-link" href="/giaidoan1"><span class="emoji">🎯</span><span>GĐ 1: Nền Tảng</span></a>
           <a class="nav-link" href="/giaidoan2"><span class="emoji">🏗️</span><span>GĐ 2: Xây Dựng</span></a>
           <a class="nav-link" href="/giaidoan3"><span class="emoji">⚙️</span><span>GĐ 3: Vận Hành & Tối Ưu</span></a>
           <a class="nav-link" href="/giaidoan4"><span class="emoji">🚀</span><span>GĐ 4: Ra Mắt</span></a>
           <a class="nav-link" href="/ghichu"><span class="emoji">📝</span><span>Ghi Chú Dự Án</span></a>
+
+          <!-- Admin-only links -->
+          <div id="admin-nav-section" class="hidden border-t border-gray-300 pt-2 mt-2">
+            <a class="nav-link" href="/quan-ly-ke-hoach" id="nav-plan-manager"><span class="emoji">🗂️</span><span>Quản Lý Kế Hoạch</span></a>
+          </div>
+
           <a class="nav-link" href="/cai-dat"><span class="emoji">🔧</span><span>Cài Đặt</span></a>
         </nav>
       </div>
@@ -315,9 +603,16 @@
               <div id="notification-empty" class="notification-empty">Không có thông báo quan trọng.</div>
             </div>
           </div>
-          <div id="user-avatar-wrapper" class="flex items-center justify-center w-8 h-8 rounded-full bg-gray-300 text-gray-600 overflow-hidden">
-            <img id="user-avatar" class="w-full h-full object-cover hidden" alt="User avatar" />
-            <svg id="default-avatar-icon" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
+          <div class="flex items-center gap-3">
+            <div class="flex flex-col items-end gap-1">
+              <div id="current-user-name" class="text-sm font-medium text-gray-700"></div>
+              <div id="current-user-role" class="text-xs text-gray-500"></div>
+            </div>
+            <div id="user-avatar-wrapper" class="flex items-center justify-center w-8 h-8 rounded-full bg-gray-300 text-gray-600 overflow-hidden">
+              <img id="user-avatar" class="w-full h-full object-cover hidden" alt="User avatar" />
+              <svg id="default-avatar-icon" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
+            </div>
+            <button id="logout-btn" class="text-sm font-medium text-red-600 hover:text-red-700 hover:underline hidden">Đăng xuất</button>
           </div>
           <div class="flex flex-col items-end gap-1 text-right">
             <div class="text-sm font-medium text-gray-700">Ngày Ra Mắt (D-Day)</div>
@@ -723,8 +1018,74 @@
                   </div>
                 </div>
               </div>
+
+              <!-- User Management Section (Admin Only) -->
+              <div id="user-management-section" class="hidden">
+                <div class="border-t border-gray-300 pt-8 mt-8">
+                  <h3 class="text-xl font-semibold text-gray-800 mb-4">👥 Quản Lý Người Dùng (Admin)</h3>
+                  <div class="settings-group-card">
+                    <div class="flex items-center justify-between mb-4">
+                      <h4 class="settings-group-title">Danh sách người dùng</h4>
+                      <button id="add-user-btn" class="task-btn btn-complete px-4 py-2">+ Thêm người dùng</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                      <table class="notes-table w-full">
+                        <thead>
+                          <tr>
+                            <th class="text-left">Email</th>
+                            <th class="text-left">Tên hiển thị</th>
+                            <th class="text-left">Vai trò</th>
+                            <th class="text-left">Ngày tạo</th>
+                            <th class="text-center">Hành động</th>
+                          </tr>
+                        </thead>
+                        <tbody id="users-table-body">
+                          <!-- Users will be populated here -->
+                        </tbody>
+                      </table>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-4">
+                      <strong>Admin:</strong> Toàn quyền truy cập, bao gồm Quản Lý Kế Hoạch.<br>
+                      <strong>Employee:</strong> Chỉ xem kế hoạch, tạo ghi chú, đánh dấu task hoàn thành, và comment.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div class="flex justify-end">
                 <button id="save-settings-btn" class="task-btn btn-complete px-6">💾 Lưu Cài Đặt</button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Plan Manager -->
+          <section id="plan-manager" class="content-section hidden">
+            <h2 class="sr-only">Quản Lý Kế Hoạch</h2>
+            <p class="section-subtitle">Quản lý menu (phases) và tasks của dự án. Thay đổi ở đây sẽ cập nhật sidebar và tổng quan ngay lập tức.</p>
+
+            <div class="card-section">
+              <div class="flex items-center justify-between mb-6">
+                <h3 class="card-title">📋 Cấu Trúc Menu & Tasks</h3>
+                <button id="add-menu-btn" class="task-btn btn-complete px-4 py-2">+ Thêm Menu Mới</button>
+              </div>
+
+              <div id="menus-container" class="space-y-3">
+                <!-- Menus will be dynamically rendered here -->
+              </div>
+
+              <div id="no-menus-message" class="text-center py-12 text-gray-500 hidden">
+                <p class="text-lg">Chưa có menu nào. Nhấn "Thêm Menu Mới" để bắt đầu.</p>
+              </div>
+            </div>
+
+            <div class="card-section">
+              <h3 class="card-title">🏢 Quản Lý Phụ Trách (Assignees)</h3>
+              <div class="flex items-center justify-between mb-4">
+                <p class="text-sm text-gray-600">Danh sách bộ phận/nhóm có thể được gán cho tasks</p>
+                <button id="add-assignee-btn" class="task-btn btn-complete px-4 py-2">+ Thêm Phụ Trách</button>
+              </div>
+              <div id="assignees-list" class="flex flex-wrap gap-2">
+                <!-- Assignees will be rendered here -->
               </div>
             </div>
           </section>
@@ -758,8 +1119,9 @@
 <!-- Code chính của bạn bắt đầu từ đây (Dòng 357) -->
 <script type="module">
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-  import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+  import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, serverTimestamp, collection, addDoc, deleteDoc, query, orderBy, getDocs, writeBatch } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
   import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
+  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
   document.addEventListener('DOMContentLoaded', () => {
     // ========= CONSTANTS =========
@@ -1025,6 +1387,26 @@
     let notifications = [];
     let notificationState = {};
     let notificationsInitialized = false;
+
+    // Auth & User Management State
+    let auth = null;
+    let currentUser = null;
+    let currentUserData = null;
+    let allUsers = [];
+    let isAdmin = false;
+
+    // Dynamic Data State
+    let dynamicMenus = [];
+    let dynamicTasks = {};
+    let assignees = [];
+    let taskComments = {};
+
+    // Modal State
+    let currentEditingUserId = null;
+    let currentEditingMenuId = null;
+    let currentEditingTaskId = null;
+    let currentEditingAssigneeId = null;
+    let currentMenuIdForTask = null;
 
     // ========= HELPERS =========
     const $ = (sel, ctx=document) => ctx.querySelector(sel);
@@ -2812,6 +3194,7 @@
       gd3: '/giaidoan3',
       gd4: '/giaidoan4',
       notes: '/ghichu',
+      'plan-manager': '/quan-ly-ke-hoach',
       settings: '/cai-dat',
     };
     const sectionTitles = {
@@ -2821,6 +3204,7 @@
       gd3: 'Giai Đoạn 3: Vận Hành & Tối Ưu',
       gd4: 'Giai Đoạn 4: Ra Mắt',
       notes: 'Ghi Chú Dự Án',
+      'plan-manager': 'Quản Lý Kế Hoạch',
       settings: 'Cài Đặt Dự Án',
     };
     const DEFAULT_NAV_HREF = sectionToPath.overview;
@@ -2832,6 +3216,7 @@
       '/giaidoan3': { layout: 'app', section: 'gd3', navHref: sectionToPath.gd3 },
       '/giaidoan4': { layout: 'app', section: 'gd4', navHref: sectionToPath.gd4 },
       '/ghichu': { layout: 'app', section: 'notes', navHref: sectionToPath.notes },
+      '/quan-ly-ke-hoach': { layout: 'app', section: 'plan-manager', navHref: sectionToPath['plan-manager'] },
       '/cai-dat': { layout: 'app', section: 'settings', navHref: sectionToPath.settings },
     };
     let router = null;
@@ -3034,21 +3419,376 @@
       }
     }
 
-    async function initializeRealtimePersistence(){
+    // ========= AUTHENTICATION & USER MANAGEMENT =========
+    async function initializeAuthentication(){
       const firebaseConfig = window.FIREBASE_CONFIG;
       if(!firebaseConfig){
-        console.error('Thiếu cấu hình Firebase. Vui lòng gán window.FIREBASE_CONFIG.');
-        const shareInfo = $('#project-share-info');
-        if(shareInfo){
-          shareInfo.classList.remove('hidden');
-          shareInfo.innerHTML = '<span class="text-red-500">Thiếu cấu hình Firebase (window.FIREBASE_CONFIG).</span>';
-        }
+        console.error('Thiếu cấu hình Firebase.');
         return;
       }
 
       const app = initializeApp(firebaseConfig);
+      auth = getAuth(app);
       db = getFirestore(app);
       storage = getStorage(app);
+
+      // Listen to auth state changes
+      onAuthStateChanged(auth, async (user) => {
+        if(user){
+          // User is logged in
+          currentUser = user;
+          await loadUserData(user.uid);
+          showApp();
+        } else {
+          // User is logged out
+          currentUser = null;
+          currentUserData = null;
+          isAdmin = false;
+          showLoginPage();
+        }
+      });
+    }
+
+    async function loadUserData(uid){
+      try {
+        const userDoc = await getDoc(doc(db, 'users', uid));
+        if(userDoc.exists()){
+          currentUserData = { id: uid, ...userDoc.data() };
+          isAdmin = currentUserData.role === 'admin';
+
+          // Update UI with user info
+          const userNameEl = $('#current-user-name');
+          const userRoleEl = $('#current-user-role');
+          const logoutBtn = $('#logout-btn');
+
+          if(userNameEl) userNameEl.textContent = currentUserData.displayName || currentUserData.email;
+          if(userRoleEl) userRoleEl.textContent = isAdmin ? 'Admin' : 'Employee';
+          if(logoutBtn) logoutBtn.classList.remove('hidden');
+
+          // Show/hide admin sections
+          const adminNavSection = $('#admin-nav-section');
+          const userManagementSection = $('#user-management-section');
+
+          if(isAdmin){
+            if(adminNavSection) adminNavSection.classList.remove('hidden');
+            if(userManagementSection) userManagementSection.classList.remove('hidden');
+          } else {
+            if(adminNavSection) adminNavSection.classList.add('hidden');
+            if(userManagementSection) userManagementSection.classList.add('hidden');
+          }
+
+          // Initialize dynamic data
+          await initializeRealtimePersistence();
+          await loadUsers();
+          await loadDynamicMenus();
+          await loadAssignees();
+        } else {
+          // User not found in database, sign out
+          await signOut(auth);
+          showToast('Người dùng không tồn tại trong hệ thống', 'error');
+        }
+      } catch(error){
+        console.error('Error loading user data:', error);
+        await signOut(auth);
+      }
+    }
+
+    function showLoginPage(){
+      $('#cover-page')?.classList.add('hidden');
+      $('#login-page')?.classList.remove('hidden');
+      $('#app-layout')?.classList.add('hidden');
+    }
+
+    function showCoverPage(){
+      $('#cover-page')?.classList.remove('hidden');
+      $('#login-page')?.classList.add('hidden');
+      $('#app-layout')?.classList.add('hidden');
+    }
+
+    function showApp(){
+      $('#cover-page')?.classList.add('hidden');
+      $('#login-page')?.classList.add('hidden');
+      $('#app-layout')?.classList.remove('hidden');
+    }
+
+    async function handleLogin(e){
+      e.preventDefault();
+      const email = $('#login-email').value.trim();
+      const password = $('#login-password').value;
+      const errorEl = $('#login-error');
+      const loginBtn = $('#login-btn');
+
+      if(!email || !password){
+        errorEl.textContent = 'Vui lòng nhập email và mật khẩu';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        loginBtn.disabled = true;
+        loginBtn.textContent = 'Đang đăng nhập...';
+        errorEl.classList.add('hidden');
+
+        await signInWithEmailAndPassword(auth, email, password);
+        // Auth state listener will handle the rest
+      } catch(error){
+        console.error('Login error:', error);
+        let errorMessage = 'Đăng nhập thất bại';
+
+        if(error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password'){
+          errorMessage = 'Email hoặc mật khẩu không đúng';
+        } else if(error.code === 'auth/invalid-email'){
+          errorMessage = 'Email không hợp lệ';
+        } else if(error.code === 'auth/too-many-requests'){
+          errorMessage = 'Quá nhiều lần đăng nhập thất bại. Vui lòng thử lại sau';
+        }
+
+        errorEl.textContent = errorMessage;
+        errorEl.classList.remove('hidden');
+      } finally {
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Đăng Nhập';
+      }
+    }
+
+    async function handleLogout(){
+      try {
+        await signOut(auth);
+        showToast('Đã đăng xuất', 'success');
+      } catch(error){
+        console.error('Logout error:', error);
+        showToast('Lỗi đăng xuất', 'error');
+      }
+    }
+
+    // User Management Functions
+    async function loadUsers(){
+      if(!isAdmin) return;
+
+      try {
+        const usersSnapshot = await getDocs(collection(db, 'users'));
+        allUsers = [];
+        usersSnapshot.forEach(doc => {
+          allUsers.push({ id: doc.id, ...doc.data() });
+        });
+        renderUsersTable();
+      } catch(error){
+        console.error('Error loading users:', error);
+      }
+    }
+
+    function renderUsersTable(){
+      const tbody = $('#users-table-body');
+      if(!tbody) return;
+
+      if(allUsers.length === 0){
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-gray-500">Chưa có người dùng nào</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = allUsers.map(user => `
+        <tr>
+          <td>${user.email}</td>
+          <td>${user.displayName || '-'}</td>
+          <td>
+            <span class="inline-block px-2 py-1 text-xs font-semibold rounded ${user.role === 'admin' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}">
+              ${user.role === 'admin' ? 'Admin' : 'Employee'}
+            </span>
+          </td>
+          <td>${user.createdAt ? new Date(user.createdAt.seconds * 1000).toLocaleDateString('vi-VN') : '-'}</td>
+          <td class="text-center">
+            <button onclick="editUser('${user.id}')" class="text-blue-600 hover:underline text-sm mr-2">Sửa</button>
+            ${user.id !== currentUser.uid ? `<button onclick="deleteUser('${user.id}')" class="text-red-600 hover:underline text-sm">Xóa</button>` : ''}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function showAddUserModal(){
+      currentEditingUserId = null;
+      $('#user-modal-title').textContent = 'Thêm Người Dùng';
+      $('#user-email').value = '';
+      $('#user-email').disabled = false;
+      $('#user-display-name').value = '';
+      $('#user-password').value = '';
+      $('#user-password').parentElement.classList.remove('hidden');
+      $('#user-role').value = 'employee';
+      $('#user-error-message').classList.add('hidden');
+      $('#user-modal').classList.add('active');
+    }
+
+    async function editUser(userId){
+      const user = allUsers.find(u => u.id === userId);
+      if(!user) return;
+
+      currentEditingUserId = userId;
+      $('#user-modal-title').textContent = 'Chỉnh Sửa Người Dùng';
+      $('#user-email').value = user.email;
+      $('#user-email').disabled = true;
+      $('#user-display-name').value = user.displayName || '';
+      $('#user-password').parentElement.classList.add('hidden'); // Hide password field when editing
+      $('#user-role').value = user.role;
+      $('#user-error-message').classList.add('hidden');
+      $('#user-modal').classList.add('active');
+    }
+
+    async function handleUserFormSubmit(e){
+      e.preventDefault();
+
+      const email = $('#user-email').value.trim();
+      const displayName = $('#user-display-name').value.trim();
+      const password = $('#user-password').value;
+      const role = $('#user-role').value;
+      const errorEl = $('#user-error-message');
+      const submitBtn = $('#user-submit-btn');
+
+      try {
+        submitBtn.disabled = true;
+        errorEl.classList.add('hidden');
+
+        if(currentEditingUserId){
+          // Update existing user
+          await updateDoc(doc(db, 'users', currentEditingUserId), {
+            displayName,
+            role,
+            updatedAt: serverTimestamp()
+          });
+          showToast('Cập nhật người dùng thành công', 'success');
+        } else {
+          // Create new user
+          if(!password || password.length < 6){
+            errorEl.textContent = 'Mật khẩu phải có ít nhất 6 ký tự';
+            errorEl.classList.remove('hidden');
+            return;
+          }
+
+          // Create auth user
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+
+          // Add to Firestore
+          await setDoc(doc(db, 'users', userCredential.user.uid), {
+            email,
+            displayName,
+            role,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          });
+
+          // Sign out the newly created user and sign back in as admin
+          await signOut(auth);
+          await signInWithEmailAndPassword(auth, currentUserData.email, prompt('Nhập lại mật khẩu của bạn để xác nhận:'));
+
+          showToast('Thêm người dùng thành công', 'success');
+        }
+
+        $('#user-modal').classList.remove('active');
+        await loadUsers();
+      } catch(error){
+        console.error('Error saving user:', error);
+        let errorMessage = 'Lỗi khi lưu người dùng';
+
+        if(error.code === 'auth/email-already-in-use'){
+          errorMessage = 'Email đã được sử dụng';
+        } else if(error.code === 'auth/invalid-email'){
+          errorMessage = 'Email không hợp lệ';
+        } else if(error.code === 'auth/weak-password'){
+          errorMessage = 'Mật khẩu quá yếu';
+        }
+
+        errorEl.textContent = errorMessage;
+        errorEl.classList.remove('hidden');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    }
+
+    let userToDelete = null;
+    async function deleteUser(userId){
+      userToDelete = userId;
+      $('#delete-user-modal').classList.add('active');
+    }
+
+    async function confirmDeleteUser(){
+      if(!userToDelete) return;
+
+      try {
+        // Note: This only deletes from Firestore, not from Auth
+        // To delete from Auth, you would need Cloud Functions or Admin SDK
+        await deleteDoc(doc(db, 'users', userToDelete));
+        showToast('Xóa người dùng thành công', 'success');
+        $('#delete-user-modal').classList.remove('active');
+        await loadUsers();
+        userToDelete = null;
+      } catch(error){
+        console.error('Error deleting user:', error);
+        showToast('Lỗi khi xóa người dùng', 'error');
+      }
+    }
+
+    function checkAdminPermission(){
+      if(!isAdmin){
+        showToast('Bạn không có quyền thực hiện hành động này', 'error');
+        return false;
+      }
+      return true;
+    }
+
+    // Dynamic Menus Management (Placeholder - Full implementation below)
+    async function loadDynamicMenus(){
+      if(!db) return;
+      try {
+        const menusSnapshot = await getDocs(query(collection(db, 'projects', ensureProjectId(), 'menus'), orderBy('order')));
+        dynamicMenus = [];
+        menusSnapshot.forEach(doc => {
+          dynamicMenus.push({ id: doc.id, ...doc.data() });
+        });
+        await renderDynamicMenus();
+        renderSidebarDynamic();
+      } catch(error){
+        console.error('Error loading menus:', error);
+      }
+    }
+
+    function renderSidebarDynamic(){
+      // Will implement dynamic sidebar rendering
+      // For now, keep static sidebar
+    }
+
+    async function renderDynamicMenus(){
+      // Will implement full rendering in Plan Manager
+    }
+
+    // Assignees Management (Placeholder - Full implementation below)
+    async function loadAssignees(){
+      if(!db) return;
+      try {
+        const assigneesSnapshot = await getDocs(collection(db, 'projects', ensureProjectId(), 'assignees'));
+        assignees = [];
+        assigneesSnapshot.forEach(doc => {
+          assignees.push({ id: doc.id, ...doc.data() });
+        });
+        renderAssigneesList();
+        populateAssigneeDropdown();
+      } catch(error){
+        console.error('Error loading assignees:', error);
+      }
+    }
+
+    function renderAssigneesList(){
+      // Will implement assignees list rendering
+    }
+
+    function populateAssigneeDropdown(){
+      // Will populate the task assignee dropdown
+    }
+
+    async function initializeRealtimePersistence(){
+      // Firebase already initialized in initializeAuthentication
+      if(!db || !storage){
+        console.error('Firebase not initialized');
+        return;
+      }
+
       const projectId = ensureProjectId();
       projectRef = doc(db, 'projects', projectId);
       await ensureProjectDocument(projectId);
@@ -3345,7 +4085,45 @@
 
     renderNotifications();
 
-    initializeRealtimePersistence();
+    // ========= AUTH & USER MANAGEMENT EVENT LISTENERS =========
+    const loginForm = $('#login-form');
+    const logoutBtn = $('#logout-btn');
+    const addUserBtn = $('#add-user-btn');
+    const userForm = $('#user-form');
+    const userCancelBtn = $('#user-cancel-btn');
+    const userModal = $('#user-modal');
+    const deleteUserModal = $('#delete-user-modal');
+    const cancelDeleteUserBtn = $('#cancel-delete-user-btn');
+    const confirmDeleteUserBtn = $('#confirm-delete-user-btn');
+
+    if(loginForm) loginForm.addEventListener('submit', handleLogin);
+    if(logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+    if(addUserBtn) addUserBtn.addEventListener('click', showAddUserModal);
+    if(userForm) userForm.addEventListener('submit', handleUserFormSubmit);
+    if(userCancelBtn) userCancelBtn.addEventListener('click', () => {
+      $('#user-modal').classList.remove('active');
+    });
+    if(userModal) userModal.addEventListener('click', e => {
+      if(e.target === userModal) $('#user-modal').classList.remove('active');
+    });
+    if(cancelDeleteUserBtn) cancelDeleteUserBtn.addEventListener('click', () => {
+      $('#delete-user-modal').classList.remove('active');
+      userToDelete = null;
+    });
+    if(confirmDeleteUserBtn) confirmDeleteUserBtn.addEventListener('click', confirmDeleteUser);
+    if(deleteUserModal) deleteUserModal.addEventListener('click', e => {
+      if(e.target === deleteUserModal){
+        $('#delete-user-modal').classList.remove('active');
+        userToDelete = null;
+      }
+    });
+
+    // Expose functions to global scope for onclick handlers
+    window.editUser = editUser;
+    window.deleteUser = deleteUser;
+
+    // Initialize authentication
+    initializeAuthentication();
   });
   </script>
 </body>
