@@ -504,7 +504,7 @@
   </section>
 
   <!-- Login Page -->
-  <section id="login-page" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-6 py-16 hidden">
+  <section id="login-page" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-6 py-16 hidden" style="background-image: url('https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&w=1920&q=80'); background-size: cover; background-position: center; background-blend-mode: overlay;">
     <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md">
       <div class="text-center mb-8">
         <div id="login-logo-wrapper" class="flex justify-center mb-4">
@@ -569,9 +569,9 @@
   </section>
 
   <!-- Forgot Password Modal - TASK 12 -->
-  <div id="forgot-password-modal" class="modal">
+  <div id="forgot-password-modal" class="modal-overlay">
     <div class="modal-content max-w-md">
-      <div class="modal-header">
+      <div class="flex items-center justify-between mb-4">
         <h2 class="text-xl font-bold">🔑 Đặt Lại Mật Khẩu</h2>
         <button class="modal-close" data-modal="forgot-password-modal">&times;</button>
       </div>
@@ -3337,6 +3337,7 @@
     const DEFAULT_NAV_HREF = sectionToPath.overview;
     const routeConfig = {
       '/': { layout: 'cover', section: null, navHref: null },
+      '/login': { layout: 'login', section: null, navHref: null },
       '/tongquan': { layout: 'app', section: 'overview', navHref: DEFAULT_NAV_HREF },
       '/giaidoan1': { layout: 'app', section: 'gd1', navHref: sectionToPath.gd1 },
       '/giaidoan2': { layout: 'app', section: 'gd2', navHref: sectionToPath.gd2 },
@@ -3367,13 +3368,19 @@
 
     function setLayoutMode(mode){
       const cover = $('#cover-page');
+      const login = $('#login-page');
       const app = $('#app-layout');
       const showCover = mode === 'cover';
+      const showLogin = mode === 'login';
+      const showApp = mode === 'app';
+
       if(cover) cover.classList.toggle('hidden', !showCover);
-      if(app) app.classList.toggle('hidden', showCover);
+      if(login) login.classList.toggle('hidden', !showLogin);
+      if(app) app.classList.toggle('hidden', !showApp);
+
       const header = $('#current-section-title');
       if(header){
-        if(showCover){
+        if(showCover || showLogin){
           header.textContent = '';
           header.classList.add('hidden');
         }
@@ -3718,6 +3725,79 @@
       }
     };
 
+    // ========= GLOBAL UTILITY: CREATE OWNER ACCOUNT =========
+    // Global function to create the owner account (can be called from console)
+    window.createOwnerAccount = async function(){
+      const OWNER_EMAIL = 'xuanthuongqtkd@gmail.com';
+      const OWNER_PASSWORD = 'Vincent1809$$';
+      const OWNER_NAME = 'Xuan Thuong';
+
+      console.log('🔧 Creating owner account...');
+      console.log(`   Email: ${OWNER_EMAIL}`);
+      console.log(`   Password: ${OWNER_PASSWORD}`);
+
+      try {
+        // Try to create in Firebase Auth
+        let userCredential;
+        try {
+          userCredential = await createUserWithEmailAndPassword(auth, OWNER_EMAIL, OWNER_PASSWORD);
+          console.log('✅ Created user in Firebase Authentication');
+        } catch(error){
+          if(error.code === 'auth/email-already-in-use'){
+            console.log('⚠️ User already exists in Firebase Auth');
+            console.log('   Attempting to sign in to get UID...');
+            userCredential = await signInWithEmailAndPassword(auth, OWNER_EMAIL, OWNER_PASSWORD);
+            console.log('✅ Signed in successfully');
+          } else {
+            throw error;
+          }
+        }
+
+        // Create/update Firestore document with admin role
+        const uid = userCredential.user.uid;
+        await setDoc(doc(db, 'users', uid), {
+          email: OWNER_EMAIL,
+          displayName: OWNER_NAME,
+          role: 'admin',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+
+        console.log('✅ Created/updated user in Firestore (users collection)');
+        console.log('');
+        console.log('═══════════════════════════════════════');
+        console.log('✅ OWNER ACCOUNT CREATED SUCCESSFULLY!');
+        console.log('═══════════════════════════════════════');
+        console.log(`   UID: ${uid}`);
+        console.log(`   Email: ${OWNER_EMAIL}`);
+        console.log(`   Password: ${OWNER_PASSWORD}`);
+        console.log(`   Role: admin`);
+        console.log('');
+        console.log('🎉 You can now log in with these credentials!');
+        console.log('');
+
+        return {
+          success: true,
+          uid: uid,
+          email: OWNER_EMAIL,
+          message: 'Owner account created successfully!'
+        };
+      } catch(error){
+        console.error('❌ Error creating owner account:', error);
+        console.log('');
+        console.log('📋 TROUBLESHOOTING:');
+        console.log('   1. Check Firebase Console > Authentication');
+        console.log('   2. Check Firestore Security Rules (see instructions below)');
+        console.log('   3. Error details:', error.message);
+        console.log('');
+
+        return {
+          success: false,
+          error: error.message
+        };
+      }
+    };
+
     // ========= CONSOLE UTILITY: RESET ADMIN PASSWORD =========
     // Call this function from browser console if you need to reset the admin password
     window.resetAdminPassword = async function(){
@@ -3827,7 +3907,13 @@
         errorEl.classList.add('hidden');
 
         await signInWithEmailAndPassword(auth, email, password);
-        // Auth state listener will handle the rest
+        // Show success message and redirect to dashboard
+        showToast('Đăng nhập thành công', 'success');
+        // Auth state listener will handle showing the app
+        // Navigate to dashboard after successful login
+        setTimeout(() => {
+          if(router) router.navigate('/tongquan');
+        }, 100);
       } catch(error){
         console.error('❌ Login error:', error);
         console.log('Error code:', error.code);
