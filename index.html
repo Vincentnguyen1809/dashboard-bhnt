@@ -526,13 +526,27 @@
         </div>
         <div>
           <label for="login-password" class="block text-sm font-medium text-gray-700 mb-2">Mật khẩu</label>
-          <input
-            type="password"
-            id="login-password"
-            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="••••••••"
-            required
-          />
+          <div class="relative">
+            <input
+              type="password"
+              id="login-password"
+              class="w-full border border-gray-300 rounded-lg px-4 py-2.5 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="••••••••"
+              required
+            />
+            <button
+              type="button"
+              class="password-toggle absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              data-target="login-password"
+              aria-label="Toggle password visibility"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path class="eye-open" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                <path class="eye-open" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                <path class="eye-closed hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+              </svg>
+            </button>
+          </div>
         </div>
         <div id="login-error" class="text-red-600 text-sm hidden"></div>
         <button
@@ -1067,16 +1081,58 @@
                   <form id="change-password-form" class="space-y-4">
                     <div>
                       <label for="current-password" class="block text-sm font-medium text-gray-700 mb-1">Mật khẩu hiện tại</label>
-                      <input type="password" id="current-password" class="filter-input" required />
+                      <div class="relative">
+                        <input type="password" id="current-password" class="filter-input pr-10" required />
+                        <button
+                          type="button"
+                          class="password-toggle absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                          data-target="current-password"
+                          aria-label="Toggle password visibility"
+                        >
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path class="eye-open" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            <path class="eye-open" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                            <path class="eye-closed hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                     <div>
                       <label for="new-password" class="block text-sm font-medium text-gray-700 mb-1">Mật khẩu mới</label>
-                      <input type="password" id="new-password" class="filter-input" minlength="6" required />
+                      <div class="relative">
+                        <input type="password" id="new-password" class="filter-input pr-10" minlength="6" required />
+                        <button
+                          type="button"
+                          class="password-toggle absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                          data-target="new-password"
+                          aria-label="Toggle password visibility"
+                        >
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path class="eye-open" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            <path class="eye-open" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                            <path class="eye-closed hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+                          </svg>
+                        </button>
+                      </div>
                       <p class="text-xs text-gray-500 mt-1">Tối thiểu 6 ký tự</p>
                     </div>
                     <div>
                       <label for="confirm-new-password" class="block text-sm font-medium text-gray-700 mb-1">Xác nhận mật khẩu mới</label>
-                      <input type="password" id="confirm-new-password" class="filter-input" minlength="6" required />
+                      <div class="relative">
+                        <input type="password" id="confirm-new-password" class="filter-input pr-10" minlength="6" required />
+                        <button
+                          type="button"
+                          class="password-toggle absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                          data-target="confirm-new-password"
+                          aria-label="Toggle password visibility"
+                        >
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path class="eye-open" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            <path class="eye-open" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                            <path class="eye-closed hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                     <div id="change-password-error" class="text-red-600 text-sm hidden"></div>
                     <div id="change-password-success" class="text-green-600 text-sm hidden"></div>
@@ -3565,11 +3621,42 @@
         // If user already exists in Auth, that's okay
         if(error.code === 'auth/email-already-in-use'){
           console.log('Default admin email already registered in Auth.');
+          console.log('⚠️ If you cannot log in with the default password, please:');
+          console.log('   1. Use the "Forgot Password?" link on the login page, OR');
+          console.log('   2. Run resetAdminPassword() in the browser console');
         } else {
           console.error('Error seeding default admin:', error);
         }
       }
     }
+
+    // ========= CONSOLE UTILITY: RESET ADMIN PASSWORD =========
+    // Call this function from browser console if you need to reset the admin password
+    window.resetAdminPassword = async function(){
+      const DEFAULT_ADMIN_EMAIL = 'xuanthuongqtkd@gmail.com';
+
+      try {
+        console.log('Sending password reset email to:', DEFAULT_ADMIN_EMAIL);
+
+        const actionCodeSettings = {
+          url: window.location.origin,
+          handleCodeInApp: false
+        };
+
+        await sendPasswordResetEmail(auth, DEFAULT_ADMIN_EMAIL, actionCodeSettings);
+        console.log('✅ Password reset email sent successfully!');
+        console.log('📧 Check your inbox at:', DEFAULT_ADMIN_EMAIL);
+        console.log('🔗 Click the link in the email to set a new password.');
+        return 'Success! Check your email.';
+      } catch(error){
+        console.error('❌ Error sending password reset email:', error);
+        if(error.code === 'auth/user-not-found'){
+          console.log('⚠️ User not found. The admin account may not have been created yet.');
+          console.log('💡 Refresh the page to trigger auto-creation of the default admin.');
+        }
+        return 'Error: ' + error.message;
+      }
+    };
 
     async function loadUserData(uid){
       try {
@@ -3757,6 +3844,16 @@
     }
 
     // ========= TASK 12: FORGOT PASSWORD =========
+    // TASK 12 REFINEMENT: Email Sender Configuration
+    // To configure the "From" email address (xuanthuongqtkd@gmail.com or no-reply@your-domain.com):
+    // 1. Go to Firebase Console > Authentication > Templates
+    // 2. Click "Password reset" template
+    // 3. Customize the sender name and email (requires custom domain setup)
+    // 4. For production: Set up custom SMTP in Firebase Console (requires Blaze plan)
+    //
+    // The email will be sent from: noreply@<your-firebase-project>.firebaseapp.com by default
+    // With custom domain: no-reply@your-domain.com or xuanthuongqtkd@gmail.com
+
     async function handleForgotPassword(e){
       e.preventDefault();
 
@@ -3777,7 +3874,14 @@
         errorEl.classList.add('hidden');
         successEl.classList.add('hidden');
 
-        await sendPasswordResetEmail(auth, email);
+        // Action code settings for email customization
+        const actionCodeSettings = {
+          // URL you want to redirect back to after password reset
+          url: window.location.origin,
+          handleCodeInApp: false
+        };
+
+        await sendPasswordResetEmail(auth, email, actionCodeSettings);
 
         successEl.textContent = 'Email đặt lại mật khẩu đã được gửi! Vui lòng kiểm tra hộp thư của bạn.';
         successEl.classList.remove('hidden');
@@ -5105,6 +5209,26 @@
     });
     if(forgotPasswordCancelBtn) forgotPasswordCancelBtn.addEventListener('click', () => {
       $('#forgot-password-modal').classList.remove('active');
+    });
+
+    // TASK 13: Password Toggle Visibility
+    document.querySelectorAll('.password-toggle').forEach(toggleBtn => {
+      toggleBtn.addEventListener('click', function() {
+        const targetId = this.getAttribute('data-target');
+        const passwordInput = document.getElementById(targetId);
+        const eyeOpen = this.querySelectorAll('.eye-open');
+        const eyeClosed = this.querySelectorAll('.eye-closed');
+
+        if (passwordInput.type === 'password') {
+          passwordInput.type = 'text';
+          eyeOpen.forEach(el => el.classList.add('hidden'));
+          eyeClosed.forEach(el => el.classList.remove('hidden'));
+        } else {
+          passwordInput.type = 'password';
+          eyeOpen.forEach(el => el.classList.remove('hidden'));
+          eyeClosed.forEach(el => el.classList.add('hidden'));
+        }
+      });
     });
 
     // ========= PLAN MANAGER EVENT LISTENERS =========
