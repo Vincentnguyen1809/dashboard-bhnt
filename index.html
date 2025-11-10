@@ -160,10 +160,15 @@
     .notification-badge.show{ display:inline-flex; }
     .notification-dropdown{ position:absolute; right:0; margin-top:0.75rem; width:20rem; max-height:20rem; overflow-y:auto; background:#fff; border:1px solid #e5e7eb; border-radius:0.75rem; box-shadow:0 20px 30px -15px rgba(15,23,42,.35); z-index:60; display:none; }
     .notification-dropdown.show{ display:block; }
+    @media (max-width:640px){
+      .notification-dropdown{ position:fixed; right:0.5rem; left:0.5rem; width:auto; max-width:calc(100vw - 1rem); margin-top:0.5rem; }
+    }
     .notification-header{ padding:0.75rem 1rem; border-bottom:1px solid #f3f4f6; display:flex; align-items:center; justify-content:space-between; }
     .notification-list{ list-style:none; margin:0; padding:0; }
-    .notification-item{ padding:0.75rem 1rem; border-bottom:1px solid #f3f4f6; display:flex; flex-direction:column; gap:0.35rem; }
+    .notification-item{ padding:0.75rem 1rem; border-bottom:1px solid #f3f4f6; display:flex; flex-direction:column; gap:0.35rem; cursor:pointer; transition:background .2s; }
+    .notification-item:hover{ background:#f3f4f6; }
     .notification-item.unread{ background:#f8fafc; }
+    .notification-item.unread:hover{ background:#e0f2fe; }
     .notification-item:last-child{ border-bottom:none; }
     .notification-time{ font-size:0.75rem; color:#9ca3af; }
     .mark-all-read{ font-size:0.75rem; font-weight:600; color:#2563eb; cursor:pointer; background:none; border:none; padding:0; }
@@ -251,9 +256,9 @@
         </a>
       </div>
       <h2 id="cover-slogan" class="text-2xl md:text-3xl font-semibold text-blue-800 hidden"></h2>
-      <div class="space-y-4">
-        <h1 class="text-3xl md:text-4xl font-bold text-blue-900">Dự án Kế hoạch Dịch vụ Marketing Assistant</h1>
-        <p class="text-lg text-gray-700 leading-relaxed">Cung cấp một lộ trình (master plan) chi tiết, A-Z, để xây dựng và ra mắt dịch vụ Marketing Assistant.</p>
+      <div class="space-y-4" id="cover-content-wrapper">
+        <h1 id="cover-title" class="text-3xl md:text-4xl font-bold text-blue-900">Dự án Kế hoạch Dịch vụ Marketing Assistant</h1>
+        <p id="cover-description" class="text-lg text-gray-700 leading-relaxed">Cung cấp một lộ trình (master plan) chi tiết, A-Z, để xây dựng và ra mắt dịch vụ Marketing Assistant.</p>
         <div class="space-y-1 text-gray-700" id="cover-contacts">
           <p>Quản lý dự án / Kỹ thuật: <strong id="cover-contact-manager">[Chưa cập nhật]</strong></p>
           <p>Vận hành: <strong id="cover-contact-ops">[Chưa cập nhật]</strong></p>
@@ -309,6 +314,10 @@
               <ul id="notification-list" class="notification-list" role="list"></ul>
               <div id="notification-empty" class="notification-empty">Không có thông báo quan trọng.</div>
             </div>
+          </div>
+          <div id="user-avatar-wrapper" class="flex items-center justify-center w-8 h-8 rounded-full bg-gray-300 text-gray-600 overflow-hidden">
+            <img id="user-avatar" class="w-full h-full object-cover hidden" alt="User avatar" />
+            <svg id="default-avatar-icon" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
           </div>
           <div class="flex flex-col items-end gap-1 text-right">
             <div class="text-sm font-medium text-gray-700">Ngày Ra Mắt (D-Day)</div>
@@ -621,6 +630,28 @@
                       <label class="text-sm font-medium text-gray-700" for="setting-contact-ops">Vận hành</label>
                       <input type="text" id="setting-contact-ops" class="filter-input" placeholder="Nhập tên" />
                     </div>
+                    <div class="settings-file-control">
+                      <label class="text-sm font-medium text-gray-700" for="setting-avatar-upload">Avatar người dùng</label>
+                      <div class="settings-file-default" id="setting-avatar-default">
+                        <button type="button" id="setting-avatar-choose" class="task-btn btn-view px-4 py-2">Chọn file</button>
+                        <span id="setting-avatar-filename" class="text-sm text-gray-500">Chưa chọn file</span>
+                      </div>
+                      <div class="settings-file-active hidden" id="setting-avatar-active">
+                        <div class="settings-file-selected">
+                          <div class="settings-preview-box"><img id="avatar-preview" alt="Xem trước avatar" class="hidden rounded-full" /></div>
+                          <div class="flex flex-col gap-2">
+                            <span id="setting-avatar-selected-name" class="settings-selected-name"></span>
+                            <div class="settings-file-actions">
+                              <button type="button" id="setting-avatar-change" class="settings-file-action text-blue">Đổi</button>
+                              <button type="button" id="setting-avatar-remove" class="settings-file-action text-red">Gỡ</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <input type="file" id="setting-avatar-upload" class="hidden" accept="image/jpeg,image/png,image/jpg" />
+                      <p class="settings-helper">Khuyến nghị ảnh vuông (800x800px). Chấp nhận JPG, PNG.</p>
+                      <p class="text-xs text-gray-500 mt-1">Avatar sẽ hiển thị ở header của ứng dụng.</p>
+                    </div>
                   </div>
                 </div>
                 <div class="space-y-6">
@@ -652,6 +683,42 @@
                       <label class="text-sm font-medium text-gray-700" for="setting-cover-color">Màu nền Cover Page</label>
                       <input type="color" id="setting-cover-color" class="h-10 w-24 border border-gray-200 rounded" />
                       <p class="settings-helper">Nếu không có ảnh nền, màu này sẽ được sử dụng.</p>
+                    </div>
+                    <div>
+                      <label class="text-sm font-medium text-gray-700" for="setting-cover-title">Tiêu đề Cover Page</label>
+                      <input type="text" id="setting-cover-title" class="filter-input" placeholder="Nhập tiêu đề chính" />
+                      <p class="settings-helper">Tiêu đề chính hiển thị trên trang Cover.</p>
+                    </div>
+                    <div>
+                      <label class="text-sm font-medium text-gray-700" for="setting-cover-description">Mô tả Cover Page</label>
+                      <textarea id="setting-cover-description" class="filter-input" rows="3" placeholder="Nhập mô tả chi tiết"></textarea>
+                      <p class="settings-helper">Mô tả ngắn về dự án hiển thị trên trang Cover.</p>
+                    </div>
+                    <div>
+                      <label class="text-sm font-medium text-gray-700" for="setting-cover-font">Font chữ Cover Page</label>
+                      <select id="setting-cover-font" class="filter-input">
+                        <option value="Inter, system-ui, sans-serif">Inter (Mặc định)</option>
+                        <option value="Arial, sans-serif">Arial</option>
+                        <option value="Helvetica, sans-serif">Helvetica</option>
+                        <option value="Georgia, serif">Georgia</option>
+                        <option value="Times New Roman, serif">Times New Roman</option>
+                        <option value="Courier New, monospace">Courier New</option>
+                        <option value="Verdana, sans-serif">Verdana</option>
+                        <option value="Tahoma, sans-serif">Tahoma</option>
+                        <option value="Roboto, sans-serif">Roboto</option>
+                        <option value="Open Sans, sans-serif">Open Sans</option>
+                      </select>
+                      <p class="settings-helper">Chọn font chữ cho tiêu đề và mô tả trên Cover.</p>
+                    </div>
+                    <div>
+                      <label class="text-sm font-medium text-gray-700" for="setting-cover-text-size">Kích thước chữ (px)</label>
+                      <input type="number" id="setting-cover-text-size" class="filter-input" min="12" max="32" step="1" placeholder="16" />
+                      <p class="settings-helper">Kích thước font chữ cơ bản (12-32px). Mặc định: 16px.</p>
+                    </div>
+                    <div class="space-y-2">
+                      <label class="text-sm font-medium text-gray-700" for="setting-cover-text-color">Màu chữ Cover Page</label>
+                      <input type="color" id="setting-cover-text-color" class="h-10 w-24 border border-gray-200 rounded" />
+                      <p class="settings-helper">Màu chữ cho tiêu đề và mô tả trên Cover.</p>
                     </div>
                   </div>
                 </div>
@@ -722,6 +789,13 @@
       coverImageUrl: '',
       coverImageStoragePath: '',
       coverColor: '',
+      coverTitle: 'Dự án Kế hoạch Dịch vụ Marketing Assistant',
+      coverDescription: 'Cung cấp một lộ trình (master plan) chi tiết, A-Z, để xây dựng và ra mắt dịch vụ Marketing Assistant.',
+      coverTextFont: 'Inter, system-ui, sans-serif',
+      coverTextSize: '16',
+      coverTextColor: '#1e3a8a',
+      avatarUrl: '',
+      avatarStoragePath: '',
     };
     const NOTE_TRUNCATE_LIMIT = 160;
 
@@ -943,10 +1017,11 @@
     let noteModalCloseBtn = null;
     const linkFeedbackTimers = {};
     let noteTypeFeedbackTimer = null;
-    const pendingFileRemovals = { logo:false, favicon:false, coverImage:false };
+    const pendingFileRemovals = { logo:false, favicon:false, coverImage:false, avatar:false };
     let logoFileControl = null;
     let faviconFileControl = null;
     let coverImageFileControl = null;
+    let avatarFileControl = null;
     let notifications = [];
     let notificationState = {};
     let notificationsInitialized = false;
@@ -1207,6 +1282,10 @@
       const managerEl = $('#cover-contact-manager');
       const opsEl = $('#cover-contact-ops');
       const coverSection = $('#cover-page');
+      const coverTitleEl = $('#cover-title');
+      const coverDescEl = $('#cover-description');
+      const coverContentWrapper = $('#cover-content-wrapper');
+
       const logoUrl = (settings.logoUrl || '').trim();
       if(logoEl){
         if(logoUrl){
@@ -1230,6 +1309,22 @@
           sloganEl.textContent = '';
           sloganEl.classList.add('hidden');
         }
+      }
+      if(coverTitleEl){
+        const title = (settings.coverTitle || '').trim() || defaultSettings.coverTitle;
+        coverTitleEl.textContent = title;
+      }
+      if(coverDescEl){
+        const desc = (settings.coverDescription || '').trim() || defaultSettings.coverDescription;
+        coverDescEl.textContent = desc;
+      }
+      if(coverContentWrapper){
+        const font = (settings.coverTextFont || '').trim() || defaultSettings.coverTextFont;
+        const size = (settings.coverTextSize || '').trim() || defaultSettings.coverTextSize;
+        const color = (settings.coverTextColor || '').trim() || defaultSettings.coverTextColor;
+        coverContentWrapper.style.fontFamily = font;
+        coverContentWrapper.style.fontSize = size + 'px';
+        coverContentWrapper.style.color = color;
       }
       if(managerEl){
         const manager = (settings.contactManager || '').trim() || '[Chưa cập nhật]';
@@ -1283,11 +1378,33 @@
         brandingTitle.textContent = 'Master Plan (A-Z+)';
       }
     }
+    function renderAvatar(avatarUrl){
+      const avatarImg = $('#user-avatar');
+      const defaultIcon = $('#default-avatar-icon');
+      const url = (avatarUrl || '').trim();
+      if(avatarImg && defaultIcon){
+        if(url){
+          avatarImg.src = url;
+          avatarImg.classList.remove('hidden');
+          defaultIcon.classList.add('hidden');
+        } else {
+          avatarImg.src = '';
+          avatarImg.classList.add('hidden');
+          defaultIcon.classList.remove('hidden');
+        }
+      }
+    }
     function populateSettingsForm(settings = {}){
       const sloganInput = $('#setting-slogan');
       const managerInput = $('#setting-contact-manager');
       const opsInput = $('#setting-contact-ops');
       const colorInput = $('#setting-cover-color');
+      const coverTitleInput = $('#setting-cover-title');
+      const coverDescInput = $('#setting-cover-description');
+      const coverFontInput = $('#setting-cover-font');
+      const coverTextSizeInput = $('#setting-cover-text-size');
+      const coverTextColorInput = $('#setting-cover-text-color');
+
       if(sloganInput) sloganInput.value = settings.slogan || '';
       if(managerInput) managerInput.value = settings.contactManager || '';
       if(opsInput) opsInput.value = settings.contactOps || '';
@@ -1295,12 +1412,23 @@
         const color = (settings.coverColor || '').trim();
         colorInput.value = color && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(color) ? color : '#bae6fd';
       }
+      if(coverTitleInput) coverTitleInput.value = settings.coverTitle || defaultSettings.coverTitle;
+      if(coverDescInput) coverDescInput.value = settings.coverDescription || defaultSettings.coverDescription;
+      if(coverFontInput) coverFontInput.value = settings.coverTextFont || defaultSettings.coverTextFont;
+      if(coverTextSizeInput) coverTextSizeInput.value = settings.coverTextSize || defaultSettings.coverTextSize;
+      if(coverTextColorInput){
+        const textColor = (settings.coverTextColor || '').trim();
+        coverTextColorInput.value = textColor && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(textColor) ? textColor : '#1e3a8a';
+      }
+
       const logoInput = $('#setting-logo-upload'); if(logoInput) logoInput.value = '';
       const faviconInput = $('#setting-favicon-upload'); if(faviconInput) faviconInput.value = '';
       const coverImageInput = $('#setting-cover-image-upload'); if(coverImageInput) coverImageInput.value = '';
+      const avatarInput = $('#setting-avatar-upload'); if(avatarInput) avatarInput.value = '';
       if(logoFileControl) logoFileControl.setFromUrl((settings.logoUrl || '').trim());
       if(faviconFileControl) faviconFileControl.setFromUrl((settings.faviconUrl || '').trim());
       if(coverImageFileControl) coverImageFileControl.setFromUrl((settings.coverImageUrl || '').trim());
+      if(avatarFileControl) avatarFileControl.setFromUrl((settings.avatarUrl || '').trim());
     }
     async function saveSettings(){
       if(!ensureProjectReady()) return;
@@ -1310,7 +1438,13 @@
       const logoInput = $('#setting-logo-upload');
       const faviconInput = $('#setting-favicon-upload');
       const coverImageInput = $('#setting-cover-image-upload');
+      const avatarInput = $('#setting-avatar-upload');
       const colorInput = $('#setting-cover-color');
+      const coverTitleInput = $('#setting-cover-title');
+      const coverDescInput = $('#setting-cover-description');
+      const coverFontInput = $('#setting-cover-font');
+      const coverTextSizeInput = $('#setting-cover-text-size');
+      const coverTextColorInput = $('#setting-cover-text-color');
 
       const nextSettings = { ...currentSettings };
       nextSettings.slogan = sloganInput ? sloganInput.value.trim() : '';
@@ -1318,6 +1452,12 @@
       nextSettings.contactOps = opsInput ? opsInput.value.trim() : '';
       const colorValue = colorInput ? (colorInput.value || '').trim() : '';
       nextSettings.coverColor = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(colorValue) ? colorValue : '';
+      nextSettings.coverTitle = coverTitleInput ? coverTitleInput.value.trim() : defaultSettings.coverTitle;
+      nextSettings.coverDescription = coverDescInput ? coverDescInput.value.trim() : defaultSettings.coverDescription;
+      nextSettings.coverTextFont = coverFontInput ? coverFontInput.value.trim() : defaultSettings.coverTextFont;
+      nextSettings.coverTextSize = coverTextSizeInput ? coverTextSizeInput.value.trim() : defaultSettings.coverTextSize;
+      const textColorValue = coverTextColorInput ? (coverTextColorInput.value || '').trim() : '';
+      nextSettings.coverTextColor = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(textColorValue) ? textColorValue : defaultSettings.coverTextColor;
 
       if(pendingFileRemovals.logo){
         nextSettings.logoUrl = '';
@@ -1352,12 +1492,24 @@
         }
       }
 
+      if(pendingFileRemovals.avatar){
+        nextSettings.avatarUrl = '';
+        nextSettings.avatarStoragePath = '';
+      } else if(avatarInput && avatarInput.files && avatarInput.files[0]){
+        const uploadResult = await uploadAsset(avatarInput.files[0], 'user/avatar');
+        if(uploadResult.url){
+          nextSettings.avatarUrl = uploadResult.url;
+          nextSettings.avatarStoragePath = uploadResult.storagePath || '';
+        }
+      }
+
       try {
         await updateProjectData({ settings: nextSettings });
         currentSettings = { ...nextSettings };
         renderCoverPage(currentSettings);
         renderSidebar(currentSettings);
         applyFavicon(currentSettings.faviconUrl || '');
+        renderAvatar(currentSettings.avatarUrl || '');
         populateSettingsForm(currentSettings);
         showToast('Đã lưu cài đặt thành công', 'success');
       } catch(error){
@@ -2076,9 +2228,10 @@
         emptyState.style.display = 'block';
       } else {
         emptyState.style.display = 'none';
-        notifications.forEach(item => {
+        notifications.forEach((item, index) => {
           const li = document.createElement('li');
           li.className = 'notification-item' + (item.read ? '' : ' unread');
+          li.setAttribute('data-notification-index', index);
           li.innerHTML = `<div class="text-sm text-gray-700">${escapeHtml(item.message)}</div><div class="notification-time">${formatDateTime(item.timestamp)}</div>`;
           list.appendChild(li);
         });
@@ -2923,6 +3076,7 @@
         renderCoverPage(currentSettings);
         renderSidebar(currentSettings);
         applyFavicon(currentSettings.faviconUrl || '');
+        renderAvatar(currentSettings.avatarUrl || '');
         populateSettingsForm(currentSettings);
         updateUI();
         updateShareLink();
@@ -2962,6 +3116,7 @@
     renderCoverPage(currentSettings);
     renderSidebar(currentSettings);
     applyFavicon(currentSettings.faviconUrl || '');
+    renderAvatar(currentSettings.avatarUrl || '');
     populateSettingsForm(currentSettings);
 
     if(router) router.handleCurrent();
@@ -3041,6 +3196,15 @@
     const coverImageChooseBtn = $('#setting-cover-image-choose');
     const coverImageChangeBtn = $('#setting-cover-image-change');
     const coverImageRemoveBtn = $('#setting-cover-image-remove');
+    const avatarUploadInput = $('#setting-avatar-upload');
+    const avatarDefaultWrapper = $('#setting-avatar-default');
+    const avatarActiveWrapper = $('#setting-avatar-active');
+    const avatarFilenameLabel = $('#setting-avatar-filename');
+    const avatarSelectedLabel = $('#setting-avatar-selected-name');
+    const avatarPreviewEl = $('#avatar-preview');
+    const avatarChooseBtn = $('#setting-avatar-choose');
+    const avatarChangeBtn = $('#setting-avatar-change');
+    const avatarRemoveBtn = $('#setting-avatar-remove');
     const coverColorInput = $('#setting-cover-color');
     const computePreviewSettings = (extra = {}) => {
       const previewSettings = { ...currentSettings };
@@ -3103,6 +3267,21 @@
         renderCoverPage(computePreviewSettings({ coverColor: getPreviewCoverColor() }));
       },
     });
+    avatarFileControl = createSettingsFileControl({
+      key: 'avatar',
+      input: avatarUploadInput,
+      defaultWrapper: avatarDefaultWrapper,
+      activeWrapper: avatarActiveWrapper,
+      defaultLabel: avatarFilenameLabel,
+      selectedLabel: avatarSelectedLabel,
+      preview: avatarPreviewEl,
+      chooseBtn: avatarChooseBtn,
+      changeBtn: avatarChangeBtn,
+      removeBtn: avatarRemoveBtn,
+      onPreviewChange: (value) => {
+        renderAvatar(value || '');
+      },
+    });
     if(coverColorInput){
       coverColorInput.addEventListener('input', () => {
         renderCoverPage(computePreviewSettings({ coverColor: getPreviewCoverColor() }));
@@ -3138,6 +3317,20 @@
           }
         });
         if(changed) renderNotifications();
+      });
+    }
+    const notificationList = $('#notification-list');
+    if(notificationList){
+      notificationList.addEventListener('click', e => {
+        const item = e.target.closest('[data-notification-index]');
+        if(!item) return;
+        const index = parseInt(item.getAttribute('data-notification-index'), 10);
+        if(isNaN(index) || index < 0 || index >= notifications.length) return;
+        const notification = notifications[index];
+        if(notification && !notification.read){
+          notification.read = true;
+          renderNotifications();
+        }
       });
     }
     document.addEventListener('click', e => {
