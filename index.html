@@ -376,6 +376,11 @@
             <option value="external-link">External Link (Liên kết ngoài)</option>
           </select>
         </div>
+        <div id="menu-slug-field">
+          <label for="menu-slug" class="block text-sm font-medium text-gray-700 mb-1">URL Slug</label>
+          <input type="text" id="menu-slug" class="filter-input" placeholder="VD: giaidoan5, trienkhai" pattern="[a-z0-9\-]+" title="Chỉ được dùng chữ thường, số và dấu gạch ngang" />
+          <p class="text-xs text-gray-500 mt-1">URL sẽ là: /[slug] (VD: /giaidoan5). Chỉ dùng chữ thường, số và dấu gạch ngang.</p>
+        </div>
         <div id="menu-link-field" class="hidden">
           <label for="menu-link" class="block text-sm font-medium text-gray-700 mb-1">URL Liên kết</label>
           <input type="url" id="menu-link" class="filter-input" placeholder="https://example.com" />
@@ -1214,6 +1219,14 @@
               <div id="assignees-list" class="flex flex-wrap gap-2">
                 <!-- Assignees will be rendered here -->
               </div>
+            </div>
+          </section>
+
+          <!-- Dynamic Menu Section -->
+          <section id="dynamic-menu" class="content-section hidden">
+            <div id="dynamic-menu-title-container"></div>
+            <div id="dynamic-menu-tasks-container" class="space-y-4">
+              <!-- Dynamic menu tasks will be rendered here -->
             </div>
           </section>
         </div>
@@ -3366,6 +3379,73 @@
       }
     }
 
+    function showDynamicMenuSection(menuId){
+      // Show the dynamic-menu section
+      $$('.content-section').forEach(s => s.classList.toggle('hidden', s.id !== 'dynamic-menu'));
+      const main = document.querySelector('main');
+      if(main) main.scrollTop = 0;
+
+      // Find the menu
+      const menu = dynamicMenus.find(m => m.id === menuId);
+      if(!menu) return;
+
+      // Update page title
+      const header = $('#current-section-title');
+      if(header){
+        header.textContent = menu.name;
+        header.classList.remove('hidden');
+      }
+
+      // Update menu title container
+      const titleContainer = $('#dynamic-menu-title-container');
+      if(titleContainer){
+        titleContainer.innerHTML = `
+          <p class="section-subtitle">Danh sách công việc cho ${menu.name}</p>
+        `;
+      }
+
+      // Render tasks for this menu
+      const tasksContainer = $('#dynamic-menu-tasks-container');
+      if(tasksContainer){
+        const tasks = dynamicTasks[menuId] || [];
+        if(tasks.length === 0){
+          tasksContainer.innerHTML = `
+            <div class="card-section text-center py-8">
+              <p class="text-gray-500">Chưa có task nào. ${isAdmin ? 'Vào Quản Lý Kế Hoạch để thêm task.' : ''}</p>
+            </div>
+          `;
+        } else {
+          // Render tasks like in the static sections
+          tasksContainer.innerHTML = tasks.map(task => {
+            const assignee = assignees.find(a => a.id === task.assigneeId);
+            const assigneeName = assignee ? assignee.name : 'Chưa gán';
+            const status = task.completed ? 'completed' : 'pending';
+            const statusLabel = task.completed ? 'Hoàn thành' : 'Đang thực hiện';
+            const endDate = task.endDate ? new Date(task.endDate) : null;
+            const deadlineStr = endDate ? formatDateFromISO(task.endDate) : 'Chưa đặt';
+
+            return `
+              <div class="task-card ${status === 'completed' ? 'completed' : ''}" id="dynamic-task-${task.id}">
+                <div class="task-header">
+                  <div class="task-title">${escapeHtml(task.name)}</div>
+                  <span class="task-status status-${status}">${statusLabel}</span>
+                </div>
+                ${task.description ? `
+                  <div class="task-details">
+                    <div class="text-sm text-gray-700 whitespace-pre-wrap">${escapeHtml(task.description)}</div>
+                  </div>
+                ` : ''}
+                <div class="task-meta">
+                  <span>📅 Deadline: ${deadlineStr}</span>
+                  <span>👤 Phụ trách: ${assigneeName}</span>
+                </div>
+              </div>
+            `;
+          }).join('');
+        }
+      }
+    }
+
     function setLayoutMode(mode){
       const cover = $('#cover-page');
       const login = $('#login-page');
@@ -3415,19 +3495,45 @@
       const defaultRoute = config['/'];
       function resolve(pathname){
         const normalized = normalizeRoutePath(pathname);
+
+        // Check static routes first
         if(config[normalized]){
           return { path: normalized, route: config[normalized] };
         }
+
+        // Check dynamic menu routes
+        const pathWithoutSlash = normalized.startsWith('/') ? normalized.slice(1) : normalized;
+        const dynamicMenu = dynamicMenus.find(m =>
+          m.type === 'task-list' && (m.slug === pathWithoutSlash || `dynamic-menu/${m.id}` === pathWithoutSlash)
+        );
+
+        if(dynamicMenu){
+          return {
+            path: normalized,
+            route: {
+              layout: 'app',
+              section: 'dynamic-menu',
+              navHref: normalized,
+              menuId: dynamicMenu.id
+            }
+          };
+        }
+
         return { path: '/', route: defaultRoute };
       }
       function handle(pathname){
         const { path, route } = resolve(pathname);
         if(!route) return path;
-        setLayoutMode(route.layout === 'cover' ? 'cover' : 'app');
+        setLayoutMode(route.layout === 'cover' ? 'cover' : route.layout === 'login' ? 'login' : 'app');
         if(route.layout === 'app' && route.section){
-          showSection(route.section);
+          if(route.section === 'dynamic-menu' && route.menuId){
+            // Show dynamic menu content
+            showDynamicMenuSection(route.menuId);
+          } else {
+            showSection(route.section);
+          }
         }
-        setActiveNavByHref(route.navHref || null);
+        setActiveNavByHref(route.navHref || path);
         return path;
       }
       function navigate(pathname){
@@ -4448,7 +4554,9 @@
       $('#menu-name').value = '';
       $('#menu-icon').value = '';
       $('#menu-type').value = 'task-list';
+      $('#menu-slug').value = '';
       $('#menu-link').value = '';
+      $('#menu-slug-field').classList.remove('hidden');
       $('#menu-link-field').classList.add('hidden');
       $('#menu-error-message').classList.add('hidden');
       $('#menu-modal').classList.add('active');
@@ -4465,11 +4573,14 @@
       $('#menu-name').value = menu.name;
       $('#menu-icon').value = menu.icon;
       $('#menu-type').value = menu.type;
+      $('#menu-slug').value = menu.slug || '';
       $('#menu-link').value = menu.link || '';
 
       if(menu.type === 'external-link'){
+        $('#menu-slug-field').classList.add('hidden');
         $('#menu-link-field').classList.remove('hidden');
       } else {
+        $('#menu-slug-field').classList.remove('hidden');
         $('#menu-link-field').classList.add('hidden');
       }
 
@@ -4484,6 +4595,7 @@
       const name = $('#menu-name').value.trim();
       const icon = $('#menu-icon').value.trim();
       const type = $('#menu-type').value;
+      const slug = $('#menu-slug').value.trim().toLowerCase();
       const link = $('#menu-link').value.trim();
       const errorEl = $('#menu-error-message');
       const submitBtn = $('#menu-submit-btn');
@@ -4492,6 +4604,31 @@
         errorEl.textContent = 'Vui lòng nhập đầy đủ thông tin';
         errorEl.classList.remove('hidden');
         return;
+      }
+
+      if(type === 'task-list' && slug){
+        // Validate slug format
+        if(!/^[a-z0-9\-]+$/.test(slug)){
+          errorEl.textContent = 'URL Slug chỉ được chứa chữ thường, số và dấu gạch ngang';
+          errorEl.classList.remove('hidden');
+          return;
+        }
+
+        // Check if slug is unique (excluding current menu if editing)
+        const slugExists = dynamicMenus.some(m => m.slug === slug && m.id !== currentEditingMenuId);
+        if(slugExists){
+          errorEl.textContent = 'URL Slug này đã được sử dụng. Vui lòng chọn slug khác.';
+          errorEl.classList.remove('hidden');
+          return;
+        }
+
+        // Check if slug conflicts with reserved routes
+        const reservedSlugs = ['tongquan', 'ghichu', 'quan-ly-ke-hoach', 'cai-dat', 'login', 'giaidoan1', 'giaidoan2', 'giaidoan3', 'giaidoan4'];
+        if(reservedSlugs.includes(slug)){
+          errorEl.textContent = 'URL Slug này đã được hệ thống sử dụng. Vui lòng chọn slug khác.';
+          errorEl.classList.remove('hidden');
+          return;
+        }
       }
 
       if(type === 'external-link' && !link){
@@ -4509,6 +4646,7 @@
           name,
           icon,
           type,
+          slug: type === 'task-list' ? (slug || null) : null,
           link: type === 'external-link' ? link : null,
           updatedAt: serverTimestamp()
         };
@@ -4861,7 +4999,8 @@
       // Add dynamic menus
       dynamicMenus.forEach(menu => {
         if(menu.type === 'task-list'){
-          const menuPath = `/dynamic-menu/${menu.id}`;
+          // Use slug if available, otherwise fall back to /dynamic-menu/{id}
+          const menuPath = menu.slug ? `/${menu.slug}` : `/dynamic-menu/${menu.id}`;
           html += `<a class="nav-link" href="${menuPath}"><span class="emoji">${menu.icon}</span><span>${menu.name}</span></a>`;
         } else if(menu.type === 'external-link'){
           html += `<a class="nav-link" href="${menu.link}" target="_blank" rel="noopener noreferrer"><span class="emoji">${menu.icon}</span><span>${menu.name} ↗</span></a>`;
@@ -4890,11 +5029,11 @@
       if(router) setActiveNavByHref(window.location.pathname);
     }
 
-    // ========= DATA MIGRATION =========
+    // ========= DATA MIGRATION (IDEMPOTENT) =========
     async function migrateStaticData(){
       if(!checkAdminPermission()) return;
 
-      if(!confirm('Bạn có chắc chắn muốn migrate dữ liệu tĩnh sang Firestore?\n\nHành động này sẽ:\n1. Tạo 4 menus (GĐ 1-4)\n2. Migrate 60+ tasks hiện có\n3. Tạo các assignees (BOD, Marketing, v.v.)\n\nChỉ nên chạy MỘT LẦN!')){
+      if(!confirm('Bạn có chắc chắn muốn migrate dữ liệu tĩnh sang Firestore?\n\nHành động này sẽ:\n1. Tạo 4 menus (GĐ 1-4) - nếu chưa có\n2. Migrate 60+ tasks hiện có - nếu chưa có\n3. Tạo các assignees (BOD, Marketing, v.v.) - nếu chưa có\n\nHàm này an toàn để chạy nhiều lần (idempotent).')){
         return;
       }
 
@@ -4902,9 +5041,8 @@
         showToast('Đang bắt đầu migration...', 'success');
 
         const projectId = ensureProjectId();
-        const batch = writeBatch(db);
 
-        // First, create assignees from unique owners in tasksData
+        // Step 1: Create assignees (only if they don't exist)
         const uniqueOwners = new Set();
         tasksData.forEach(task => {
           if(task.owner){
@@ -4914,52 +5052,102 @@
           }
         });
 
+        // Check existing assignees
+        await loadAssignees();
+        const existingAssigneeNames = new Set(assignees.map(a => a.name));
+
+        const batch = writeBatch(db);
+        let newAssigneesCount = 0;
         const assigneeMap = {};
+
         for(const ownerName of uniqueOwners){
-          const assigneeRef = doc(collection(db, 'projects', projectId, 'assignees'));
-          batch.set(assigneeRef, {
-            name: ownerName,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
-          });
-          assigneeMap[ownerName] = assigneeRef.id;
+          const existing = assignees.find(a => a.name === ownerName);
+          if(existing){
+            assigneeMap[ownerName] = existing.id;
+          } else {
+            // Create new assignee
+            const assigneeRef = doc(collection(db, 'projects', projectId, 'assignees'));
+            batch.set(assigneeRef, {
+              name: ownerName,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp()
+            });
+            assigneeMap[ownerName] = assigneeRef.id;
+            newAssigneesCount++;
+          }
         }
 
-        await batch.commit();
-        showToast('Đã tạo assignees...', 'success');
+        if(newAssigneesCount > 0){
+          await batch.commit();
+          showToast(`Đã tạo ${newAssigneesCount} assignees mới...`, 'success');
+          // Reload assignees to get IDs
+          await loadAssignees();
+        } else {
+          showToast('Tất cả assignees đã tồn tại, bỏ qua...', 'success');
+        }
 
-        // Reload assignees to get IDs
-        await loadAssignees();
-
-        // Create menus for each phase
+        // Step 2: Create menus for each phase (only if they don't exist)
         const phaseMenus = [
-          { phase: 'gd1', name: 'GĐ 1: Nền Tảng', icon: '🎯', order: 1 },
-          { phase: 'gd2', name: 'GĐ 2: Xây Dựng', icon: '🏗️', order: 2 },
-          { phase: 'gd3', name: 'GĐ 3: Vận Hành & Tối Ưu', icon: '⚙️', order: 3 },
-          { phase: 'gd4', name: 'GĐ 4: Ra Mắt', icon: '🚀', order: 4 }
+          { phase: 'gd1', name: 'GĐ 1: Nền Tảng', icon: '🎯', slug: 'giaidoan1', order: 1 },
+          { phase: 'gd2', name: 'GĐ 2: Xây Dựng', icon: '🏗️', slug: 'giaidoan2', order: 2 },
+          { phase: 'gd3', name: 'GĐ 3: Vận Hành & Tối Ưu', icon: '⚙️', slug: 'giaidoan3', order: 3 },
+          { phase: 'gd4', name: 'GĐ 4: Ra Mắt', icon: '🚀', slug: 'giaidoan4', order: 4 }
         ];
 
+        // Check existing menus
+        await loadDynamicMenus();
+        const existingMenuNames = new Set(dynamicMenus.map(m => m.name));
+
         const menuMap = {};
+        let newMenusCount = 0;
+
         for(const phaseMenu of phaseMenus){
-          const menuRef = await addDoc(collection(db, 'projects', projectId, 'menus'), {
-            name: phaseMenu.name,
-            icon: phaseMenu.icon,
-            type: 'task-list',
-            link: null,
-            order: phaseMenu.order,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
-          });
-          menuMap[phaseMenu.phase] = menuRef.id;
+          const existing = dynamicMenus.find(m => m.name === phaseMenu.name);
+          if(existing){
+            menuMap[phaseMenu.phase] = existing.id;
+          } else {
+            // Create new menu
+            const menuRef = await addDoc(collection(db, 'projects', projectId, 'menus'), {
+              name: phaseMenu.name,
+              icon: phaseMenu.icon,
+              type: 'task-list',
+              slug: phaseMenu.slug,
+              link: null,
+              order: phaseMenu.order,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp()
+            });
+            menuMap[phaseMenu.phase] = menuRef.id;
+            newMenusCount++;
+          }
         }
 
-        showToast('Đã tạo menus...', 'success');
+        if(newMenusCount > 0){
+          showToast(`Đã tạo ${newMenusCount} menus mới...`, 'success');
+          // Reload menus
+          await loadDynamicMenus();
+        } else {
+          showToast('Tất cả menus đã tồn tại, bỏ qua...', 'success');
+        }
 
-        // Migrate tasks
+        // Step 3: Migrate tasks (only if they don't exist)
         let migratedCount = 0;
+        let skippedCount = 0;
+
         for(const task of tasksData){
           const menuId = menuMap[task.phase];
           if(!menuId) continue;
+
+          // Load existing tasks for this menu
+          await loadMenuTasks(menuId);
+          const existingTasks = dynamicTasks[menuId] || [];
+
+          // Check if task already exists (by name)
+          const taskExists = existingTasks.some(t => t.name === task.title);
+          if(taskExists){
+            skippedCount++;
+            continue;
+          }
 
           // Find assignee ID
           let assigneeId = '';
@@ -4995,11 +5183,19 @@
           migratedCount++;
         }
 
-        showToast(`Migration hoàn tất! Đã migrate ${migratedCount} tasks.`, 'success');
+        // Show summary
+        let summaryMessage = `Migration hoàn tất!\n`;
+        summaryMessage += `- Đã tạo ${migratedCount} tasks mới\n`;
+        if(skippedCount > 0){
+          summaryMessage += `- Đã bỏ qua ${skippedCount} tasks (đã tồn tại)`;
+        }
+        showToast(summaryMessage, 'success');
 
-        // Hide migration button
-        const migrateBtn = $('#migrate-data-btn');
-        if(migrateBtn) migrateBtn.style.display = 'none';
+        console.log('📊 MIGRATION SUMMARY:');
+        console.log(`   ✅ Assignees: ${newAssigneesCount} mới, ${assignees.length - newAssigneesCount} đã tồn tại`);
+        console.log(`   ✅ Menus: ${newMenusCount} mới, ${dynamicMenus.length - newMenusCount} đã tồn tại`);
+        console.log(`   ✅ Tasks: ${migratedCount} mới, ${skippedCount} đã tồn tại`);
+        console.log('   🎉 Migration an toàn - có thể chạy lại bất cứ lúc nào!');
 
         // Reload all data
         await loadDynamicMenus();
@@ -5558,15 +5754,18 @@
       }
     });
 
-    // Menu type change event (show/hide link field)
+    // Menu type change event (show/hide slug and link fields)
     const menuTypeSelect = $('#menu-type');
     if(menuTypeSelect){
       menuTypeSelect.addEventListener('change', (e) => {
+        const slugField = $('#menu-slug-field');
         const linkField = $('#menu-link-field');
         if(e.target.value === 'external-link'){
-          linkField.classList.remove('hidden');
+          if(slugField) slugField.classList.add('hidden');
+          if(linkField) linkField.classList.remove('hidden');
         } else {
-          linkField.classList.add('hidden');
+          if(slugField) slugField.classList.remove('hidden');
+          if(linkField) linkField.classList.add('hidden');
         }
       });
     }
