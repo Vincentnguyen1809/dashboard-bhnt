@@ -543,11 +543,51 @@
           Đăng Nhập
         </button>
       </form>
-      <div class="mt-6 text-center">
+      <div class="mt-4 text-center">
+        <button type="button" id="forgot-password-link" class="text-sm text-blue-600 hover:text-blue-800 hover:underline">
+          Quên mật khẩu?
+        </button>
+      </div>
+      <div class="mt-4 text-center">
         <p class="text-sm text-gray-600">Liên hệ Admin để được cấp tài khoản</p>
       </div>
     </div>
   </section>
+
+  <!-- Forgot Password Modal - TASK 12 -->
+  <div id="forgot-password-modal" class="modal">
+    <div class="modal-content max-w-md">
+      <div class="modal-header">
+        <h2 class="text-xl font-bold">🔑 Đặt Lại Mật Khẩu</h2>
+        <button class="modal-close" data-modal="forgot-password-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="text-sm text-gray-600 mb-4">
+          Nhập email của bạn và chúng tôi sẽ gửi link đặt lại mật khẩu đến hộp thư của bạn.
+        </p>
+        <form id="forgot-password-form" class="space-y-4">
+          <div>
+            <label for="forgot-password-email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <input
+              type="email"
+              id="forgot-password-email"
+              class="filter-input"
+              placeholder="your@email.com"
+              required
+            />
+          </div>
+          <div id="forgot-password-error" class="text-red-600 text-sm hidden"></div>
+          <div id="forgot-password-success" class="text-green-600 text-sm hidden"></div>
+          <div class="flex justify-end gap-2">
+            <button type="button" class="task-btn" data-modal="forgot-password-modal">Hủy</button>
+            <button type="submit" id="forgot-password-btn" class="task-btn btn-complete">
+              Gửi Email Đặt Lại
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 
   <div id="app-layout" class="flex h-screen overflow-hidden hidden">
     <!-- Sidebar -->
@@ -1019,6 +1059,34 @@
                 </div>
               </div>
 
+              <!-- Change Password Section (All Users) - TASK 11 -->
+              <div class="border-t border-gray-300 pt-8 mt-8">
+                <h3 class="text-xl font-semibold text-gray-800 mb-4">🔐 Đổi Mật Khẩu</h3>
+                <div class="settings-group-card">
+                  <p class="text-sm text-gray-600 mb-4">Thay đổi mật khẩu của bạn để bảo mật tài khoản</p>
+                  <form id="change-password-form" class="space-y-4">
+                    <div>
+                      <label for="current-password" class="block text-sm font-medium text-gray-700 mb-1">Mật khẩu hiện tại</label>
+                      <input type="password" id="current-password" class="filter-input" required />
+                    </div>
+                    <div>
+                      <label for="new-password" class="block text-sm font-medium text-gray-700 mb-1">Mật khẩu mới</label>
+                      <input type="password" id="new-password" class="filter-input" minlength="6" required />
+                      <p class="text-xs text-gray-500 mt-1">Tối thiểu 6 ký tự</p>
+                    </div>
+                    <div>
+                      <label for="confirm-new-password" class="block text-sm font-medium text-gray-700 mb-1">Xác nhận mật khẩu mới</label>
+                      <input type="password" id="confirm-new-password" class="filter-input" minlength="6" required />
+                    </div>
+                    <div id="change-password-error" class="text-red-600 text-sm hidden"></div>
+                    <div id="change-password-success" class="text-green-600 text-sm hidden"></div>
+                    <div class="flex justify-end">
+                      <button type="submit" id="change-password-btn" class="task-btn btn-complete px-6">🔒 Đổi Mật Khẩu</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
               <!-- User Management Section (Admin Only) -->
               <div id="user-management-section" class="hidden">
                 <div class="border-t border-gray-300 pt-8 mt-8">
@@ -1124,7 +1192,7 @@
   import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
   import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, serverTimestamp, collection, addDoc, deleteDoc, query, orderBy, getDocs, writeBatch } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
   import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js';
-  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, createUserWithEmailAndPassword, EmailAuthProvider, reauthenticateWithCredential, updatePassword, sendPasswordResetEmail } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 
   document.addEventListener('DOMContentLoaded', () => {
     // ========= CONSTANTS =========
@@ -3450,6 +3518,57 @@
           showLoginPage();
         }
       });
+
+      // Seed default admin user (Task 10)
+      await seedDefaultAdmin();
+    }
+
+    // ========= TASK 10: SEED DEFAULT ADMIN =========
+    async function seedDefaultAdmin(){
+      const DEFAULT_ADMIN_EMAIL = 'xuanthuongqtkd@gmail.com';
+      const DEFAULT_ADMIN_PASSWORD = 'Vincent1809$$';
+      const DEFAULT_ADMIN_NAME = 'Xuan Thuong';
+
+      try {
+        // Check if admin already exists in Firestore
+        const usersSnapshot = await getDocs(collection(db, 'users'));
+        let adminExists = false;
+
+        usersSnapshot.forEach(doc => {
+          const userData = doc.data();
+          if(userData.email === DEFAULT_ADMIN_EMAIL){
+            adminExists = true;
+          }
+        });
+
+        if(adminExists){
+          console.log('Default admin user already exists.');
+          return;
+        }
+
+        // Create the admin user in Firebase Auth
+        console.log('Creating default admin user...');
+        const userCredential = await createUserWithEmailAndPassword(auth, DEFAULT_ADMIN_EMAIL, DEFAULT_ADMIN_PASSWORD);
+
+        // Create the user document in Firestore
+        await setDoc(doc(db, 'users', userCredential.user.uid), {
+          email: DEFAULT_ADMIN_EMAIL,
+          displayName: DEFAULT_ADMIN_NAME,
+          role: 'admin',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+
+        console.log('Default admin user created successfully!');
+
+      } catch(error){
+        // If user already exists in Auth, that's okay
+        if(error.code === 'auth/email-already-in-use'){
+          console.log('Default admin email already registered in Auth.');
+        } else {
+          console.error('Error seeding default admin:', error);
+        }
+      }
     }
 
     async function loadUserData(uid){
@@ -3561,6 +3680,135 @@
       } catch(error){
         console.error('Logout error:', error);
         showToast('Lỗi đăng xuất', 'error');
+      }
+    }
+
+    // ========= TASK 11: CHANGE PASSWORD =========
+    async function handleChangePassword(e){
+      e.preventDefault();
+
+      const currentPassword = $('#current-password').value;
+      const newPassword = $('#new-password').value;
+      const confirmPassword = $('#confirm-new-password').value;
+      const errorEl = $('#change-password-error');
+      const successEl = $('#change-password-success');
+      const submitBtn = $('#change-password-btn');
+
+      // Hide previous messages
+      errorEl.classList.add('hidden');
+      successEl.classList.add('hidden');
+
+      // Validate passwords match
+      if(newPassword !== confirmPassword){
+        errorEl.textContent = 'Mật khẩu mới và xác nhận không khớp';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      // Validate password length
+      if(newPassword.length < 6){
+        errorEl.textContent = 'Mật khẩu mới phải có ít nhất 6 ký tự';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Đang đổi mật khẩu...';
+
+        // Reauthenticate user with current password
+        const credential = EmailAuthProvider.credential(
+          currentUser.email,
+          currentPassword
+        );
+
+        await reauthenticateWithCredential(currentUser, credential);
+
+        // Update to new password
+        await updatePassword(currentUser, newPassword);
+
+        // Success
+        successEl.textContent = 'Đổi mật khẩu thành công!';
+        successEl.classList.remove('hidden');
+        showToast('Mật khẩu đã được cập nhật', 'success');
+
+        // Clear form
+        $('#change-password-form').reset();
+
+      } catch(error){
+        console.error('Change password error:', error);
+        let errorMessage = 'Lỗi khi đổi mật khẩu';
+
+        if(error.code === 'auth/wrong-password'){
+          errorMessage = 'Mật khẩu hiện tại không đúng';
+        } else if(error.code === 'auth/weak-password'){
+          errorMessage = 'Mật khẩu mới quá yếu';
+        } else if(error.code === 'auth/requires-recent-login'){
+          errorMessage = 'Vui lòng đăng xuất và đăng nhập lại trước khi đổi mật khẩu';
+        }
+
+        errorEl.textContent = errorMessage;
+        errorEl.classList.remove('hidden');
+        showToast(errorMessage, 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '🔒 Đổi Mật Khẩu';
+      }
+    }
+
+    // ========= TASK 12: FORGOT PASSWORD =========
+    async function handleForgotPassword(e){
+      e.preventDefault();
+
+      const email = $('#forgot-password-email').value.trim();
+      const errorEl = $('#forgot-password-error');
+      const successEl = $('#forgot-password-success');
+      const submitBtn = $('#forgot-password-btn');
+
+      if(!email){
+        errorEl.textContent = 'Vui lòng nhập email';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Đang gửi...';
+        errorEl.classList.add('hidden');
+        successEl.classList.add('hidden');
+
+        await sendPasswordResetEmail(auth, email);
+
+        successEl.textContent = 'Email đặt lại mật khẩu đã được gửi! Vui lòng kiểm tra hộp thư của bạn.';
+        successEl.classList.remove('hidden');
+        showToast('Đã gửi email đặt lại mật khẩu', 'success');
+
+        // Clear form
+        $('#forgot-password-email').value = '';
+
+        // Optionally close modal after a delay
+        setTimeout(() => {
+          $('#forgot-password-modal').classList.remove('active');
+        }, 3000);
+
+      } catch(error){
+        console.error('Forgot password error:', error);
+        let errorMessage = 'Lỗi khi gửi email';
+
+        if(error.code === 'auth/user-not-found'){
+          errorMessage = 'Email không tồn tại trong hệ thống';
+        } else if(error.code === 'auth/invalid-email'){
+          errorMessage = 'Email không hợp lệ';
+        } else if(error.code === 'auth/too-many-requests'){
+          errorMessage = 'Quá nhiều yêu cầu. Vui lòng thử lại sau';
+        }
+
+        errorEl.textContent = errorMessage;
+        errorEl.classList.remove('hidden');
+        showToast(errorMessage, 'error');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Gửi Email Đặt Lại';
       }
     }
 
@@ -4832,6 +5080,31 @@
         $('#delete-user-modal').classList.remove('active');
         userToDelete = null;
       }
+    });
+
+    // TASK 11 & 12: Password Management Event Listeners
+    const changePasswordForm = $('#change-password-form');
+    const forgotPasswordLink = $('#forgot-password-link');
+    const forgotPasswordForm = $('#forgot-password-form');
+    const forgotPasswordModal = $('#forgot-password-modal');
+
+    if(changePasswordForm) changePasswordForm.addEventListener('submit', handleChangePassword);
+    if(forgotPasswordLink) forgotPasswordLink.addEventListener('click', () => {
+      $('#forgot-password-modal').classList.add('active');
+    });
+    if(forgotPasswordForm) forgotPasswordForm.addEventListener('submit', handleForgotPassword);
+    if(forgotPasswordModal) forgotPasswordModal.addEventListener('click', e => {
+      if(e.target === forgotPasswordModal) $('#forgot-password-modal').classList.remove('active');
+    });
+
+    // Modal close buttons for forgot password
+    const forgotPasswordCloseBtn = document.querySelector('#forgot-password-modal .modal-close');
+    const forgotPasswordCancelBtn = document.querySelector('#forgot-password-modal button[data-modal="forgot-password-modal"]');
+    if(forgotPasswordCloseBtn) forgotPasswordCloseBtn.addEventListener('click', () => {
+      $('#forgot-password-modal').classList.remove('active');
+    });
+    if(forgotPasswordCancelBtn) forgotPasswordCancelBtn.addEventListener('click', () => {
+      $('#forgot-password-modal').classList.remove('active');
     });
 
     // ========= PLAN MANAGER EVENT LISTENERS =========
