@@ -708,17 +708,6 @@
               <div id="notification-empty" class="notification-empty">Không có thông báo quan trọng.</div>
             </div>
           </div>
-          <div class="flex items-center gap-3">
-            <div class="flex flex-col items-end gap-1">
-              <div id="current-user-name" class="text-sm font-medium text-gray-700"></div>
-              <div id="current-user-role" class="text-xs text-gray-500"></div>
-            </div>
-            <div id="user-avatar-wrapper" class="flex items-center justify-center w-8 h-8 rounded-full bg-gray-300 text-gray-600 overflow-hidden">
-              <img id="user-avatar" class="w-full h-full object-cover hidden" alt="User avatar" />
-              <svg id="default-avatar-icon" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
-            </div>
-            <button id="logout-btn" class="text-sm font-medium text-red-600 hover:text-red-700 hover:underline hidden">Đăng xuất</button>
-          </div>
           <div class="flex flex-col items-end gap-1 text-right">
             <div class="text-sm font-medium text-gray-700">Ngày Ra Mắt (D-Day)</div>
             <div class="text-base font-bold text-red-600">15/03/2026</div>
@@ -1932,23 +1921,8 @@
       }
     }
     function renderAvatar(avatarUrl){
-      // Header avatar
-      const avatarImg = $('#user-avatar');
-      const defaultIcon = $('#default-avatar-icon');
+      // Sidebar avatar
       const url = (avatarUrl || '').trim();
-      if(avatarImg && defaultIcon){
-        if(url){
-          avatarImg.src = url;
-          avatarImg.classList.remove('hidden');
-          defaultIcon.classList.add('hidden');
-        } else {
-          avatarImg.src = '';
-          avatarImg.classList.add('hidden');
-          defaultIcon.classList.remove('hidden');
-        }
-      }
-
-      // Sidebar avatar (Task 6)
       const sidebarAvatarImg = $('#sidebar-user-avatar');
       const sidebarDefaultIcon = $('#sidebar-default-avatar-icon');
       if(sidebarAvatarImg && sidebarDefaultIcon){
@@ -3462,20 +3436,18 @@
             </div>
           `;
         } else {
-          // Render tasks like in the static sections
+          // Render tasks with interactive UI
           tasksContainer.innerHTML = tasks.map(task => {
             const assignee = assignees.find(a => a.id === task.assigneeId);
             const assigneeName = assignee ? assignee.name : 'Chưa gán';
-            const status = task.completed ? 'completed' : 'pending';
-            const statusLabel = task.completed ? 'Hoàn thành' : 'Đang thực hiện';
-            const endDate = task.endDate ? new Date(task.endDate) : null;
-            const deadlineStr = endDate ? formatDateFromISO(task.endDate) : 'Chưa đặt';
+            const isCompleted = !!task.completed;
+            const deadlineStr = task.endDate ? formatDateFromISO(task.endDate) : 'Chưa đặt';
 
             return `
-              <div class="task-card ${status === 'completed' ? 'completed' : ''}" id="dynamic-task-${task.id}">
+              <div class="task-card ${isCompleted ? 'completed' : ''}" id="dynamic-task-${task.id}">
                 <div class="task-header">
                   <div class="task-title">${escapeHtml(task.name)}</div>
-                  <span class="task-status status-${status}">${statusLabel}</span>
+                  <span class="task-status status-${isCompleted ? 'completed' : 'pending'}">${isCompleted ? 'Hoàn thành' : 'Chưa xong'}</span>
                 </div>
                 ${task.description ? `
                   <div class="task-details">
@@ -3486,12 +3458,90 @@
                   <span>📅 Deadline: ${deadlineStr}</span>
                   <span>👤 Phụ trách: ${assigneeName}</span>
                 </div>
+                <div class="task-action-area">
+                  ${!isCompleted ? `
+                    <div class="task-input-group">
+                      <input type="url"
+                        class="task-link-input"
+                        id="dynamic-task-input-${task.id}"
+                        placeholder="Dán link (tài liệu, file, trang kết quả...)" />
+                      <button type="button"
+                        class="task-btn btn-complete"
+                        onclick="completeDynamicTask('${menuId}', '${task.id}')"
+                        id="dynamic-task-btn-${task.id}">
+                        Hoàn Thành
+                      </button>
+                    </div>
+                  ` : `
+                    <div class="task-link-feedback">
+                      <span class="text-sm text-green-600 font-medium">✅ Đã hoàn thành</span>
+                      ${task.completedLink ? `
+                        <a href="${escapeHtml(task.completedLink)}" target="_blank" rel="noopener noreferrer" class="text-sm text-blue-600 hover:underline break-all ml-2">
+                          ${escapeHtml(task.completedLink)}
+                        </a>
+                      ` : ''}
+                      ${task.completedAt ? `
+                        <span class="text-xs text-gray-500 block mt-1">Hoàn thành lúc: ${formatTimestamp(task.completedAt)}</span>
+                      ` : ''}
+                    </div>
+                  `}
+                </div>
               </div>
             `;
           }).join('');
         }
       }
     }
+
+    async function completeDynamicTask(menuId, taskId){
+      const inputEl = $(`#dynamic-task-input-${taskId}`);
+      const link = inputEl ? inputEl.value.trim() : '';
+
+      if(!link){
+        showToast('Vui lòng nhập link trước khi hoàn thành task', 'error');
+        return;
+      }
+
+      // Validate URL format
+      try {
+        new URL(link);
+      } catch(e){
+        showToast('Link không hợp lệ. Vui lòng nhập URL đầy đủ (bắt đầu bằng http:// hoặc https://)', 'error');
+        return;
+      }
+
+      try {
+        const projectId = ensureProjectId();
+        await updateDoc(doc(db, 'projects', projectId, 'menus', menuId, 'tasks', taskId), {
+          completed: true,
+          completedLink: link,
+          completedAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+
+        showToast('Hoàn thành task thành công!', 'success');
+        await loadMenuTasks(menuId);
+        showDynamicMenuSection(menuId);
+        renderDynamicOverview(); // Update overview
+      } catch(error){
+        console.error('Error completing task:', error);
+        showToast('Lỗi khi hoàn thành task', 'error');
+      }
+    }
+
+    function formatTimestamp(timestamp){
+      if(!timestamp) return '';
+      // Handle Firestore Timestamp object
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `${day}/${month}/${year} ${hours}:${minutes}`;
+    }
+
+    window.completeDynamicTask = completeDynamicTask;
 
     function setLayoutMode(mode){
       const cover = $('#cover-page');
@@ -3726,6 +3776,17 @@
           currentUser = user;
           await loadUserData(user.uid);
           showApp();
+
+          // Navigate to dashboard if on login page
+          const currentPath = window.location.pathname;
+          if(currentPath === '/login' || currentPath === '/'){
+            setTimeout(() => {
+              if(router) router.navigate('/tongquan');
+            }, 100);
+          } else if(router) {
+            // Handle current route
+            router.handleCurrent();
+          }
         } else {
           // User is logged out
           currentUser = null;
@@ -3986,16 +4047,7 @@
           currentUserData = { id: uid, ...userDoc.data() };
           isAdmin = currentUserData.role === 'admin';
 
-          // Update UI with user info (header)
-          const userNameEl = $('#current-user-name');
-          const userRoleEl = $('#current-user-role');
-          const logoutBtn = $('#logout-btn');
-
-          if(userNameEl) userNameEl.textContent = currentUserData.displayName || currentUserData.email;
-          if(userRoleEl) userRoleEl.textContent = isAdmin ? 'Admin' : 'Employee';
-          if(logoutBtn) logoutBtn.classList.remove('hidden');
-
-          // Update sidebar user profile (Task 6)
+          // Update sidebar user profile
           const sidebarUserNameEl = $('#sidebar-current-user-name');
           const sidebarUserRoleEl = $('#sidebar-current-user-role');
           const sidebarLogoutBtn = $('#sidebar-logout-btn');
@@ -4069,13 +4121,9 @@
         errorEl.classList.add('hidden');
 
         await signInWithEmailAndPassword(auth, email, password);
-        // Show success message and redirect to dashboard
+        // Show success message
         showToast('Đăng nhập thành công', 'success');
-        // Auth state listener will handle showing the app
-        // Navigate to dashboard after successful login
-        setTimeout(() => {
-          if(router) router.navigate('/tongquan');
-        }, 100);
+        // Auth state listener will handle showing the app and redirecting to dashboard
       } catch(error){
         console.error('❌ Login error:', error);
         console.log('Error code:', error.code);
@@ -5750,7 +5798,6 @@
 
     // ========= AUTH & USER MANAGEMENT EVENT LISTENERS =========
     const loginForm = $('#login-form');
-    const logoutBtn = $('#logout-btn');
     const addUserBtn = $('#add-user-btn');
     const userForm = $('#user-form');
     const userCancelBtn = $('#user-cancel-btn');
@@ -5760,9 +5807,8 @@
     const confirmDeleteUserBtn = $('#confirm-delete-user-btn');
 
     if(loginForm) loginForm.addEventListener('submit', handleLogin);
-    if(logoutBtn) logoutBtn.addEventListener('click', handleLogout);
 
-    // Sidebar logout button (Task 6)
+    // Sidebar logout button
     const sidebarLogoutBtn = $('#sidebar-logout-btn');
     if(sidebarLogoutBtn) sidebarLogoutBtn.addEventListener('click', handleLogout);
 
