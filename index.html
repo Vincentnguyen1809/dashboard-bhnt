@@ -235,6 +235,35 @@
     .drag-handle:active{ cursor:grabbing; }
     .toggle-tasks-btn{ font-size:0.875rem; color:#2563eb; background:none; border:none; cursor:pointer; padding:0.5rem 0; }
     .toggle-tasks-btn:hover{ text-decoration:underline; }
+
+    /* Enhanced Mobile Responsiveness (Task 6) */
+    @media (max-width: 768px) {
+      .stat-card, .card-section { padding: 1rem; margin-bottom: 1rem; }
+      .modal-content { max-width: 95%; margin: 1rem; padding: 1.25rem; }
+      .task-input-group { flex-direction: column; }
+      .task-btn { width: 100%; }
+      .task-header { flex-direction: column; align-items: flex-start; }
+      .task-status { margin-top: 0.5rem; }
+      .chart-container { max-width: 100%; height: 250px; }
+      header { padding: 0.75rem 1rem; }
+      .content-header-title { font-size: 0.875rem !important; }
+      main { padding: 0.5rem !important; }
+      .p-6 { padding: 1rem !important; }
+      .grid { gap: 1rem !important; }
+      .sidebar-logo { max-height: 2rem; }
+      #sidebar-user-profile { padding: 0.75rem; }
+      .task-card { padding: 1rem; }
+      .modal-buttons { flex-direction: column; }
+      .modal-buttons button { width: 100%; }
+    }
+    @media (max-width: 640px) {
+      .task-title { font-size: 0.875rem; }
+      .task-meta { font-size: 0.75rem; }
+      .nav-link { padding: 0.5rem 0.75rem; font-size: 0.875rem; }
+      .card-title { font-size: 1rem; }
+      table { font-size: 0.8125rem; }
+      th, td { padding: 0.5rem; }
+    }
   </style>
 </head>
 <body class="text-gray-800">
@@ -635,6 +664,23 @@
 
           <a class="nav-link" href="/cai-dat"><span class="emoji">🔧</span><span>Cài Đặt</span></a>
         </nav>
+
+        <!-- User Profile (moved to sidebar bottom) -->
+        <div id="sidebar-user-profile" class="border-t border-gray-200 p-4 mt-auto">
+          <div class="flex items-center gap-3 mb-3">
+            <div id="sidebar-user-avatar-wrapper" class="flex items-center justify-center w-10 h-10 rounded-full bg-gray-300 text-gray-600 overflow-hidden flex-shrink-0">
+              <img id="sidebar-user-avatar" class="w-full h-full object-cover hidden" alt="User avatar" />
+              <svg id="sidebar-default-avatar-icon" class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path></svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div id="sidebar-current-user-name" class="text-sm font-medium text-gray-800 truncate"></div>
+              <div id="sidebar-current-user-role" class="text-xs text-gray-500"></div>
+            </div>
+          </div>
+          <button id="sidebar-logout-btn" class="w-full text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 py-2 px-3 rounded-md transition hidden">
+            Đăng xuất
+          </button>
+        </div>
       </div>
     </aside>
 
@@ -720,23 +766,8 @@
               </div>
               <div class="stat-card">
                 <h3 class="card-title">Tiến Độ Theo Giai Đoạn</h3>
-                <div class="space-y-4">
-                  <div>
-                    <div class="flex justify-between mb-1.5"><span class="text-sm font-medium text-blue-700">GĐ 1: Nền Tảng</span><span id="gd1-progress-text" class="text-sm font-medium text-blue-700">0 / 0 (0%)</span></div>
-                    <div class="progress-bar"><div id="gd1-progress-bar" class="progress-bar-inner" style="width:0%"></div></div>
-                  </div>
-                  <div>
-                    <div class="flex justify-between mb-1.5"><span class="text-sm font-medium text-green-700">GĐ 2: Xây Dựng</span><span id="gd2-progress-text" class="text-sm font-medium text-green-700">0 / 0 (0%)</span></div>
-                    <div class="progress-bar"><div id="gd2-progress-bar" class="progress-bar-inner bg-green-600" style="width:0%"></div></div>
-                  </div>
-                  <div>
-                    <div class="flex justify-between mb-1.5"><span class="text-sm font-medium text-yellow-700">GĐ 3: Vận Hành</span><span id="gd3-progress-text" class="text-sm font-medium text-yellow-700">0 / 0 (0%)</span></div>
-                    <div class="progress-bar"><div id="gd3-progress-bar" class="progress-bar-inner bg-yellow-500" style="width:0%"></div></div>
-                  </div>
-                  <div>
-                    <div class="flex justify-between mb-1.5"><span class="text-sm font-medium text-red-700">GĐ 4: Ra Mắt</span><span id="gd4-progress-text" class="text-sm font-medium text-red-700">0 / 0 (0%)</span></div>
-                    <div class="progress-bar"><div id="gd4-progress-bar" class="progress-bar-inner bg-red-600" style="width:0%"></div></div>
-                  </div>
+                <div id="phase-progress-container" class="space-y-4">
+                  <!-- Dynamic phase progress bars will be rendered here from Firestore -->
                 </div>
               </div>
             </div>
@@ -1901,6 +1932,7 @@
       }
     }
     function renderAvatar(avatarUrl){
+      // Header avatar
       const avatarImg = $('#user-avatar');
       const defaultIcon = $('#default-avatar-icon');
       const url = (avatarUrl || '').trim();
@@ -1913,6 +1945,21 @@
           avatarImg.src = '';
           avatarImg.classList.add('hidden');
           defaultIcon.classList.remove('hidden');
+        }
+      }
+
+      // Sidebar avatar (Task 6)
+      const sidebarAvatarImg = $('#sidebar-user-avatar');
+      const sidebarDefaultIcon = $('#sidebar-default-avatar-icon');
+      if(sidebarAvatarImg && sidebarDefaultIcon){
+        if(url){
+          sidebarAvatarImg.src = url;
+          sidebarAvatarImg.classList.remove('hidden');
+          sidebarDefaultIcon.classList.add('hidden');
+        } else {
+          sidebarAvatarImg.src = '';
+          sidebarAvatarImg.classList.add('hidden');
+          sidebarDefaultIcon.classList.remove('hidden');
         }
       }
     }
@@ -3939,7 +3986,7 @@
           currentUserData = { id: uid, ...userDoc.data() };
           isAdmin = currentUserData.role === 'admin';
 
-          // Update UI with user info
+          // Update UI with user info (header)
           const userNameEl = $('#current-user-name');
           const userRoleEl = $('#current-user-role');
           const logoutBtn = $('#logout-btn');
@@ -3947,6 +3994,15 @@
           if(userNameEl) userNameEl.textContent = currentUserData.displayName || currentUserData.email;
           if(userRoleEl) userRoleEl.textContent = isAdmin ? 'Admin' : 'Employee';
           if(logoutBtn) logoutBtn.classList.remove('hidden');
+
+          // Update sidebar user profile (Task 6)
+          const sidebarUserNameEl = $('#sidebar-current-user-name');
+          const sidebarUserRoleEl = $('#sidebar-current-user-role');
+          const sidebarLogoutBtn = $('#sidebar-logout-btn');
+
+          if(sidebarUserNameEl) sidebarUserNameEl.textContent = currentUserData.displayName || currentUserData.email;
+          if(sidebarUserRoleEl) sidebarUserRoleEl.textContent = isAdmin ? 'Admin' : 'Employee';
+          if(sidebarLogoutBtn) sidebarLogoutBtn.classList.remove('hidden');
 
           // Show/hide admin sections
           const adminNavSection = $('#admin-nav-section');
@@ -4482,9 +4538,74 @@
         });
         await renderDynamicMenus();
         renderSidebarDynamic();
+        renderDynamicOverview(); // Update overview page with dynamic data
       } catch(error){
         console.error('Error loading menus:', error);
       }
+    }
+
+    // ========= DYNAMIC OVERVIEW (TASK 5) =========
+    function renderDynamicOverview(){
+      const container = $('#phase-progress-container');
+      if(!container) return;
+
+      // Calculate progress for each dynamic menu
+      const colors = ['blue', 'green', 'yellow', 'red', 'purple', 'indigo', 'pink', 'orange'];
+      let html = '';
+
+      dynamicMenus.forEach((menu, index) => {
+        if(menu.type !== 'task-list') return;
+
+        const tasks = dynamicTasks[menu.id] || [];
+        const total = tasks.length;
+        const completed = tasks.filter(t => t.completed).length;
+        const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+        const color = colors[index % colors.length];
+
+        html += `
+          <div>
+            <div class="flex justify-between mb-1.5">
+              <span class="text-sm font-medium text-${color}-700">${escapeHtml(menu.icon || '📋')} ${escapeHtml(menu.name)}</span>
+              <span class="text-sm font-medium text-${color}-700">${completed} / ${total} (${percent}%)</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-bar-inner bg-${color}-600" style="width:${percent}%"></div>
+            </div>
+          </div>
+        `;
+      });
+
+      if(html) {
+        container.innerHTML = html;
+      } else {
+        container.innerHTML = '<p class="text-sm text-gray-500">Chưa có giai đoạn nào. Thêm menu trong Quản Lý Kế Hoạch.</p>';
+      }
+
+      // Also update total progress
+      updateTotalProgress();
+    }
+
+    function updateTotalProgress(){
+      let totalTasks = 0;
+      let completedTasks = 0;
+
+      dynamicMenus.forEach(menu => {
+        if(menu.type === 'task-list'){
+          const tasks = dynamicTasks[menu.id] || [];
+          totalTasks += tasks.length;
+          completedTasks += tasks.filter(t => t.completed).length;
+        }
+      });
+
+      const percent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+      const progressText = $('#total-progress-text');
+      const progressPercent = $('#total-progress-percent');
+      const progressBar = $('#total-progress-bar');
+
+      if(progressText) progressText.textContent = `${completedTasks} / ${totalTasks} Tasks`;
+      if(progressPercent) progressPercent.textContent = `${percent}%`;
+      if(progressBar) progressBar.style.width = `${percent}%`;
     }
 
     async function renderDynamicMenus(){
@@ -4799,6 +4920,7 @@
 
         dynamicTasks[menuId] = tasks;
         renderMenuTasks(menuId);
+        renderDynamicOverview(); // Update overview when tasks change (Task 5)
       } catch(error){
         console.error('Error loading tasks:', error);
         const container = $(`#tasks-${menuId}`);
@@ -5639,6 +5761,11 @@
 
     if(loginForm) loginForm.addEventListener('submit', handleLogin);
     if(logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+
+    // Sidebar logout button (Task 6)
+    const sidebarLogoutBtn = $('#sidebar-logout-btn');
+    if(sidebarLogoutBtn) sidebarLogoutBtn.addEventListener('click', handleLogout);
+
     if(addUserBtn) addUserBtn.addEventListener('click', showAddUserModal);
     if(userForm) userForm.addEventListener('submit', handleUserFormSubmit);
     if(userCancelBtn) userCancelBtn.addEventListener('click', () => {
