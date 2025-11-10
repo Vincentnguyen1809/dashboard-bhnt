@@ -97,12 +97,18 @@
     .task-log-link{ color:#2563eb; font-weight:600; text-decoration:none; }
     .task-log-link:hover{ text-decoration:underline; }
     .activity-table th{ white-space:nowrap; }
-    .filter-container{ display:flex; flex-direction:column; gap:1rem; margin-bottom:1.5rem; }
-    @media (min-width:768px){
-      .filter-container{ flex-direction:row; flex-wrap:wrap; align-items:flex-end; }
-    }
+    #cover-page{ transition:background 0.3s ease-in-out; }
+    #cover-page.cover-has-image{ background-color:transparent; }
+    #cover-page.cover-has-color{ background-image:none !important; }
+    .filter-container{ display:flex; flex-wrap:wrap; align-items:flex-end; gap:1rem; margin-bottom:1.5rem; }
+    .filter-field{ display:flex; flex-direction:column; gap:0.35rem; }
+    .filter-actions{ display:flex; align-items:flex-end; }
     .filter-input, .form-select{ width:100%; border:1px solid #d1d5db; border-radius:0.375rem; padding:0.5rem 0.75rem; font-size:0.875rem; background:#fff; }
     .filter-input:focus, .form-select:focus{ outline:none; border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.1); }
+    .time-filter-wrapper{ position:relative; }
+    .custom-date-popover{ position:absolute; inset:auto auto auto 0; top:calc(100% + 0.5rem); width:18rem; max-width:90vw; background:#fff; border:1px solid #e5e7eb; border-radius:0.5rem; padding:1rem; box-shadow:0 20px 25px -15px rgba(15,23,42,.4); z-index:40; }
+    .custom-date-popover.hidden{ display:none; }
+    .custom-date-popover .filter-field{ gap:0.25rem; }
     .note-content-clamp{ display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; white-space:pre-line; }
     .note-read-more-btn{ margin-top:0.5rem; display:inline-flex; align-items:center; gap:0.35rem; font-size:0.8125rem; color:#2563eb; font-weight:600; }
     .note-read-more-btn:hover{ text-decoration:underline; }
@@ -137,6 +143,14 @@
     .card-section{ background:#fff; border-radius:0.5rem; padding:1.5rem; margin-bottom:1.5rem; border:1px solid #e5e7eb; }
     .card-title{ font-size:1.125rem; font-weight:600; color:#111827; }
     .stat-card{ background:#fff; border-radius:0.5rem; padding:1.5rem; border:1px solid #e5e7eb; }
+    .note-upload-actions{ display:flex; flex-direction:column; gap:0.75rem; }
+    .settings-file-row{ display:flex; flex-wrap:wrap; align-items:center; gap:0.75rem; }
+    .settings-preview-box{ width:6rem; height:6rem; border:1px dashed #cbd5f5; border-radius:0.75rem; display:flex; align-items:center; justify-content:center; background:#f8fafc; overflow:hidden; }
+    .settings-preview-box img{ width:100%; height:100%; object-fit:contain; }
+    .settings-helper{ font-size:0.75rem; color:#6b7280; }
+    @media (max-width:640px){
+      .custom-date-popover{ width:100%; }
+    }
     @media (max-width:768px){
       .card-section, .stat-card{ padding:1rem; }
       #toast-notification{ right:1rem; left:1rem; max-width:none; }
@@ -197,8 +211,8 @@
         <h1 class="text-3xl md:text-4xl font-bold text-blue-900">Dự án Kế hoạch Dịch vụ Marketing Assistant</h1>
         <p class="text-lg text-gray-700 leading-relaxed">Cung cấp một lộ trình (master plan) chi tiết, A-Z, để xây dựng và ra mắt dịch vụ Marketing Assistant.</p>
         <div class="space-y-1 text-gray-700" id="cover-contacts">
-          <p id="cover-contact-manager">Quản lý dự án / Kỹ thuật: [Chưa cập nhật]</p>
-          <p id="cover-contact-ops">Vận hành: [Chưa cập nhật]</p>
+          <p>Quản lý dự án / Kỹ thuật: <strong id="cover-contact-manager">[Chưa cập nhật]</strong></p>
+          <p>Vận hành: <strong id="cover-contact-ops">[Chưa cập nhật]</strong></p>
         </div>
       </div>
       <button id="start-plan-btn" class="task-btn btn-complete text-lg px-10 py-3">BẮT ĐẦU KẾ HOẠCH</button>
@@ -231,28 +245,29 @@
     <!-- Main -->
     <main class="flex-1 relative overflow-y-auto bg-gray-50">
       <!-- Top bar -->
-      <header class="sticky top-0 z-20 flex items-center justify-between px-6 py-3 bg-white border-b border-gray-200">
+      <header class="sticky top-0 z-20 flex flex-wrap items-center gap-4 px-6 py-3 bg-white border-b border-gray-200">
         <button id="open-menu" class="mobile-menu-button lg:hidden text-gray-600 hover:text-gray-900" aria-label="Mở menu">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
         </button>
-        <div class="ml-auto flex flex-col items-end gap-1 text-right">
-          <div class="text-sm font-medium text-gray-700">Ngày Ra Mắt (D-Day)</div>
-          <div class="text-base font-bold text-red-600">15/03/2026</div>
-          <div id="project-share-info" class="text-xs text-gray-500 hidden leading-snug max-w-xs">
-            <span class="font-medium text-gray-600 block">Chia sẻ dự án</span>
-            <span id="project-id-label" class="block text-gray-600"></span>
-            <span id="project-share-url" class="block text-blue-600 break-words"></span>
+        <div class="flex flex-wrap items-center gap-3 ml-auto justify-end">
+          <h2 id="current-section-title" class="text-base sm:text-lg font-semibold text-gray-800 hidden"></h2>
+          <div class="flex flex-col items-end gap-1 text-right">
+            <div class="text-sm font-medium text-gray-700">Ngày Ra Mắt (D-Day)</div>
+            <div class="text-base font-bold text-red-600">15/03/2026</div>
+            <div id="project-share-info" class="text-xs text-gray-500 hidden leading-snug max-w-xs">
+              <span class="font-medium text-gray-600 block">Chia sẻ dự án</span>
+              <span id="project-id-label" class="block text-gray-600"></span>
+              <span id="project-share-url" class="block text-blue-600 break-words"></span>
+            </div>
           </div>
         </div>
       </header>
-
-      <div id="current-section-title" class="sticky top-12 z-10 px-6 py-3 bg-gray-50 border-b border-gray-200 text-lg font-semibold text-gray-700 hidden">&nbsp;</div>
 
       <div class="p-6 max-w-7xl mx-auto">
         <div id="content-sections">
           <!-- Overview -->
           <section id="overview" class="content-section">
-            <h2 class="section-title">Tổng Quan Tiến Độ Dự Án</h2>
+            <h2 class="sr-only">Tổng Quan</h2>
             <p class="section-subtitle">Dán link kết quả cho từng task rồi bấm “Hoàn Thành”. Hệ thống tự cập nhật tiến độ, biểu đồ, và cảnh báo deadline.</p>
 
             <div id="upcoming-deadlines-container" class="card-section hidden">
@@ -348,7 +363,7 @@
 
           <!-- GĐ1 -->
           <section id="gd1" class="content-section hidden">
-            <h2 class="section-title">Giai Đoạn 1: Nền Tảng & Chiến Lược</h2>
+            <h2 class="sr-only">Giai Đoạn 1: Nền Tảng &amp; Chiến Lược</h2>
             <p class="section-subtitle">Mục tiêu: Định hình rõ chúng ta là ai, bán gì, bán cho ai.</p>
             <h3 class="phase-title">Tuần 1-2: Nghiên Cứu & Định Vị</h3>
             <div id="gd1-week1-2" class="space-y-4"></div>
@@ -358,7 +373,7 @@
 
           <!-- GĐ2 -->
           <section id="gd2" class="content-section hidden">
-            <h2 class="section-title">Giai Đoạn 2: Xây Dựng Hạ Tầng & Tài Sản</h2>
+            <h2 class="sr-only">Giai Đoạn 2: Xây Dựng Hạ Tầng &amp; Tài Sản</h2>
             <p class="section-subtitle">Website, Funnel, Social, Portfolio, Sales Kit, Hợp đồng, Nội dung & Nhân sự.</p>
             <h3 class="phase-title">Tuần 5-8: Hạ Tầng Kỹ Thuật</h3>
             <div id="gd2-week5-8" class="space-y-4"></div>
@@ -370,7 +385,7 @@
 
           <!-- GĐ3 -->
           <section id="gd3" class="content-section hidden">
-            <h2 class="section-title">Giai Đoạn 3: Vận Hành & Tối Ưu (A-Z+)</h2>
+            <h2 class="sr-only">Giai Đoạn 3: Vận Hành &amp; Tối Ưu (A-Z+)</h2>
             <p class="section-subtitle">Nhân sự, SOPs, Sales scripts, CSKH, rủi ro, test & kế hoạch ra mắt.</p>
             <h3 class="phase-title">Tuần 14-15: Nhân Sự & SOPs</h3>
             <div id="gd3-week14-15" class="space-y-4"></div>
@@ -380,18 +395,18 @@
 
           <!-- GĐ4 -->
           <section id="gd4" class="content-section hidden">
-            <h2 class="section-title">Giai Đoạn 4: Ra Mắt (D-Day)</h2>
+            <h2 class="sr-only">Giai Đoạn 4: Ra Mắt (D-Day)</h2>
             <p class="section-subtitle">Build hype, kiểm tra kỹ thuật, ra mắt & tổng kết.</p>
             <div id="gd4-week18" class="space-y-4"></div>
           </section>
 
           <!-- Notes -->
           <section id="notes" class="content-section hidden">
-            <h2 class="section-title">Ghi Chú Dự Án</h2>
+            <h2 class="sr-only">Ghi Chú Dự Án</h2>
             <div class="card-section">
               <h3 class="card-title">Ghi Chú Mới</h3>
               <textarea id="notes-textarea" class="notes-textarea" placeholder="Nhập ghi chú của bạn hôm nay..."></textarea>
-              <div class="grid grid-cols-1 md:grid-cols-2 md:gap-6 md:items-start mt-4">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start mt-4">
                 <div class="space-y-4">
                   <div class="note-type-dropdown" id="note-type-dropdown">
                     <button type="button" class="note-type-trigger" id="note-type-trigger" aria-haspopup="true" aria-expanded="false">
@@ -410,9 +425,9 @@
                   </div>
                   <p class="text-xs text-gray-500">Chọn loại ghi chú hoặc tạo mới ngay trong danh sách.</p>
                 </div>
-                <div class="flex flex-col gap-3 mt-4 md:mt-0">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5" for="note-file-upload">Đính kèm tệp (tùy chọn)</label>
+                <div class="note-upload-actions">
+                  <div class="flex flex-col gap-2">
+                    <label class="text-sm font-medium text-gray-700" for="note-file-upload">Đính kèm tệp (tùy chọn)</label>
                     <input type="file" id="note-file-upload" class="w-full text-sm text-gray-600" />
                   </div>
                   <button id="save-note-btn" class="task-btn btn-complete w-full md:w-auto md:px-6">💾 Lưu Ghi Chú</button>
@@ -425,16 +440,16 @@
             <div class="card-section">
               <h3 class="card-title">Lọc Ghi Chú</h3>
               <div class="filter-container">
-                <div class="flex flex-col gap-1 w-full md:w-1/2">
+                <div class="filter-field flex-1 min-w-[220px] md:max-w-md">
                   <label class="text-sm font-medium text-gray-700" for="filter-keyword">Từ khóa</label>
-                  <input type="text" id="filter-keyword" class="filter-input w-full" placeholder="Tìm theo nội dung..." />
+                  <input type="text" id="filter-keyword" class="filter-input" placeholder="Tìm theo nội dung..." />
                 </div>
-                <div class="flex flex-col gap-1 w-full md:w-48">
+                <div class="filter-field w-full sm:w-auto min-w-[160px]">
                   <label class="text-sm font-medium text-gray-700" for="filter-type">Loại</label>
                   <select id="filter-type" class="filter-input"><option value="">Tất cả loại</option></select>
                 </div>
-                <div class="flex flex-col gap-1 w-full md:w-48">
-                  <label class="text-sm font-medium text-gray-700" for="filter-time">Custom Date</label>
+                <div class="filter-field w-full sm:w-auto min-w-[160px] time-filter-wrapper">
+                  <label class="text-sm font-medium text-gray-700" for="filter-time">Thời gian</label>
                   <select id="filter-time" class="filter-input">
                     <option value="all">Tất cả</option>
                     <option value="today">Hôm nay</option>
@@ -445,19 +460,19 @@
                     <option value="lastMonth">Tháng trước</option>
                     <option value="custom">Tùy chọn</option>
                   </select>
-                </div>
-                <div id="custom-date-inputs" class="flex flex-col md:flex-row md:items-end gap-4 w-full hidden">
-                  <div class="flex-1">
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5" for="filter-date-from">Từ ngày</label>
-                    <input type="date" id="filter-date-from" class="filter-input"/>
+                  <div id="custom-date-popover" class="custom-date-popover hidden" aria-hidden="true">
+                    <div class="filter-field">
+                      <label class="text-xs font-medium text-gray-600" for="filter-date-from">Từ ngày</label>
+                      <input type="date" id="filter-date-from" class="filter-input" />
+                    </div>
+                    <div class="filter-field mt-3">
+                      <label class="text-xs font-medium text-gray-600" for="filter-date-to">Đến ngày</label>
+                      <input type="date" id="filter-date-to" class="filter-input" />
+                    </div>
                   </div>
-                  <div class="flex-1">
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5" for="filter-date-to">Đến ngày</label>
-                    <input type="date" id="filter-date-to" class="filter-input"/>
-                  </div>
                 </div>
-                <div class="flex items-end w-full md:w-auto">
-                  <button id="reset-filter-btn" class="task-btn btn-cancel w-full md:w-auto">🔄 Reset</button>
+                <div class="filter-actions w-full sm:w-auto">
+                  <button id="reset-filter-btn" class="task-btn btn-cancel w-full sm:w-auto">🔄 Reset</button>
                 </div>
               </div>
             </div>
@@ -481,41 +496,70 @@
           </section>
 
           <section id="settings" class="content-section hidden">
-            <h2 class="section-title">Cài Đặt Dự Án</h2>
+            <h2 class="sr-only">Cài Đặt Dự Án</h2>
             <p class="section-subtitle">Tùy chỉnh giao diện và thông tin hiển thị trên trang chủ, sidebar.</p>
-            <div class="card-section space-y-6">
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="space-y-4">
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5" for="setting-logo-upload">Logo (hiển thị ở Cover & Sidebar)</label>
-                    <input type="file" id="setting-logo-upload" class="w-full text-sm text-gray-600" accept="image/*" />
-                    <span id="setting-logo-filename" class="block text-xs text-gray-500 mt-1">Chưa chọn file</span>
+            <div class="card-section space-y-8">
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="space-y-6">
+                  <div class="space-y-2">
+                    <label class="text-sm font-medium text-gray-700" for="setting-logo-upload">Logo (hiển thị ở Cover & Sidebar)</label>
+                    <div class="settings-file-row">
+                      <input type="file" id="setting-logo-upload" class="w-full text-sm text-gray-600" accept="image/*" />
+                      <span id="setting-logo-filename" class="text-sm text-gray-500">Chưa chọn file</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                      <div class="settings-preview-box"><img id="logo-preview" alt="Xem trước logo" class="hidden" /></div>
+                      <p class="settings-helper flex-1">Tải logo PNG/SVG tối đa 2MB.</p>
+                    </div>
                     <p class="text-xs text-gray-500 mt-1">Lưu ý: Nếu upload file lỗi, bạn cần cấu hình CORS trên Firebase Storage.</p>
                   </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5" for="setting-favicon-upload">Favicon</label>
-                    <input type="file" id="setting-favicon-upload" class="w-full text-sm text-gray-600" accept="image/*" />
-                    <span id="setting-favicon-filename" class="block text-xs text-gray-500 mt-1">Chưa chọn file</span>
+                  <div class="space-y-2">
+                    <label class="text-sm font-medium text-gray-700" for="setting-favicon-upload">Favicon</label>
+                    <div class="settings-file-row">
+                      <input type="file" id="setting-favicon-upload" class="w-full text-sm text-gray-600" accept="image/*" />
+                      <span id="setting-favicon-filename" class="text-sm text-gray-500">Chưa chọn file</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                      <div class="settings-preview-box"><img id="favicon-preview" alt="Xem trước favicon" class="hidden" /></div>
+                      <p class="settings-helper flex-1">Khuyến nghị ảnh vuông (512x512px).</p>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">Lưu ý: Nếu upload file lỗi, bạn cần cấu hình CORS trên Firebase Storage.</p>
+                  </div>
+                  <div class="space-y-2">
+                    <label class="text-sm font-medium text-gray-700" for="setting-cover-image-upload">Ảnh nền Cover Page</label>
+                    <div class="settings-file-row">
+                      <input type="file" id="setting-cover-image-upload" class="w-full text-sm text-gray-600" accept="image/*" />
+                      <span id="setting-cover-image-filename" class="text-sm text-gray-500">Chưa chọn file</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                      <div class="settings-preview-box"><img id="cover-image-preview" alt="Xem trước ảnh nền" class="hidden" /></div>
+                      <p class="settings-helper flex-1">Ảnh sẽ hiển thị toàn màn hình ở trang Cover.</p>
+                    </div>
                     <p class="text-xs text-gray-500 mt-1">Lưu ý: Nếu upload file lỗi, bạn cần cấu hình CORS trên Firebase Storage.</p>
                   </div>
                 </div>
-                <div class="space-y-4">
+                <div class="space-y-6">
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5" for="setting-slogan">Slogan</label>
+                    <label class="text-sm font-medium text-gray-700" for="setting-slogan">Slogan</label>
                     <input type="text" id="setting-slogan" class="filter-input" placeholder="Ví dụ: Think Smart - Grow Faster" />
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5" for="setting-contact-manager">Quản lý dự án / Kỹ thuật</label>
+                    <label class="text-sm font-medium text-gray-700" for="setting-contact-manager">Quản lý dự án / Kỹ thuật</label>
                     <input type="text" id="setting-contact-manager" class="filter-input" placeholder="Nhập tên" />
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1.5" for="setting-contact-ops">Vận hành</label>
+                    <label class="text-sm font-medium text-gray-700" for="setting-contact-ops">Vận hành</label>
                     <input type="text" id="setting-contact-ops" class="filter-input" placeholder="Nhập tên" />
+                  </div>
+                  <div class="space-y-2">
+                    <label class="text-sm font-medium text-gray-700" for="setting-cover-color">Màu nền Cover Page</label>
+                    <input type="color" id="setting-cover-color" class="h-10 w-24 border border-gray-200 rounded" />
+                    <p class="settings-helper">Nếu không có ảnh nền, màu này sẽ được sử dụng.</p>
                   </div>
                 </div>
               </div>
-              <div>
-                <button id="save-settings-btn" class="task-btn btn-complete">💾 Lưu Cài Đặt</button>
+              <div class="flex justify-end">
+                <button id="save-settings-btn" class="task-btn btn-complete px-6">💾 Lưu Cài Đặt</button>
               </div>
             </div>
           </section>
@@ -577,6 +621,9 @@
       logoStoragePath: '',
       faviconUrl: '',
       faviconStoragePath: '',
+      coverImageUrl: '',
+      coverImageStoragePath: '',
+      coverColor: '',
     };
     const NOTE_TRUNCATE_LIMIT = 160;
 
@@ -884,6 +931,31 @@
         reader.readAsDataURL(file);
       });
     }
+    function bindFilePreviewInput({ input, label, preview, onLoad }){
+      if(!input) return;
+      input.addEventListener('change', () => {
+        const file = input.files && input.files[0];
+        if(label) label.textContent = file ? file.name : 'Chưa chọn file';
+        if(preview){
+          if(file){
+            readFileAsDataURL(file).then(dataUrl => {
+              preview.src = dataUrl;
+              preview.classList.remove('hidden');
+              if(typeof onLoad === 'function') onLoad(dataUrl);
+            }).catch(error => {
+              console.error('Không thể xem trước file:', error);
+              preview.src = '';
+              preview.classList.add('hidden');
+              if(typeof onLoad === 'function') onLoad('');
+            });
+          } else {
+            preview.src = '';
+            preview.classList.add('hidden');
+            if(typeof onLoad === 'function') onLoad('');
+          }
+        }
+      });
+    }
     async function uploadAsset(file, folder){
       if(!file) return { url:null, storagePath:'' };
       const safeName = (file.name || `asset-${Date.now()}`).replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -946,6 +1018,7 @@
       const sloganEl = $('#cover-slogan');
       const managerEl = $('#cover-contact-manager');
       const opsEl = $('#cover-contact-ops');
+      const coverSection = $('#cover-page');
       const logoUrl = (settings.logoUrl || '').trim();
       if(logoEl){
         if(logoUrl){
@@ -972,11 +1045,31 @@
       }
       if(managerEl){
         const manager = (settings.contactManager || '').trim() || '[Chưa cập nhật]';
-        managerEl.textContent = `Quản lý dự án / Kỹ thuật: ${manager}`;
+        managerEl.textContent = manager;
       }
       if(opsEl){
         const ops = (settings.contactOps || '').trim() || '[Chưa cập nhật]';
-        opsEl.textContent = `Vận hành: ${ops}`;
+        opsEl.textContent = ops;
+      }
+      if(coverSection){
+        const imageUrl = (settings.coverImageUrl || '').trim();
+        const color = (settings.coverColor || '').trim();
+        coverSection.style.backgroundImage = '';
+        coverSection.style.backgroundSize = '';
+        coverSection.style.backgroundPosition = '';
+        coverSection.style.backgroundColor = '';
+        coverSection.style.backgroundRepeat = '';
+        coverSection.classList.remove('cover-has-image','cover-has-color');
+        if(imageUrl){
+          coverSection.style.backgroundImage = `url('${imageUrl}')`;
+          coverSection.style.backgroundSize = 'cover';
+          coverSection.style.backgroundPosition = 'center';
+          coverSection.style.backgroundRepeat = 'no-repeat';
+          coverSection.classList.add('cover-has-image');
+        } else if(color){
+          coverSection.style.backgroundColor = color;
+          coverSection.classList.add('cover-has-color');
+        }
       }
     }
     function renderSidebar(settings = {}){
@@ -1006,13 +1099,54 @@
       const sloganInput = $('#setting-slogan');
       const managerInput = $('#setting-contact-manager');
       const opsInput = $('#setting-contact-ops');
+      const colorInput = $('#setting-cover-color');
       if(sloganInput) sloganInput.value = settings.slogan || '';
       if(managerInput) managerInput.value = settings.contactManager || '';
       if(opsInput) opsInput.value = settings.contactOps || '';
+      if(colorInput){
+        const color = (settings.coverColor || '').trim();
+        colorInput.value = color && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(color) ? color : '#bae6fd';
+      }
       const logoInput = $('#setting-logo-upload'); if(logoInput) logoInput.value = '';
       const faviconInput = $('#setting-favicon-upload'); if(faviconInput) faviconInput.value = '';
+      const coverImageInput = $('#setting-cover-image-upload'); if(coverImageInput) coverImageInput.value = '';
       const logoName = $('#setting-logo-filename'); if(logoName) logoName.textContent = 'Chưa chọn file';
       const faviconName = $('#setting-favicon-filename'); if(faviconName) faviconName.textContent = 'Chưa chọn file';
+      const coverImageName = $('#setting-cover-image-filename'); if(coverImageName) coverImageName.textContent = 'Chưa chọn file';
+
+      const logoPreview = $('#logo-preview');
+      if(logoPreview){
+        const url = (settings.logoUrl || '').trim();
+        if(url){
+          logoPreview.src = url;
+          logoPreview.classList.remove('hidden');
+        } else {
+          logoPreview.src = '';
+          logoPreview.classList.add('hidden');
+        }
+      }
+      const faviconPreview = $('#favicon-preview');
+      if(faviconPreview){
+        const url = (settings.faviconUrl || '').trim();
+        if(url){
+          faviconPreview.src = url;
+          faviconPreview.classList.remove('hidden');
+        } else {
+          faviconPreview.src = '';
+          faviconPreview.classList.add('hidden');
+        }
+      }
+      const coverImagePreview = $('#cover-image-preview');
+      if(coverImagePreview){
+        const url = (settings.coverImageUrl || '').trim();
+        if(url){
+          coverImagePreview.src = url;
+          coverImagePreview.classList.remove('hidden');
+        } else {
+          coverImagePreview.src = '';
+          coverImagePreview.classList.add('hidden');
+        }
+      }
     }
     async function saveSettings(){
       if(!ensureProjectReady()) return;
@@ -1021,11 +1155,15 @@
       const opsInput = $('#setting-contact-ops');
       const logoInput = $('#setting-logo-upload');
       const faviconInput = $('#setting-favicon-upload');
+      const coverImageInput = $('#setting-cover-image-upload');
+      const colorInput = $('#setting-cover-color');
 
       const nextSettings = { ...currentSettings };
       nextSettings.slogan = sloganInput ? sloganInput.value.trim() : '';
       nextSettings.contactManager = managerInput ? managerInput.value.trim() : '';
       nextSettings.contactOps = opsInput ? opsInput.value.trim() : '';
+      const colorValue = colorInput ? (colorInput.value || '').trim() : '';
+      nextSettings.coverColor = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(colorValue) ? colorValue : '';
 
       if(logoInput && logoInput.files && logoInput.files[0]){
         const uploadResult = await uploadAsset(logoInput.files[0], 'branding/logos');
@@ -1040,6 +1178,14 @@
         if(uploadResult.url){
           nextSettings.faviconUrl = uploadResult.url;
           nextSettings.faviconStoragePath = uploadResult.storagePath || '';
+        }
+      }
+
+      if(coverImageInput && coverImageInput.files && coverImageInput.files[0]){
+        const uploadResult = await uploadAsset(coverImageInput.files[0], 'branding/cover');
+        if(uploadResult.url){
+          nextSettings.coverImageUrl = uploadResult.url;
+          nextSettings.coverImageStoragePath = uploadResult.storagePath || '';
         }
       }
 
@@ -1932,12 +2078,13 @@
       return isEnd ? endOfDayDate(date) : startOfDayDate(date);
     }
     function toggleCustomDateInputs(){
-      const container = $('#custom-date-inputs');
+      const popover = $('#custom-date-popover');
       const fromInput = $('#filter-date-from');
       const toInput = $('#filter-date-to');
       const show = selectedTimeFilter === 'custom';
-      if(container){
-        container.classList.toggle('hidden', !show);
+      if(popover){
+        popover.classList.toggle('hidden', !show);
+        popover.setAttribute('aria-hidden', show ? 'false' : 'true');
       }
       if(!show){
         if(fromInput) fromInput.value = '';
@@ -2622,18 +2769,53 @@
     const saveSettingsBtn = $('#save-settings-btn'); if(saveSettingsBtn) saveSettingsBtn.addEventListener('click', async e => { e.preventDefault(); await saveSettings(); });
     const logoUploadInput = $('#setting-logo-upload');
     const logoFilenameLabel = $('#setting-logo-filename');
-    if(logoUploadInput && logoFilenameLabel){
-      logoUploadInput.addEventListener('change', () => {
-        const file = logoUploadInput.files && logoUploadInput.files[0];
-        logoFilenameLabel.textContent = file ? file.name : 'Chưa chọn file';
-      });
-    }
+    const logoPreviewEl = $('#logo-preview');
     const faviconUploadInput = $('#setting-favicon-upload');
     const faviconFilenameLabel = $('#setting-favicon-filename');
-    if(faviconUploadInput && faviconFilenameLabel){
-      faviconUploadInput.addEventListener('change', () => {
-        const file = faviconUploadInput.files && faviconUploadInput.files[0];
-        faviconFilenameLabel.textContent = file ? file.name : 'Chưa chọn file';
+    const faviconPreviewEl = $('#favicon-preview');
+    const coverImageUploadInput = $('#setting-cover-image-upload');
+    const coverImageFilenameLabel = $('#setting-cover-image-filename');
+    const coverImagePreviewEl = $('#cover-image-preview');
+    const coverColorInput = $('#setting-cover-color');
+    const computePreviewSettings = (extra = {}) => {
+      const previewSettings = { ...currentSettings };
+      if(logoUploadInput && logoUploadInput.files && logoUploadInput.files[0] && logoPreviewEl && logoPreviewEl.src){
+        previewSettings.logoUrl = logoPreviewEl.src;
+      }
+      if(coverImageUploadInput && coverImageUploadInput.files && coverImageUploadInput.files[0] && coverImagePreviewEl && coverImagePreviewEl.src){
+        previewSettings.coverImageUrl = coverImagePreviewEl.src;
+      }
+      return { ...previewSettings, ...extra };
+    };
+    const getPreviewCoverColor = () => (coverColorInput ? coverColorInput.value || '' : currentSettings.coverColor || '');
+    bindFilePreviewInput({
+      input: logoUploadInput,
+      label: logoFilenameLabel,
+      preview: logoPreviewEl,
+      onLoad: () => {
+        renderCoverPage(computePreviewSettings({ coverColor: getPreviewCoverColor() }));
+        renderSidebar(computePreviewSettings());
+      },
+    });
+    bindFilePreviewInput({
+      input: faviconUploadInput,
+      label: faviconFilenameLabel,
+      preview: faviconPreviewEl,
+      onLoad: dataUrl => {
+        applyFavicon(dataUrl || (currentSettings.faviconUrl || ''));
+      },
+    });
+    bindFilePreviewInput({
+      input: coverImageUploadInput,
+      label: coverImageFilenameLabel,
+      preview: coverImagePreviewEl,
+      onLoad: () => {
+        renderCoverPage(computePreviewSettings({ coverColor: getPreviewCoverColor() }));
+      },
+    });
+    if(coverColorInput){
+      coverColorInput.addEventListener('input', () => {
+        renderCoverPage(computePreviewSettings({ coverColor: getPreviewCoverColor() }));
       });
     }
     const activityLogToggleBtn = $('#activity-log-toggle'); if(activityLogToggleBtn) activityLogToggleBtn.addEventListener('click', () => { activityLogShowAll = true; renderActivityLog(); });
