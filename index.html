@@ -1064,9 +1064,12 @@
             <p class="section-subtitle">Quản lý menu (phases) và tasks của dự án. Thay đổi ở đây sẽ cập nhật sidebar và tổng quan ngay lập tức.</p>
 
             <div class="card-section">
-              <div class="flex items-center justify-between mb-6">
+              <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
                 <h3 class="card-title">📋 Cấu Trúc Menu & Tasks</h3>
-                <button id="add-menu-btn" class="task-btn btn-complete px-4 py-2">+ Thêm Menu Mới</button>
+                <div class="flex gap-2">
+                  <button id="migrate-data-btn" class="task-btn px-4 py-2" style="background:#f59e0b; color:#fff;">📦 Migration dữ liệu tĩnh</button>
+                  <button id="add-menu-btn" class="task-btn btn-complete px-4 py-2">+ Thêm Menu Mới</button>
+                </div>
               </div>
 
               <div id="menus-container" class="space-y-3">
@@ -4220,8 +4223,163 @@
     }
 
     function renderSidebarDynamic(){
-      // Will implement dynamic sidebar rendering
-      // For now, keep static sidebar
+      const nav = $('#main-navigation');
+      if(!nav) return;
+
+      // Keep Overview at the top
+      let html = '<a class="nav-link" href="/tongquan"><span class="emoji">📊</span><span>Tổng Quan</span></a>';
+
+      // Add dynamic menus
+      dynamicMenus.forEach(menu => {
+        if(menu.type === 'task-list'){
+          const menuPath = `/dynamic-menu/${menu.id}`;
+          html += `<a class="nav-link" href="${menuPath}"><span class="emoji">${menu.icon}</span><span>${menu.name}</span></a>`;
+        } else if(menu.type === 'external-link'){
+          html += `<a class="nav-link" href="${menu.link}" target="_blank" rel="noopener noreferrer"><span class="emoji">${menu.icon}</span><span>${menu.name} ↗</span></a>`;
+        }
+      });
+
+      // Keep Notes and Admin sections at the bottom
+      html += '<a class="nav-link" href="/ghichu"><span class="emoji">📝</span><span>Ghi Chú Dự Án</span></a>';
+
+      // Admin-only sections
+      if(isAdmin){
+        html += `
+          <div class="border-t border-gray-300 pt-2 mt-2">
+            <a class="nav-link" href="/quan-ly-ke-hoach" id="nav-plan-manager"><span class="emoji">🗂️</span><span>Quản Lý Kế Hoạch</span></a>
+          </div>
+        `;
+      }
+
+      html += '<a class="nav-link" href="/cai-dat"><span class="emoji">🔧</span><span>Cài Đặt</span></a>';
+
+      nav.innerHTML = html;
+
+      // Re-bind navigation
+      bindNav();
+      // Set active nav based on current route
+      if(router) setActiveNavByHref(window.location.pathname);
+    }
+
+    // ========= DATA MIGRATION =========
+    async function migrateStaticData(){
+      if(!checkAdminPermission()) return;
+
+      if(!confirm('Bạn có chắc chắn muốn migrate dữ liệu tĩnh sang Firestore?\n\nHành động này sẽ:\n1. Tạo 4 menus (GĐ 1-4)\n2. Migrate 60+ tasks hiện có\n3. Tạo các assignees (BOD, Marketing, v.v.)\n\nChỉ nên chạy MỘT LẦN!')){
+        return;
+      }
+
+      try {
+        showToast('Đang bắt đầu migration...', 'success');
+
+        const projectId = ensureProjectId();
+        const batch = writeBatch(db);
+
+        // First, create assignees from unique owners in tasksData
+        const uniqueOwners = new Set();
+        tasksData.forEach(task => {
+          if(task.owner){
+            task.owner.split(',').forEach(owner => {
+              uniqueOwners.add(owner.trim());
+            });
+          }
+        });
+
+        const assigneeMap = {};
+        for(const ownerName of uniqueOwners){
+          const assigneeRef = doc(collection(db, 'projects', projectId, 'assignees'));
+          batch.set(assigneeRef, {
+            name: ownerName,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          });
+          assigneeMap[ownerName] = assigneeRef.id;
+        }
+
+        await batch.commit();
+        showToast('Đã tạo assignees...', 'success');
+
+        // Reload assignees to get IDs
+        await loadAssignees();
+
+        // Create menus for each phase
+        const phaseMenus = [
+          { phase: 'gd1', name: 'GĐ 1: Nền Tảng', icon: '🎯', order: 1 },
+          { phase: 'gd2', name: 'GĐ 2: Xây Dựng', icon: '🏗️', order: 2 },
+          { phase: 'gd3', name: 'GĐ 3: Vận Hành & Tối Ưu', icon: '⚙️', order: 3 },
+          { phase: 'gd4', name: 'GĐ 4: Ra Mắt', icon: '🚀', order: 4 }
+        ];
+
+        const menuMap = {};
+        for(const phaseMenu of phaseMenus){
+          const menuRef = await addDoc(collection(db, 'projects', projectId, 'menus'), {
+            name: phaseMenu.name,
+            icon: phaseMenu.icon,
+            type: 'task-list',
+            link: null,
+            order: phaseMenu.order,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          });
+          menuMap[phaseMenu.phase] = menuRef.id;
+        }
+
+        showToast('Đã tạo menus...', 'success');
+
+        // Migrate tasks
+        let migratedCount = 0;
+        for(const task of tasksData){
+          const menuId = menuMap[task.phase];
+          if(!menuId) continue;
+
+          // Find assignee ID
+          let assigneeId = '';
+          if(task.owner && assignees.length > 0){
+            const ownerName = task.owner.split(',')[0].trim();
+            const assignee = assignees.find(a => a.name === ownerName);
+            if(assignee) assigneeId = assignee.id;
+          }
+
+          // Parse deadline to ISO date
+          let endDate = '';
+          if(task.deadline){
+            const parts = task.deadline.split('/');
+            if(parts.length === 3){
+              endDate = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+            }
+          }
+
+          // Create description from details
+          const description = task.details ? task.details.join('\n') : '';
+
+          await addDoc(collection(db, 'projects', projectId, 'menus', menuId, 'tasks'), {
+            name: task.title,
+            description,
+            startDate: '',
+            endDate,
+            assigneeId,
+            order: parseInt(task.id.split('.')[1]) || 0,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          });
+
+          migratedCount++;
+        }
+
+        showToast(`Migration hoàn tất! Đã migrate ${migratedCount} tasks.`, 'success');
+
+        // Hide migration button
+        const migrateBtn = $('#migrate-data-btn');
+        if(migrateBtn) migrateBtn.style.display = 'none';
+
+        // Reload all data
+        await loadDynamicMenus();
+        await loadAssignees();
+
+      } catch(error){
+        console.error('Migration error:', error);
+        showToast('Lỗi khi migration: ' + error.message, 'error');
+      }
     }
 
     // ========= ASSIGNEE MANAGEMENT =========
@@ -4677,6 +4835,7 @@
     });
 
     // ========= PLAN MANAGER EVENT LISTENERS =========
+    const migrateDataBtn = $('#migrate-data-btn');
     const addMenuBtn = $('#add-menu-btn');
     const menuForm = $('#menu-form');
     const menuCancelBtn = $('#menu-cancel-btn');
@@ -4700,6 +4859,9 @@
     const deleteAssigneeModal = $('#delete-assignee-modal');
     const cancelDeleteAssigneeBtn = $('#cancel-delete-assignee-btn');
     const confirmDeleteAssigneeBtn = $('#confirm-delete-assignee-btn');
+
+    // Migration
+    if(migrateDataBtn) migrateDataBtn.addEventListener('click', migrateStaticData);
 
     // Menu events
     if(addMenuBtn) addMenuBtn.addEventListener('click', showAddMenuModal);
