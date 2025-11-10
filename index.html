@@ -152,7 +152,7 @@
       .note-meta-group{ min-width:220px; }
     }
     .content-header-right{ margin-left:auto; display:flex; align-items:flex-start; justify-content:flex-end; gap:1.5rem; flex-wrap:wrap; flex:1 1 auto; }
-    .content-header-title{ min-width:180px; text-align:right; }
+    .content-header-title{ min-width:180px; text-align:left; }
     .notification-wrapper{ position:relative; }
     .notification-bell{ position:relative; width:2.5rem; height:2.5rem; border-radius:9999px; border:1px solid #e5e7eb; background:#fff; display:inline-flex; align-items:center; justify-content:center; color:#1f2937; transition:background .2s, color .2s; }
     .notification-bell:hover{ background:#f3f4f6; color:#111827; }
@@ -293,6 +293,7 @@
         <button id="open-menu" class="mobile-menu-button lg:hidden text-gray-600 hover:text-gray-900" aria-label="Mở menu">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
         </button>
+        <h2 id="current-section-title" class="content-header-title text-base sm:text-lg font-semibold text-gray-800 hidden"></h2>
         <div class="content-header-right">
           <div id="notification-wrapper" class="notification-wrapper">
             <button id="notification-bell" class="notification-bell" aria-label="Thông báo" aria-haspopup="true" aria-expanded="false">
@@ -318,7 +319,6 @@
               <span id="project-share-url" class="block text-blue-600 break-words"></span>
             </div>
           </div>
-          <h2 id="current-section-title" class="content-header-title text-base sm:text-lg font-semibold text-gray-800 hidden"></h2>
         </div>
       </header>
 
