@@ -328,7 +328,10 @@
   <!-- User Add/Edit Modal -->
   <div id="user-modal" class="modal-overlay" aria-hidden="true">
     <div class="modal-content" role="dialog" aria-modal="true" style="max-width: 500px;">
-      <h3 id="user-modal-title" class="modal-title">Thêm Người Dùng</h3>
+      <div class="flex items-center justify-between mb-4">
+        <h3 id="user-modal-title" class="modal-title mb-0">Thêm Người Dùng</h3>
+        <button type="button" id="user-modal-close" class="modal-close text-gray-400 hover:text-gray-600 text-2xl leading-none" aria-label="Close">&times;</button>
+      </div>
       <form id="user-form" class="space-y-4">
         <div>
           <label for="user-email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
@@ -1028,7 +1031,7 @@
                       <input type="text" id="setting-contact-ops" class="filter-input" placeholder="Nhập tên" />
                     </div>
                     <div class="settings-file-control">
-                      <label class="text-sm font-medium text-gray-700" for="setting-avatar-upload">Avatar người dùng</label>
+                      <label class="text-sm font-medium text-gray-700" for="setting-avatar-upload">Avatar cá nhân của bạn</label>
                       <div class="settings-file-default" id="setting-avatar-default">
                         <button type="button" id="setting-avatar-choose" class="task-btn btn-view px-4 py-2">Chọn file</button>
                         <span id="setting-avatar-filename" class="text-sm text-gray-500">Chưa chọn file</span>
@@ -1047,7 +1050,7 @@
                       </div>
                       <input type="file" id="setting-avatar-upload" class="hidden" accept="image/jpeg,image/png,image/jpg" />
                       <p class="settings-helper">Khuyến nghị ảnh vuông (800x800px). Chấp nhận JPG, PNG.</p>
-                      <p class="text-xs text-gray-500 mt-1">Avatar sẽ hiển thị ở header của ứng dụng.</p>
+                      <p class="text-xs text-gray-500 mt-1">⚠️ Lưu ý: Ảnh này CHỈ hiển thị cho tài khoản của bạn. Mỗi người dùng có avatar riêng.</p>
                     </div>
                   </div>
                 </div>
@@ -1121,6 +1124,51 @@
                       <label class="text-sm font-medium text-gray-700" for="setting-cover-youtube">Link YouTube Cover Page</label>
                       <input type="url" id="setting-cover-youtube" class="filter-input" placeholder="https://www.youtube.com/watch?v=..." />
                       <p class="settings-helper">Video YouTube sẽ hiển thị trên trang Cover, ngay phía trên nút "BẮT ĐẦU KẾ HOẠCH".</p>
+                    </div>
+                  </div>
+                  <div class="settings-group-card">
+                    <h3 class="settings-group-title">Tùy chỉnh Login Page (Admin Only)</h3>
+                    <div class="settings-file-control">
+                      <label class="text-sm font-medium text-gray-700" for="setting-login-bg-upload">Ảnh nền Login Page</label>
+                      <div class="settings-file-default" id="setting-login-bg-default">
+                        <button type="button" id="setting-login-bg-choose" class="task-btn btn-view px-4 py-2">Chọn file</button>
+                        <span id="setting-login-bg-filename" class="text-sm text-gray-500">Chưa chọn file</span>
+                      </div>
+                      <div class="settings-file-active hidden" id="setting-login-bg-active">
+                        <div class="settings-file-selected">
+                          <div class="settings-preview-box"><img id="login-bg-preview" alt="Xem trước ảnh nền login" class="hidden" /></div>
+                          <div class="flex flex-col gap-2">
+                            <span id="setting-login-bg-selected-name" class="settings-selected-name"></span>
+                            <div class="settings-file-actions">
+                              <button type="button" id="setting-login-bg-change" class="settings-file-action text-blue">Đổi</button>
+                              <button type="button" id="setting-login-bg-remove" class="settings-file-action text-red">Gỡ</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <input type="file" id="setting-login-bg-upload" class="hidden" accept="image/*" />
+                      <p class="settings-helper">Ảnh nền sẽ hiển thị trên trang đăng nhập</p>
+                    </div>
+                    <div class="settings-file-control">
+                      <label class="text-sm font-medium text-gray-700" for="setting-login-logo-upload">Logo Login Page</label>
+                      <div class="settings-file-default" id="setting-login-logo-default">
+                        <button type="button" id="setting-login-logo-choose" class="task-btn btn-view px-4 py-2">Chọn file</button>
+                        <span id="setting-login-logo-filename" class="text-sm text-gray-500">Chưa chọn file</span>
+                      </div>
+                      <div class="settings-file-active hidden" id="setting-login-logo-active">
+                        <div class="settings-file-selected">
+                          <div class="settings-preview-box"><img id="login-logo-preview" alt="Xem trước logo login" class="hidden" /></div>
+                          <div class="flex flex-col gap-2">
+                            <span id="setting-login-logo-selected-name" class="settings-selected-name"></span>
+                            <div class="settings-file-actions">
+                              <button type="button" id="setting-login-logo-change" class="settings-file-action text-blue">Đổi</button>
+                              <button type="button" id="setting-login-logo-remove" class="settings-file-action text-red">Gỡ</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <input type="file" id="setting-login-logo-upload" class="hidden" accept="image/*" />
+                      <p class="settings-helper">Logo sẽ hiển thị phía trên form đăng nhập</p>
                     </div>
                   </div>
                 </div>
@@ -2031,7 +2079,8 @@
       if(logoFileControl) logoFileControl.setFromUrl((settings.logoUrl || '').trim());
       if(faviconFileControl) faviconFileControl.setFromUrl((settings.faviconUrl || '').trim());
       if(coverImageFileControl) coverImageFileControl.setFromUrl((settings.coverImageUrl || '').trim());
-      if(avatarFileControl) avatarFileControl.setFromUrl((settings.avatarUrl || '').trim());
+      // Load avatar from current user data (user-specific)
+      if(avatarFileControl) avatarFileControl.setFromUrl((currentUserData.avatarUrl || '').trim());
     }
     async function saveSettings(){
       if(!ensureProjectReady()) return;
@@ -2097,24 +2146,35 @@
         }
       }
 
+      // Handle user avatar separately (user-specific, not project-wide)
+      let userAvatarUrl = currentUserData.avatarUrl || '';
       if(pendingFileRemovals.avatar){
-        nextSettings.avatarUrl = '';
-        nextSettings.avatarStoragePath = '';
+        userAvatarUrl = '';
       } else if(avatarInput && avatarInput.files && avatarInput.files[0]){
-        const uploadResult = await uploadAsset(avatarInput.files[0], 'user/avatar');
+        const uploadResult = await uploadAsset(avatarInput.files[0], `user/${currentUser.uid}/avatar`);
         if(uploadResult.url){
-          nextSettings.avatarUrl = uploadResult.url;
-          nextSettings.avatarStoragePath = uploadResult.storagePath || '';
+          userAvatarUrl = uploadResult.url;
         }
       }
 
       try {
+        // Save project settings
         await updateProjectData({ settings: nextSettings });
         currentSettings = { ...nextSettings };
+
+        // Save user avatar to user document
+        if(currentUser){
+          await updateDoc(doc(db, 'users', currentUser.uid), {
+            avatarUrl: userAvatarUrl,
+            updatedAt: serverTimestamp()
+          });
+          currentUserData.avatarUrl = userAvatarUrl;
+        }
+
         renderCoverPage(currentSettings);
         renderSidebar(currentSettings);
         applyFavicon(currentSettings.faviconUrl || '');
-        renderAvatar(currentSettings.avatarUrl || '');
+        renderAvatar(userAvatarUrl);
         populateSettingsForm(currentSettings);
         showToast('Đã lưu cài đặt thành công', 'success');
       } catch(error){
@@ -3606,7 +3666,21 @@
             const assignee = assignees.find(a => a.id === task.assigneeId);
             const assigneeName = assignee ? assignee.name : 'Chưa gán';
             const isCompleted = !!task.completed;
-            const deadlineStr = task.endDate ? formatDateFromISO(task.endDate) : 'Chưa đặt';
+            const startDateStr = task.startDate ? formatDateFromISO(task.startDate) : 'Chưa đặt';
+            const endDateStr = task.endDate ? formatDateFromISO(task.endDate) : 'Chưa đặt';
+
+            // Calculate remaining time with color coding
+            let remainingTimeHtml = '';
+            if(task.endDate && !isCompleted){
+              const deadlineInfo = evaluateDeadline(formatDateFromISO(task.endDate), false);
+              if(deadlineInfo){
+                remainingTimeHtml = `<span class="${deadlineInfo.className}">${deadlineInfo.text}</span>`;
+              }
+            } else if(isCompleted){
+              remainingTimeHtml = '<span class="text-green-600">✅ Đã hoàn thành</span>';
+            } else {
+              remainingTimeHtml = '<span class="text-gray-500">Chưa có deadline</span>';
+            }
 
             return `
               <div class="task-card ${isCompleted ? 'completed' : ''}" id="dynamic-task-${task.id}">
@@ -3620,8 +3694,10 @@
                   </div>
                 ` : ''}
                 <div class="task-meta">
-                  <span>📅 Deadline: ${deadlineStr}</span>
+                  <span>📅 Bắt đầu: ${startDateStr}</span>
+                  <span>📅 Kết thúc: ${endDateStr}</span>
                   <span>👤 Phụ trách: ${assigneeName}</span>
+                  <span>⏰ Còn lại: ${remainingTimeHtml}</span>
                 </div>
                 <div class="task-action-area">
                   ${!isCompleted ? `
@@ -3669,6 +3745,17 @@
                           </div>
                         </div>
                       ` : ''}
+                      <div class="flex gap-2 mt-3">
+                        <button type="button" class="task-btn btn-view px-3 py-1.5 text-sm" onclick="viewCompletedTask('${menuId}', '${task.id}')">
+                          👁️ Xem
+                        </button>
+                        <button type="button" class="task-btn btn-complete px-3 py-1.5 text-sm" onclick="editCompletedTask('${menuId}', '${task.id}')">
+                          ✏️ Sửa
+                        </button>
+                        <button type="button" class="task-btn px-3 py-1.5 text-sm" style="background:#ef4444; color:#fff;" onclick="deleteCompletedTask('${menuId}', '${task.id}')">
+                          🗑️ Xóa
+                        </button>
+                      </div>
                     </div>
                   `}
                 </div>
@@ -3755,6 +3842,116 @@
     }
 
     window.toggleComment = toggleComment;
+
+    // View completed task details
+    async function viewCompletedTask(menuId, taskId){
+      const tasks = dynamicTasks[menuId] || [];
+      const task = tasks.find(t => t.id === taskId);
+      if(!task) return;
+
+      const assignee = assignees.find(a => a.id === task.assigneeId);
+      const assigneeName = assignee ? assignee.name : 'Chưa gán';
+
+      const details = `
+━━━━━━━━━━━━━━━━━━━━━━
+📋 Chi Tiết Task
+━━━━━━━━━━━━━━━━━━━━━━
+
+Tên: ${task.name}
+
+Mô tả: ${task.description || 'Không có'}
+
+📅 Ngày bắt đầu: ${task.startDate ? formatDateFromISO(task.startDate) : 'Chưa đặt'}
+📅 Ngày kết thúc: ${task.endDate ? formatDateFromISO(task.endDate) : 'Chưa đặt'}
+
+👤 Phụ trách: ${assigneeName}
+
+━━━━━━━━━━━━━━━━━━━━━━
+✅ THÔNG TIN HOÀN THÀNH
+━━━━━━━━━━━━━━━━━━━━━━
+
+🔗 Link: ${task.completedLink || 'Không có'}
+
+💬 Ghi chú: ${task.completedComment || 'Không có'}
+
+⏰ Hoàn thành lúc: ${task.completedAt ? formatTimestamp(task.completedAt) : 'Không rõ'}
+      `.trim();
+
+      alert(details);
+    }
+
+    // Edit completed task
+    async function editCompletedTask(menuId, taskId){
+      const tasks = dynamicTasks[menuId] || [];
+      const task = tasks.find(t => t.id === taskId);
+      if(!task) return;
+
+      const newLink = prompt('📎 Cập nhật Link:', task.completedLink || '');
+      if(newLink === null) return; // User cancelled
+
+      const newComment = prompt('💬 Cập nhật Ghi chú:', task.completedComment || '');
+      if(newComment === null) return; // User cancelled
+
+      // Validate link if provided
+      if(newLink && newLink.trim()){
+        try {
+          new URL(newLink.trim());
+        } catch(e){
+          showToast('Link không hợp lệ. Vui lòng nhập URL đầy đủ (bắt đầu bằng http:// hoặc https://)', 'error');
+          return;
+        }
+      }
+
+      try {
+        const projectId = ensureProjectId();
+        const updateData = {
+          completedLink: newLink.trim(),
+          completedComment: newComment.trim(),
+          updatedAt: serverTimestamp()
+        };
+
+        await updateDoc(doc(db, 'projects', projectId, 'menus', menuId, 'tasks', taskId), updateData);
+
+        showToast('Cập nhật thành công!', 'success');
+        await loadMenuTasks(menuId);
+        showDynamicMenuSection(menuId);
+      } catch(error){
+        console.error('Error updating task:', error);
+        showToast('Lỗi khi cập nhật task', 'error');
+      }
+    }
+
+    // Delete completed task content
+    async function deleteCompletedTask(menuId, taskId){
+      if(!confirm('⚠️ Bạn có chắc chắn muốn xóa nội dung đã hoàn thành?\n\nHành động này sẽ:\n- Xóa link đã gửi\n- Xóa ghi chú\n- Đặt lại task về trạng thái "Chưa xong"\n\nBạn có muốn tiếp tục?')){
+        return;
+      }
+
+      try {
+        const projectId = ensureProjectId();
+        const updateData = {
+          completed: false,
+          completedLink: '',
+          completedComment: '',
+          completedAt: null,
+          updatedAt: serverTimestamp()
+        };
+
+        await updateDoc(doc(db, 'projects', projectId, 'menus', menuId, 'tasks', taskId), updateData);
+
+        showToast('Đã xóa nội dung hoàn thành. Task quay lại trạng thái "Chưa xong".', 'success');
+        await loadMenuTasks(menuId);
+        showDynamicMenuSection(menuId);
+        renderDynamicOverview(); // Update overview
+      } catch(error){
+        console.error('Error deleting completed task:', error);
+        showToast('Lỗi khi xóa', 'error');
+      }
+    }
+
+    window.viewCompletedTask = viewCompletedTask;
+    window.editCompletedTask = editCompletedTask;
+    window.deleteCompletedTask = deleteCompletedTask;
 
     function setLayoutMode(mode){
       const cover = $('#cover-page');
@@ -4278,6 +4475,9 @@
             if(adminNavSection) adminNavSection.classList.add('hidden');
           }
 
+          // Render user's avatar
+          renderAvatar(currentUserData.avatarUrl || '');
+
           // Initialize dynamic data
           await initializeRealtimePersistence();
           await loadUsers();
@@ -4721,20 +4921,8 @@
             throw new Error('Mật khẩu phải có ít nhất 6 ký tự');
           }
 
-          // Prompt for admin password BEFORE creating user to ensure we can sign back in
-          const adminPassword = prompt('⚠️ Tạo người dùng sẽ tạm thời đăng xuất bạn.\n\nNhập mật khẩu của bạn để xác nhận:');
-          if(!adminPassword){
-            throw new Error('Cần nhập mật khẩu để xác nhận');
-          }
-
-          // Verify admin password first
+          // Save admin email for re-login
           const adminEmail = currentUserData.email;
-          const credential = EmailAuthProvider.credential(adminEmail, adminPassword);
-          try {
-            await reauthenticateWithCredential(currentUser, credential);
-          } catch(authError){
-            throw new Error('Mật khẩu không đúng. Vui lòng thử lại.');
-          }
 
           // Create auth user (this will automatically sign in the new user)
           let userCredential;
@@ -4758,19 +4946,22 @@
             });
           } catch(firestoreError){
             // Firestore creation failed - auth user exists but Firestore doc doesn't
-            // Sign out and sign admin back in, then show error
             await signOut(auth);
-            await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
             throw new Error(`⚠️ Tài khoản đã tạo trong Firebase Auth nhưng lưu thông tin thất bại.\n\nEmail: ${email}\nBạn cần xóa user này trong Firebase Console > Authentication.\n\nLỗi: ${firestoreError.message}`);
           }
 
-          // Sign out the newly created user and sign back in as admin
+          // User created successfully - sign out the new user
           await signOut(auth);
-          await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
 
-          showToast('Thêm người dùng thành công', 'success');
+          // Show success message and prompt admin to log back in
+          showToast('✅ Người dùng đã được tạo thành công! Vui lòng đăng nhập lại.', 'success');
           $('#user-modal').classList.remove('active');
-          // Don't need to reload users - it will reload when we navigate/refresh
+
+          // Pre-fill admin email on login page for convenience
+          setTimeout(() => {
+            const loginEmailInput = $('#login-email');
+            if(loginEmailInput) loginEmailInput.value = adminEmail;
+          }, 100);
         }
       } catch(error){
         console.error('Error saving user:', error);
@@ -6126,6 +6317,11 @@
     if(addUserBtn) addUserBtn.addEventListener('click', showAddUserModal);
     if(userForm) userForm.addEventListener('submit', handleUserFormSubmit);
     if(userCancelBtn) userCancelBtn.addEventListener('click', closeUserModalWithConfirm);
+
+    // X close button
+    const userModalCloseBtn = $('#user-modal-close');
+    if(userModalCloseBtn) userModalCloseBtn.addEventListener('click', closeUserModalWithConfirm);
+
     if(userModal) userModal.addEventListener('click', e => {
       if(e.target === userModal) closeUserModalWithConfirm();
     });
