@@ -2623,19 +2623,9 @@
           </div>
           <div class="task-link-feedback" data-link-feedback="${t.id}"></div>
           <div class="task-completed-actions hidden" data-completed-actions="${t.id}">
-            <button type="button" class="task-btn btn-view task-view-btn" data-view-btn="${t.id}" disabled>🔗 View link</button>
-            <button type="button" class="task-btn btn-secondary" data-edit-link="${t.id}">✏️ Edit</button>
-            <button type="button" class="task-btn btn-danger" data-delete-link="${t.id}">🗑️ Delete</button>
+            <button type="button" class="task-btn btn-view task-view-btn" data-view-btn="${t.id}" disabled>🔗 View</button>
             <button type="button" class="task-btn btn-outline" data-comment-toggle="${t.id}" aria-expanded="false">💬 Comment</button>
-            <div class="edit-dropdown-wrapper">
-              <button type="button" class="task-icon-btn" data-dropdown-btn="${t.id}" aria-label="Tùy chọn chỉnh sửa task">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M16.768 3.768a2 2 0 112.828 2.828L7 19.192 3 21l1.808-4z"></path></svg>
-              </button>
-              <div class="edit-dropdown-menu" data-dropdown-menu="${t.id}">
-                <div class="dropdown-item" data-action="edit" data-task-id="${t.id}"><span>✏️</span><span>Chỉnh sửa Task</span></div>
-                <div class="dropdown-item delete" data-action="delete" data-task-id="${t.id}"><span>🗑️</span><span>Xóa Task</span></div>
-              </div>
-            </div>
+            <button type="button" class="task-btn btn-secondary" data-edit-link="${t.id}">✏️ Edit</button>
           </div>
           <!-- Comment section for completed tasks -->
           <div class="task-comment-section hidden" data-comment-section="${t.id}" aria-hidden="true"></div>
@@ -2793,14 +2783,6 @@
         });
       });
 
-      // Delete link buttons
-      $$('[data-delete-link]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const id = btn.dataset.deleteLink;
-          handleDeleteTaskClick(id);
-        });
-      });
-
       // Toggle comment sections
       $$('[data-comment-toggle]').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -2821,33 +2803,6 @@
         });
       });
 
-    }
-
-    function setupDropdowns(){
-      $$('[data-dropdown-btn]').forEach(btn => {
-        btn.addEventListener('click', function(e){
-          e.stopPropagation();
-          const id = this.dataset.dropdownBtn;
-          const menu = document.querySelector(`[data-dropdown-menu="${id}"]`);
-          $$('.edit-dropdown-menu').forEach(m => { if(m !== menu) m.classList.remove('show'); });
-          if(menu) menu.classList.toggle('show');
-        });
-      });
-
-      $$('.dropdown-item').forEach(item => {
-        item.addEventListener('click', function(e){
-          e.stopPropagation();
-          const action = this.dataset.action;
-          const id = this.dataset.taskId;
-          const menu = this.closest('.edit-dropdown-menu');
-          if(menu) menu.classList.remove('show');
-          if(action === 'edit') handleEditTask(id);
-          else if(action === 'delete') handleDeleteTaskClick(id);
-        });
-      });
-
-      document.addEventListener('click', () => $$('.edit-dropdown-menu').forEach(m => m.classList.remove('show')));
-      document.addEventListener('keydown', (e) => { if(e.key === 'Escape') $$('.edit-dropdown-menu').forEach(m => m.classList.remove('show')); });
     }
 
     function handleEditTask(id){
@@ -6438,7 +6393,6 @@ Mô tả: ${task.description || 'Không có'}
     router = createRouter(routeConfig);
     renderTasks();
     bindTaskEvents();
-    setupDropdowns();
     bindNav();
     initChart();
     updateUI();
