@@ -5587,12 +5587,30 @@ Mô tả: ${task.description || 'Không có'}
       if(!container) return;
 
       const isExpanded = container.classList.contains('expanded');
-      container.classList.toggle('expanded');
 
-      // Track expanded state
+      // ACCORDION LOGIC: Close all other menus first
+      expandedMenus.forEach(otherMenuId => {
+        if(otherMenuId !== menuId){
+          const otherContainer = $(`#tasks-${otherMenuId}`);
+          const otherIcon = $(`#toggle-icon-${otherMenuId}`);
+          if(otherContainer){
+            otherContainer.classList.remove('expanded');
+          }
+          if(otherIcon){
+            otherIcon.textContent = '▼';
+          }
+        }
+      });
+
+      // Clear the expanded menus set
+      expandedMenus.clear();
+
+      // Toggle the clicked menu
       if(isExpanded){
-        expandedMenus.delete(menuId);
+        container.classList.remove('expanded');
+        // expandedMenus is already cleared, so don't add anything
       } else {
+        container.classList.add('expanded');
         expandedMenus.add(menuId);
       }
 
