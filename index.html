@@ -301,6 +301,19 @@
     </div>
   </div>
 
+  <!-- Edit Link Modal -->
+  <div id="edit-link-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="edit-link-title">
+      <h3 id="edit-link-title" class="modal-title">Chỉnh sửa link</h3>
+      <p class="modal-message">Nhập link mới cho task đã hoàn thành:</p>
+      <input type="url" id="edit-link-input" class="filter-input mb-4" placeholder="Nhập link mới..." style="width: 100%;" />
+      <div class="modal-buttons">
+        <button id="cancel-edit-link-btn" class="task-btn btn-cancel">Hủy</button>
+        <button id="confirm-edit-link-btn" class="task-btn btn-complete">Lưu</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Delete Note Modal -->
   <div id="delete-note-modal" class="modal-overlay" aria-hidden="true">
     <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="delete-note-title">
@@ -2696,6 +2709,10 @@
     const deleteTaskModal = $('#delete-task-modal');
     const confirmDeleteTaskBtn = $('#confirm-delete-task-btn');
     const cancelDeleteTaskBtn = $('#cancel-delete-task-btn');
+    const editLinkModal = $('#edit-link-modal');
+    const confirmEditLinkBtn = $('#confirm-edit-link-btn');
+    const cancelEditLinkBtn = $('#cancel-edit-link-btn');
+    const editLinkInput = $('#edit-link-input');
     const deleteNoteModal = $('#delete-note-modal');
     const confirmDeleteNoteBtn = $('#confirm-delete-note-btn');
     const cancelDeleteNoteBtn = $('#cancel-delete-note-btn');
@@ -2705,6 +2722,7 @@
     noteModalCloseBtn = $('#note-modal-close');
 
     let currentDeleteTaskId = null;
+    let currentEditLinkTaskId = null;
     let currentDeleteNoteId = null;
 
     function bindTaskEvents(){
@@ -2771,7 +2789,7 @@
       $$('[data-edit-link]').forEach(btn => {
         btn.addEventListener('click', () => {
           const id = btn.dataset.editLink;
-          handleEditTask(id);
+          handleEditLink(id);
         });
       });
 
@@ -2850,6 +2868,60 @@
         const input = document.querySelector(`[data-task-id="${id}"]`);
         if(input){ input.disabled = false; input.focus(); input.select(); }
       }, 80);
+    }
+    function handleEditLink(id){
+      if(!ensureProjectReady()) return;
+      currentEditLinkTaskId = id;
+      const state = ensureTaskEntry(id);
+      if(editLinkInput){
+        editLinkInput.value = state.link || '';
+        // Add Enter key support
+        const enterHandler = (e) => {
+          if(e.key === 'Enter' && !e.shiftKey){
+            e.preventDefault();
+            confirmEditLink();
+            editLinkInput.removeEventListener('keydown', enterHandler);
+          }
+        };
+        editLinkInput.addEventListener('keydown', enterHandler);
+      }
+      if(editLinkModal){
+        editLinkModal.classList.add('active');
+        editLinkModal.setAttribute('aria-hidden','false');
+        setTimeout(() => {
+          if(editLinkInput){ editLinkInput.focus(); editLinkInput.select(); }
+        }, 100);
+      }
+    }
+    function confirmEditLink(){
+      const id = currentEditLinkTaskId;
+      if(!id) return;
+      const state = ensureTaskEntry(id);
+      const newLink = editLinkInput ? editLinkInput.value.trim() : '';
+      if(!newLink){
+        alert('Vui lòng nhập link.');
+        return;
+      }
+      state.link = newLink;
+      const nowIso = new Date().toISOString();
+      state.updatedAt = nowIso;
+      recordTaskActivity(id, 'link_edited', nowIso);
+      updateUI();
+      renderActivityLog();
+      syncTaskState();
+      currentEditLinkTaskId = null;
+      if(editLinkModal){
+        editLinkModal.classList.remove('active');
+        editLinkModal.setAttribute('aria-hidden','true');
+      }
+      showToast('Link đã được cập nhật', 'success');
+    }
+    function cancelEditLink(){
+      currentEditLinkTaskId = null;
+      if(editLinkModal){
+        editLinkModal.classList.remove('active');
+        editLinkModal.setAttribute('aria-hidden','true');
+      }
     }
     function handleDeleteTaskClick(id){
       if(!ensureProjectReady()) return;
@@ -6348,15 +6420,19 @@ Mô tả: ${task.description || 'Không có'}
     // ========= MODALS WIRING =========
     if(confirmDeleteTaskBtn) confirmDeleteTaskBtn.addEventListener('click', confirmDeleteTask);
     if(cancelDeleteTaskBtn) cancelDeleteTaskBtn.addEventListener('click', cancelDeleteTask);
+    if(confirmEditLinkBtn) confirmEditLinkBtn.addEventListener('click', confirmEditLink);
+    if(cancelEditLinkBtn) cancelEditLinkBtn.addEventListener('click', cancelEditLink);
     if(confirmDeleteNoteBtn) confirmDeleteNoteBtn.addEventListener('click', confirmDeleteNote);
     if(cancelDeleteNoteBtn) cancelDeleteNoteBtn.addEventListener('click', cancelDeleteNote);
     const deleteTaskModalEl = $('#delete-task-modal');
+    const editLinkModalEl = $('#edit-link-modal');
     const deleteNoteModalEl = $('#delete-note-modal');
     if(deleteTaskModalEl) deleteTaskModalEl.addEventListener('click', e => { if(e.target === deleteTaskModalEl) cancelDeleteTask(); });
+    if(editLinkModalEl) editLinkModalEl.addEventListener('click', e => { if(e.target === editLinkModalEl) cancelEditLink(); });
     if(deleteNoteModalEl) deleteNoteModalEl.addEventListener('click', e => { if(e.target === deleteNoteModalEl) cancelDeleteNote(); });
     if(noteModalCloseBtn) noteModalCloseBtn.addEventListener('click', e => { e.preventDefault(); closeNoteDetailModal(); });
     if(noteDetailModal) noteDetailModal.addEventListener('click', e => { if(e.target === noteDetailModal) closeNoteDetailModal(); });
-    document.addEventListener('keydown', e => { if(e.key === 'Escape') closeNoteDetailModal(); });
+    document.addEventListener('keydown', e => { if(e.key === 'Escape') { closeNoteDetailModal(); cancelEditLink(); } });
 
     // ========= BOOT =========
     router = createRouter(routeConfig);
