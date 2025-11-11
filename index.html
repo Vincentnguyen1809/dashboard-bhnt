@@ -236,7 +236,7 @@
     .toggle-tasks-btn{ font-size:0.875rem; color:#2563eb; background:none; border:none; cursor:pointer; padding:0.5rem 0; }
     .toggle-tasks-btn:hover{ text-decoration:underline; }
 
-    /* Enhanced Mobile Responsiveness (Task 6) */
+    /* Enhanced Mobile Responsiveness */
     @media (max-width: 768px) {
       .stat-card, .card-section { padding: 1rem; margin-bottom: 1rem; }
       .modal-content { max-width: 95%; margin: 1rem; padding: 1.25rem; }
@@ -255,14 +255,26 @@
       .task-card { padding: 1rem; }
       .modal-buttons { flex-direction: column; }
       .modal-buttons button { width: 100%; }
+      .filter-container { gap: 0.75rem; }
+      .filter-field { min-width: 100%; }
+      .overflow-x-auto { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .task-completed-actions { flex-wrap: wrap; justify-content: flex-start; }
+      .settings-page-grid { grid-template-columns: 1fr; }
+      .task-meta { flex-wrap: wrap; gap: 0.375rem; }
+      textarea { font-size: 1rem; } /* Prevent zoom on iOS */
+      input, select { font-size: 1rem; } /* Prevent zoom on iOS */
     }
     @media (max-width: 640px) {
       .task-title { font-size: 0.875rem; }
       .task-meta { font-size: 0.75rem; }
       .nav-link { padding: 0.5rem 0.75rem; font-size: 0.875rem; }
       .card-title { font-size: 1rem; }
-      table { font-size: 0.8125rem; }
+      table { font-size: 0.8125rem; display: block; overflow-x: auto; white-space: nowrap; }
       th, td { padding: 0.5rem; }
+      .menu-item-header { flex-direction: column; align-items: flex-start; gap: 0.75rem; }
+      .menu-item-actions { width: 100%; justify-content: flex-start; }
+      .task-item-header { flex-direction: column; gap: 0.5rem; }
+      .task-item-actions { width: 100%; }
     }
   </style>
 </head>
@@ -659,6 +671,7 @@
 
           <!-- Admin-only links -->
           <div id="admin-nav-section" class="hidden border-t border-gray-300 pt-2 mt-2">
+            <a class="nav-link" href="/quan-ly-nguoi-dung" id="nav-user-management"><span class="emoji">👥</span><span>Quản Lý Người Dùng</span></a>
             <a class="nav-link" href="/quan-ly-ke-hoach" id="nav-plan-manager"><span class="emoji">🗂️</span><span>Quản Lý Kế Hoạch</span></a>
           </div>
 
@@ -1168,42 +1181,42 @@
                 </div>
               </div>
 
-              <!-- User Management Section (Admin Only) -->
-              <div id="user-management-section" class="hidden">
-                <div class="border-t border-gray-300 pt-8 mt-8">
-                  <h3 class="text-xl font-semibold text-gray-800 mb-4">👥 Quản Lý Người Dùng (Admin)</h3>
-                  <div class="settings-group-card">
-                    <div class="flex items-center justify-between mb-4">
-                      <h4 class="settings-group-title">Danh sách người dùng</h4>
-                      <button id="add-user-btn" class="task-btn btn-complete px-4 py-2">+ Thêm người dùng</button>
-                    </div>
-                    <div class="overflow-x-auto">
-                      <table class="notes-table w-full">
-                        <thead>
-                          <tr>
-                            <th class="text-left">Email</th>
-                            <th class="text-left">Tên hiển thị</th>
-                            <th class="text-left">Vai trò</th>
-                            <th class="text-left">Ngày tạo</th>
-                            <th class="text-center">Hành động</th>
-                          </tr>
-                        </thead>
-                        <tbody id="users-table-body">
-                          <!-- Users will be populated here -->
-                        </tbody>
-                      </table>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-4">
-                      <strong>Admin:</strong> Toàn quyền truy cập, bao gồm Quản Lý Kế Hoạch.<br>
-                      <strong>Employee:</strong> Chỉ xem kế hoạch, tạo ghi chú, đánh dấu task hoàn thành, và comment.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
               <div class="flex justify-end">
                 <button id="save-settings-btn" class="task-btn btn-complete px-6">💾 Lưu Cài Đặt</button>
               </div>
+            </div>
+          </section>
+
+          <!-- User Management (Admin Only) -->
+          <section id="user-management" class="content-section hidden">
+            <h2 class="sr-only">Quản Lý Người Dùng</h2>
+            <p class="section-subtitle">Quản lý người dùng, phân quyền và kiểm soát truy cập vào hệ thống.</p>
+
+            <div class="card-section">
+              <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
+                <h3 class="card-title">👥 Danh Sách Người Dùng</h3>
+                <button id="add-user-btn" class="task-btn btn-complete px-4 py-2">+ Thêm người dùng</button>
+              </div>
+              <div class="overflow-x-auto">
+                <table class="notes-table w-full">
+                  <thead>
+                    <tr>
+                      <th class="text-left">Email</th>
+                      <th class="text-left">Tên hiển thị</th>
+                      <th class="text-left">Vai trò</th>
+                      <th class="text-left">Ngày tạo</th>
+                      <th class="text-center">Hành động</th>
+                    </tr>
+                  </thead>
+                  <tbody id="users-table-body">
+                    <!-- Users will be populated here -->
+                  </tbody>
+                </table>
+              </div>
+              <p class="text-xs text-gray-500 mt-4">
+                <strong>Admin:</strong> Toàn quyền truy cập, bao gồm Quản Lý Kế Hoạch.<br>
+                <strong>Employee:</strong> Chỉ xem kế hoạch, tạo ghi chú, đánh dấu task hoàn thành, và comment.
+              </p>
             </div>
           </section>
 
@@ -1216,7 +1229,6 @@
               <div class="flex items-center justify-between mb-6 flex-wrap gap-3">
                 <h3 class="card-title">📋 Cấu Trúc Menu & Tasks</h3>
                 <div class="flex gap-2">
-                  <button id="migrate-data-btn" class="task-btn px-4 py-2" style="background:#f59e0b; color:#fff;">📦 Migration dữ liệu tĩnh</button>
                   <button id="add-menu-btn" class="task-btn btn-complete px-4 py-2">+ Thêm Menu Mới</button>
                 </div>
               </div>
@@ -1852,18 +1864,25 @@
           sloganEl.classList.add('hidden');
         }
       }
+      const font = (settings.coverTextFont || '').trim() || defaultSettings.coverTextFont;
+      const size = (settings.coverTextSize || '').trim() || defaultSettings.coverTextSize;
+      const color = (settings.coverTextColor || '').trim() || defaultSettings.coverTextColor;
+
       if(coverTitleEl){
         const title = (settings.coverTitle || '').trim() || defaultSettings.coverTitle;
         coverTitleEl.textContent = title;
+        // Apply font and color directly to title
+        coverTitleEl.style.fontFamily = font;
+        coverTitleEl.style.color = color;
       }
       if(coverDescEl){
         const desc = (settings.coverDescription || '').trim() || defaultSettings.coverDescription;
         coverDescEl.textContent = desc;
+        // Apply font and color directly to description
+        coverDescEl.style.fontFamily = font;
+        coverDescEl.style.color = color;
       }
       if(coverContentWrapper){
-        const font = (settings.coverTextFont || '').trim() || defaultSettings.coverTextFont;
-        const size = (settings.coverTextSize || '').trim() || defaultSettings.coverTextSize;
-        const color = (settings.coverTextColor || '').trim() || defaultSettings.coverTextColor;
         coverContentWrapper.style.fontFamily = font;
         coverContentWrapper.style.fontSize = size + 'px';
         coverContentWrapper.style.color = color;
@@ -2126,7 +2145,12 @@
           link: '',
           completedAt: null,
           updatedAt: null,
+          comment: '',  // Add comment field for completed tasks
         };
+      }
+      // Ensure comment field exists for existing entries
+      if(taskState[id].comment === undefined){
+        taskState[id].comment = '';
       }
       return taskState[id];
     }
@@ -2303,6 +2327,19 @@
               </div>
             </div>
           </div>
+          <!-- Comment section for completed tasks -->
+          <div class="task-comment-section hidden" data-comment-section="${t.id}">
+            <div class="mt-3 pt-3 border-t border-gray-200">
+              <label class="block text-sm font-medium text-gray-700 mb-2">💬 Ghi chú hoàn thành</label>
+              <div class="task-comment-display hidden" data-comment-display="${t.id}">
+                <div class="task-comment-text" data-comment-text="${t.id}" style="white-space: pre-wrap; color: #374151; font-size: 0.875rem; line-height: 1.5;"></div>
+                <button type="button" class="text-blue-600 hover:underline text-xs mt-1" data-comment-toggle="${t.id}">Xem thêm</button>
+              </div>
+              <textarea class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                        rows="3" placeholder="Thêm ghi chú về task đã hoàn thành..." data-comment-input="${t.id}"></textarea>
+              <button type="button" class="task-btn btn-complete mt-2 text-sm px-4 py-1.5" data-comment-save="${t.id}">Lưu ghi chú</button>
+            </div>
+          </div>
         </div>`;
       return card;
     }
@@ -2441,6 +2478,48 @@
         btn.addEventListener('click', e => {
           const id = e.currentTarget.dataset.viewBtn;
           handleViewLink(id);
+        });
+      });
+
+      // Comment save buttons
+      $$('[data-comment-save]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          if(!ensureProjectReady()) return;
+          const id = btn.dataset.commentSave;
+          const commentInput = document.querySelector(`[data-comment-input="${id}"]`);
+          const state = ensureTaskEntry(id);
+
+          if(commentInput){
+            state.comment = commentInput.value.trim();
+            state.updatedAt = new Date().toISOString();
+            syncTaskState();
+            updateUI();
+            showToast('Ghi chú đã được lưu', 'success');
+          }
+        });
+      });
+
+      // Comment toggle buttons (see more / see less)
+      $$('[data-comment-toggle]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          const id = btn.dataset.commentToggle;
+          const commentText = document.querySelector(`[data-comment-text="${id}"]`);
+
+          if(commentText){
+            const isExpanded = commentText.dataset.expanded === 'true';
+            const fullText = commentText.dataset.fullText || '';
+            const shortText = commentText.dataset.shortText || '';
+
+            if(isExpanded){
+              commentText.textContent = shortText;
+              commentText.dataset.expanded = 'false';
+              btn.textContent = 'Xem thêm';
+            } else {
+              commentText.textContent = fullText;
+              commentText.dataset.expanded = 'true';
+              btn.textContent = 'Thu gọn';
+            }
+          }
         });
       });
     }
@@ -2684,6 +2763,36 @@
             countdownSpan.className = 'deadline-countdown deadline-safe';
             countdownSpan.textContent = completedText ? `Hoàn thành: ${completedText}` : 'Đã hoàn thành';
           }
+
+          // Show comment section for completed tasks
+          const commentSection = document.querySelector(`[data-comment-section="${task.id}"]`);
+          const commentDisplay = document.querySelector(`[data-comment-display="${task.id}"]`);
+          const commentText = document.querySelector(`[data-comment-text="${task.id}"]`);
+          const commentInput = document.querySelector(`[data-comment-input="${task.id}"]`);
+          const commentToggle = document.querySelector(`[data-comment-toggle="${task.id}"]`);
+
+          if(commentSection) commentSection.classList.remove('hidden');
+          if(commentInput) commentInput.value = state.comment || '';
+
+          // Display existing comment with "see more" functionality
+          if(commentDisplay && commentText && state.comment){
+            const lines = state.comment.split('\n');
+            const hasMultipleLines = lines.length > 2;
+            const shortText = lines.slice(0, 2).join('\n');
+
+            commentText.textContent = shortText;
+            commentText.dataset.fullText = state.comment;
+            commentText.dataset.shortText = shortText;
+            commentText.dataset.expanded = 'false';
+
+            commentDisplay.classList.remove('hidden');
+            if(commentToggle){
+              commentToggle.classList.toggle('hidden', !hasMultipleLines);
+              commentToggle.textContent = 'Xem thêm';
+            }
+          } else if(commentDisplay){
+            commentDisplay.classList.add('hidden');
+          }
         } else {
           if(card){
             card.classList.remove('completed');
@@ -2707,6 +2816,10 @@
             countdownSpan.className = 'deadline-countdown' + (deadlineInfo ? ` ${deadlineInfo.className}` : '');
             countdownSpan.textContent = deadlineInfo && deadlineInfo.text ? deadlineInfo.text : '';
           }
+
+          // Hide comment section for non-completed tasks
+          const commentSection = document.querySelector(`[data-comment-section="${task.id}"]`);
+          if(commentSection) commentSection.classList.add('hidden');
         }
         updateCompleteButtonState(task.id);
       });
@@ -2740,13 +2853,14 @@
       refreshNotifications();
     }
 
-    function pushNotification(type, task){
+    function pushNotification(type, task, userName){
       if(!task) return;
       const now = new Date();
       const owner = (task.owner || '').trim();
+      const performedBy = userName || (currentUserData ? currentUserData.displayName : null) || 'Người dùng';
       const message = type === 'completed'
-        ? `${owner || 'Nhóm dự án'} đã hoàn thành task: ${task.title}.`
-        : `Task: ${task.title} hiện đã quá hạn.`;
+        ? `${performedBy} đã hoàn thành task: ${task.title}.`
+        : `Task: ${task.title} hiện đã quá hạn (Phụ trách: ${owner || 'Chưa gán'}).`;
       notifications.unshift({
         id: `${type}-${task.id}-${now.getTime()}`,
         taskId: task.id,
@@ -3355,6 +3469,7 @@
       gd3: '/giaidoan3',
       gd4: '/giaidoan4',
       notes: '/ghichu',
+      'user-management': '/quan-ly-nguoi-dung',
       'plan-manager': '/quan-ly-ke-hoach',
       settings: '/cai-dat',
     };
@@ -3365,6 +3480,7 @@
       gd3: 'Giai Đoạn 3: Vận Hành & Tối Ưu',
       gd4: 'Giai Đoạn 4: Ra Mắt',
       notes: 'Ghi Chú Dự Án',
+      'user-management': 'Quản Lý Người Dùng',
       'plan-manager': 'Quản Lý Kế Hoạch',
       settings: 'Cài Đặt Dự Án',
     };
@@ -3378,6 +3494,7 @@
       '/giaidoan3': { layout: 'app', section: 'gd3', navHref: sectionToPath.gd3 },
       '/giaidoan4': { layout: 'app', section: 'gd4', navHref: sectionToPath.gd4 },
       '/ghichu': { layout: 'app', section: 'notes', navHref: sectionToPath.notes },
+      '/quan-ly-nguoi-dung': { layout: 'app', section: 'user-management', navHref: sectionToPath['user-management'] },
       '/quan-ly-ke-hoach': { layout: 'app', section: 'plan-manager', navHref: sectionToPath['plan-manager'] },
       '/cai-dat': { layout: 'app', section: 'settings', navHref: sectionToPath.settings },
     };
@@ -3777,11 +3894,11 @@
           await loadUserData(user.uid);
           showApp();
 
-          // Navigate to dashboard if on login page
-          const currentPath = window.location.pathname;
-          if(currentPath === '/login' || currentPath === '/'){
+          // Navigate to cover page after login
+          const currentPath = normalizeRoutePath(window.location.pathname);
+          if(currentPath === '/login'){
             setTimeout(() => {
-              if(router) router.navigate('/tongquan');
+              if(router) router.navigate('/');
             }, 100);
           } else if(router) {
             // Handle current route
@@ -4058,14 +4175,11 @@
 
           // Show/hide admin sections
           const adminNavSection = $('#admin-nav-section');
-          const userManagementSection = $('#user-management-section');
 
           if(isAdmin){
             if(adminNavSection) adminNavSection.classList.remove('hidden');
-            if(userManagementSection) userManagementSection.classList.remove('hidden');
           } else {
             if(adminNavSection) adminNavSection.classList.add('hidden');
-            if(userManagementSection) userManagementSection.classList.add('hidden');
           }
 
           // Initialize dynamic data
@@ -4484,9 +4598,13 @@
       const errorEl = $('#user-error-message');
       const submitBtn = $('#user-submit-btn');
 
+      // Clear previous errors
+      errorEl.classList.add('hidden');
+      errorEl.textContent = '';
+
       try {
         submitBtn.disabled = true;
-        errorEl.classList.add('hidden');
+        submitBtn.textContent = 'Đang lưu...';
 
         if(currentEditingUserId){
           // Update existing user
@@ -4496,12 +4614,12 @@
             updatedAt: serverTimestamp()
           });
           showToast('Cập nhật người dùng thành công', 'success');
+          $('#user-modal').classList.remove('active');
+          await loadUsers();
         } else {
-          // Create new user
+          // Create new user - validate password first
           if(!password || password.length < 6){
-            errorEl.textContent = 'Mật khẩu phải có ít nhất 6 ký tự';
-            errorEl.classList.remove('hidden');
-            return;
+            throw new Error('Mật khẩu phải có ít nhất 6 ký tự');
           }
 
           // Create auth user
@@ -4518,29 +4636,42 @@
 
           // Sign out the newly created user and sign back in as admin
           await signOut(auth);
-          await signInWithEmailAndPassword(auth, currentUserData.email, prompt('Nhập lại mật khẩu của bạn để xác nhận:'));
+          const adminPassword = prompt('Nhập lại mật khẩu của bạn để xác nhận:');
+          if(!adminPassword){
+            throw new Error('Cần nhập mật khẩu để xác nhận');
+          }
+          await signInWithEmailAndPassword(auth, currentUserData.email, adminPassword);
 
           showToast('Thêm người dùng thành công', 'success');
+          $('#user-modal').classList.remove('active');
+          await loadUsers();
         }
-
-        $('#user-modal').classList.remove('active');
-        await loadUsers();
       } catch(error){
         console.error('Error saving user:', error);
         let errorMessage = 'Lỗi khi lưu người dùng';
 
+        // Handle specific error codes
         if(error.code === 'auth/email-already-in-use'){
-          errorMessage = 'Email đã được sử dụng';
+          errorMessage = 'Email đã được sử dụng. Vui lòng chọn email khác.';
         } else if(error.code === 'auth/invalid-email'){
-          errorMessage = 'Email không hợp lệ';
+          errorMessage = 'Email không hợp lệ. Vui lòng kiểm tra lại.';
         } else if(error.code === 'auth/weak-password'){
-          errorMessage = 'Mật khẩu quá yếu';
+          errorMessage = 'Mật khẩu quá yếu. Vui lòng chọn mật khẩu mạnh hơn.';
+        } else if(error.code === 'auth/wrong-password'){
+          errorMessage = 'Mật khẩu xác nhận không đúng.';
+        } else if(error.message){
+          errorMessage = error.message;
         }
 
+        // Display error in modal and keep it open
         errorEl.textContent = errorMessage;
         errorEl.classList.remove('hidden');
+        showToast(errorMessage, 'error');
+
+        // Do NOT close the modal - let user correct the error
       } finally {
         submitBtn.disabled = false;
+        submitBtn.textContent = 'Lưu';
       }
     }
 
@@ -4993,6 +5124,18 @@
         const assignee = assignees.find(a => a.id === task.assigneeId);
         const assigneeName = assignee ? assignee.name : 'Chưa gán';
 
+        // Calculate deadline countdown
+        let deadlineHtml = '';
+        if(task.endDate){
+          const endDateFormatted = formatDateFromISO(task.endDate);
+          const deadlineInfo = evaluateDeadline(endDateFormatted, task.completed);
+          const deadlineClass = deadlineInfo ? deadlineInfo.className : '';
+          const deadlineText = deadlineInfo && deadlineInfo.text ? ` <strong class="${deadlineClass}" style="font-weight: 700;">(${deadlineInfo.text})</strong>` : '';
+          deadlineHtml = endDateFormatted + deadlineText;
+        } else {
+          deadlineHtml = 'Chưa đặt';
+        }
+
         return `
           <div class="task-item">
             <div class="task-item-header">
@@ -5006,7 +5149,8 @@
             </div>
             <div class="task-item-meta">
               ${task.description ? `<div class="mb-1" style="white-space: pre-wrap;">${task.description}</div>` : ''}
-              <div>📅 Deadline: ${task.endDate ? formatDateFromISO(task.endDate) : 'Chưa đặt'}</div>
+              ${task.startDate ? `<div>📅 Ngày bắt đầu: ${formatDateFromISO(task.startDate)}</div>` : ''}
+              <div>📅 Ngày kết thúc: ${deadlineHtml}</div>
               <div>👤 Phụ trách: ${assigneeName}</div>
             </div>
           </div>
@@ -5878,7 +6022,6 @@
     });
 
     // ========= PLAN MANAGER EVENT LISTENERS =========
-    const migrateDataBtn = $('#migrate-data-btn');
     const addMenuBtn = $('#add-menu-btn');
     const menuForm = $('#menu-form');
     const menuCancelBtn = $('#menu-cancel-btn');
@@ -5902,9 +6045,6 @@
     const deleteAssigneeModal = $('#delete-assignee-modal');
     const cancelDeleteAssigneeBtn = $('#cancel-delete-assignee-btn');
     const confirmDeleteAssigneeBtn = $('#confirm-delete-assignee-btn');
-
-    // Migration
-    if(migrateDataBtn) migrateDataBtn.addEventListener('click', migrateStaticData);
 
     // Menu events
     if(addMenuBtn) addMenuBtn.addEventListener('click', showAddMenuModal);
