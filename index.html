@@ -684,11 +684,10 @@
 
           <!-- Admin-only links -->
           <div id="admin-nav-section" class="hidden border-t border-gray-300 pt-2 mt-2">
-            <a class="nav-link" href="/quan-ly-nguoi-dung" id="nav-user-management"><span class="emoji">👥</span><span>Quản Lý Người Dùng</span></a>
             <a class="nav-link" href="/quan-ly-ke-hoach" id="nav-plan-manager"><span class="emoji">🗂️</span><span>Quản Lý Kế Hoạch</span></a>
+            <a class="nav-link" href="/quan-ly-nguoi-dung" id="nav-user-management"><span class="emoji">👥</span><span>Quản Lý Người Dùng</span></a>
+            <a class="nav-link" href="/cai-dat"><span class="emoji">🔧</span><span>Cài Đặt</span></a>
           </div>
-
-          <a class="nav-link" href="/cai-dat"><span class="emoji">🔧</span><span>Cài Đặt</span></a>
         </nav>
 
         <!-- User Profile (moved to sidebar bottom) -->
@@ -972,7 +971,7 @@
                   <div class="settings-group-card">
                     <h3 class="settings-group-title">Nhận diện thương hiệu</h3>
                     <div class="settings-file-control">
-                      <label class="text-sm font-medium text-gray-700" for="setting-logo-upload">Logo (hiển thị ở Cover & Sidebar)</label>
+                      <label class="text-sm font-medium text-gray-700" for="setting-logo-upload">Logo (hiển thị ở Cover, Sidebar & Login Page)</label>
                       <div class="settings-file-default" id="setting-logo-default">
                         <button type="button" id="setting-logo-choose" class="task-btn btn-view px-4 py-2">Chọn file</button>
                         <span id="setting-logo-filename" class="text-sm text-gray-500">Chưa chọn file</span>
@@ -1128,6 +1127,7 @@
                   </div>
                   <div class="settings-group-card">
                     <h3 class="settings-group-title">Tùy chỉnh Login Page (Admin Only)</h3>
+                    <p class="text-sm text-gray-600 mb-4">⚠️ Logo đăng nhập sẽ tự động sử dụng logo từ "Nhận diện thương hiệu" ở trên. Bạn chỉ cần tải ảnh nền bên dưới.</p>
                     <div class="settings-file-control">
                       <label class="text-sm font-medium text-gray-700" for="setting-login-bg-upload">Ảnh nền Login Page</label>
                       <div class="settings-file-default" id="setting-login-bg-default">
@@ -1147,28 +1147,8 @@
                         </div>
                       </div>
                       <input type="file" id="setting-login-bg-upload" class="hidden" accept="image/*" />
-                      <p class="settings-helper">Ảnh nền sẽ hiển thị trên trang đăng nhập</p>
-                    </div>
-                    <div class="settings-file-control">
-                      <label class="text-sm font-medium text-gray-700" for="setting-login-logo-upload">Logo Login Page</label>
-                      <div class="settings-file-default" id="setting-login-logo-default">
-                        <button type="button" id="setting-login-logo-choose" class="task-btn btn-view px-4 py-2">Chọn file</button>
-                        <span id="setting-login-logo-filename" class="text-sm text-gray-500">Chưa chọn file</span>
-                      </div>
-                      <div class="settings-file-active hidden" id="setting-login-logo-active">
-                        <div class="settings-file-selected">
-                          <div class="settings-preview-box"><img id="login-logo-preview" alt="Xem trước logo login" class="hidden" /></div>
-                          <div class="flex flex-col gap-2">
-                            <span id="setting-login-logo-selected-name" class="settings-selected-name"></span>
-                            <div class="settings-file-actions">
-                              <button type="button" id="setting-login-logo-change" class="settings-file-action text-blue">Đổi</button>
-                              <button type="button" id="setting-login-logo-remove" class="settings-file-action text-red">Gỡ</button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <input type="file" id="setting-login-logo-upload" class="hidden" accept="image/*" />
-                      <p class="settings-helper">Logo sẽ hiển thị phía trên form đăng nhập</p>
+                      <p class="settings-helper">Ảnh nền sẽ hiển thị trên trang đăng nhập. Nếu không upload, sẽ dùng ảnh mặc định.</p>
+                      <p class="text-xs text-gray-500 mt-1">Lưu ý: Nếu upload file lỗi, bạn cần cấu hình CORS trên Firebase Storage.</p>
                     </div>
                   </div>
                 </div>
@@ -1614,11 +1594,12 @@
     let noteModalCloseBtn = null;
     const linkFeedbackTimers = {};
     let noteTypeFeedbackTimer = null;
-    const pendingFileRemovals = { logo:false, favicon:false, coverImage:false, avatar:false };
+    const pendingFileRemovals = { logo:false, favicon:false, coverImage:false, avatar:false, loginBg:false };
     let logoFileControl = null;
     let faviconFileControl = null;
     let coverImageFileControl = null;
     let avatarFileControl = null;
+    let loginBgFileControl = null;
     let notifications = [];
     let notificationState = {};
     let notificationsInitialized = false;
@@ -2026,6 +2007,36 @@
         brandingTitle.textContent = 'Master Plan (A-Z+)';
       }
     }
+    function renderLoginPage(settings = {}){
+      const loginPage = $('#login-page');
+      const loginLogoEl = $('#login-logo');
+      const loginLogoWrapper = $('#login-logo-wrapper');
+
+      // Use the same logo from Brand Identity
+      const logoUrl = (settings.logoUrl || '').trim();
+      if(loginLogoEl){
+        if(logoUrl){
+          loginLogoEl.src = logoUrl;
+          loginLogoEl.classList.remove('hidden');
+          if(loginLogoWrapper) loginLogoWrapper.classList.remove('hidden');
+        } else {
+          loginLogoEl.src = '';
+          loginLogoEl.classList.add('hidden');
+          if(loginLogoWrapper) loginLogoWrapper.classList.add('hidden');
+        }
+      }
+
+      // Set login background image
+      if(loginPage){
+        const loginBgUrl = (settings.loginBgUrl || '').trim();
+        if(loginBgUrl){
+          loginPage.style.backgroundImage = `url('${loginBgUrl}')`;
+        } else {
+          // Use default background
+          loginPage.style.backgroundImage = "url('https://images.unsplash.com/photo-1557683316-973673baf926?auto=format&fit=crop&w=1920&q=80')";
+        }
+      }
+    }
     function renderAvatar(avatarUrl){
       // Sidebar avatar
       const url = (avatarUrl || '').trim();
@@ -2076,9 +2087,11 @@
       const faviconInput = $('#setting-favicon-upload'); if(faviconInput) faviconInput.value = '';
       const coverImageInput = $('#setting-cover-image-upload'); if(coverImageInput) coverImageInput.value = '';
       const avatarInput = $('#setting-avatar-upload'); if(avatarInput) avatarInput.value = '';
+      const loginBgInput = $('#setting-login-bg-upload'); if(loginBgInput) loginBgInput.value = '';
       if(logoFileControl) logoFileControl.setFromUrl((settings.logoUrl || '').trim());
       if(faviconFileControl) faviconFileControl.setFromUrl((settings.faviconUrl || '').trim());
       if(coverImageFileControl) coverImageFileControl.setFromUrl((settings.coverImageUrl || '').trim());
+      if(loginBgFileControl) loginBgFileControl.setFromUrl((settings.loginBgUrl || '').trim());
       // Load avatar from current user data (user-specific)
       if(avatarFileControl) avatarFileControl.setFromUrl((currentUserData.avatarUrl || '').trim());
     }
@@ -2091,6 +2104,7 @@
       const faviconInput = $('#setting-favicon-upload');
       const coverImageInput = $('#setting-cover-image-upload');
       const avatarInput = $('#setting-avatar-upload');
+      const loginBgInput = $('#setting-login-bg-upload');
       const colorInput = $('#setting-cover-color');
       const coverTitleInput = $('#setting-cover-title');
       const coverDescInput = $('#setting-cover-description');
@@ -2146,6 +2160,17 @@
         }
       }
 
+      if(pendingFileRemovals.loginBg){
+        nextSettings.loginBgUrl = '';
+        nextSettings.loginBgStoragePath = '';
+      } else if(loginBgInput && loginBgInput.files && loginBgInput.files[0]){
+        const uploadResult = await uploadAsset(loginBgInput.files[0], 'branding/login');
+        if(uploadResult.url){
+          nextSettings.loginBgUrl = uploadResult.url;
+          nextSettings.loginBgStoragePath = uploadResult.storagePath || '';
+        }
+      }
+
       // Handle user avatar separately (user-specific, not project-wide)
       let userAvatarUrl = currentUserData.avatarUrl || '';
       if(pendingFileRemovals.avatar){
@@ -2173,6 +2198,7 @@
 
         renderCoverPage(currentSettings);
         renderSidebar(currentSettings);
+        renderLoginPage(currentSettings);
         applyFavicon(currentSettings.faviconUrl || '');
         renderAvatar(userAvatarUrl);
         populateSettingsForm(currentSettings);
@@ -2420,27 +2446,30 @@
           <div class="task-link-feedback" data-link-feedback="${t.id}"></div>
           <div class="task-completed-actions hidden" data-completed-actions="${t.id}">
             <button type="button" class="task-btn btn-view task-view-btn" data-view-btn="${t.id}" disabled>View</button>
+            <button type="button" class="task-btn" style="background:#3b82f6; color:#fff;" data-edit-link="${t.id}">Sửa link</button>
+            <button type="button" class="task-btn" style="background:#ef4444; color:#fff;" data-delete-link="${t.id}">Xóa link</button>
             <div class="edit-dropdown-wrapper">
               <button type="button" class="task-icon-btn" data-dropdown-btn="${t.id}" aria-label="Tùy chọn chỉnh sửa task">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M16.768 3.768a2 2 0 112.828 2.828L7 19.192 3 21l1.808-4z"></path></svg>
               </button>
               <div class="edit-dropdown-menu" data-dropdown-menu="${t.id}">
-                <div class="dropdown-item" data-action="edit" data-task-id="${t.id}"><span>✏️</span><span>Chỉnh sửa</span></div>
-                <div class="dropdown-item delete" data-action="delete" data-task-id="${t.id}"><span>🗑️</span><span>Xóa</span></div>
+                <div class="dropdown-item" data-action="edit" data-task-id="${t.id}"><span>✏️</span><span>Chỉnh sửa Task</span></div>
+                <div class="dropdown-item delete" data-action="delete" data-task-id="${t.id}"><span>🗑️</span><span>Xóa Task</span></div>
               </div>
             </div>
           </div>
           <!-- Comment section for completed tasks -->
           <div class="task-comment-section hidden" data-comment-section="${t.id}">
             <div class="mt-3 pt-3 border-t border-gray-200">
-              <label class="block text-sm font-medium text-gray-700 mb-2">💬 Ghi chú hoàn thành</label>
-              <div class="task-comment-display hidden" data-comment-display="${t.id}">
-                <div class="task-comment-text" data-comment-text="${t.id}" style="white-space: pre-wrap; color: #374151; font-size: 0.875rem; line-height: 1.5;"></div>
-                <button type="button" class="text-blue-600 hover:underline text-xs mt-1" data-comment-toggle="${t.id}">Xem thêm</button>
+              <label class="block text-sm font-medium text-gray-700 mb-2">💬 Comments</label>
+              <div class="task-comments-list mb-3 space-y-2" data-comments-list="${t.id}">
+                <!-- Comments will be displayed here -->
               </div>
-              <textarea class="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
-                        rows="3" placeholder="Thêm ghi chú về task đã hoàn thành..." data-comment-input="${t.id}"></textarea>
-              <button type="button" class="task-btn btn-complete mt-2 text-sm px-4 py-1.5" data-comment-save="${t.id}">Lưu ghi chú</button>
+              <div class="flex gap-2">
+                <textarea class="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                          rows="2" placeholder="Nhập comment..." data-comment-input="${t.id}"></textarea>
+                <button type="button" class="task-btn btn-complete self-end px-4 py-2" data-comment-save="${t.id}">💬 Comment</button>
+              </div>
             </div>
           </div>
         </div>`;
@@ -2584,20 +2613,90 @@
         });
       });
 
-      // Comment save buttons
-      $$('[data-comment-save]').forEach(btn => {
+      // Edit link buttons
+      $$('[data-edit-link]').forEach(btn => {
         btn.addEventListener('click', e => {
           if(!ensureProjectReady()) return;
-          const id = btn.dataset.commentSave;
-          const commentInput = document.querySelector(`[data-comment-input="${id}"]`);
+          const id = btn.dataset.editLink;
           const state = ensureTaskEntry(id);
+          state.completed = false;
+          state.completedAt = null;
+          state.updatedAt = new Date().toISOString();
+          updateUI();
+          renderActivityLog();
+          syncTaskState();
+          showLinkFeedback(id, '');
+          setTimeout(() => {
+            const input = document.querySelector(`[data-task-id="${id}"]`);
+            if(input){ input.disabled = false; input.focus(); input.select(); }
+          }, 80);
+        });
+      });
 
-          if(commentInput){
-            state.comment = commentInput.value.trim();
+      // Delete link buttons
+      $$('[data-delete-link]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          if(!ensureProjectReady()) return;
+          const id = btn.dataset.deleteLink;
+          if(confirm('Bạn có chắc chắn muốn xóa link này không?')){
+            const state = ensureTaskEntry(id);
+            state.completed = false;
+            state.link = '';
+            state.completedAt = null;
             state.updatedAt = new Date().toISOString();
-            syncTaskState();
             updateUI();
-            showToast('Ghi chú đã được lưu', 'success');
+            renderActivityLog();
+            syncTaskState();
+            showLinkFeedback(id, '');
+            showToast('Đã xóa link', 'success');
+          }
+        });
+      });
+
+      // Comment save buttons
+      const saveComment = (id) => {
+        if(!ensureProjectReady()) return;
+        const commentInput = document.querySelector(`[data-comment-input="${id}"]`);
+        const state = ensureTaskEntry(id);
+
+        if(commentInput){
+          const commentText = commentInput.value.trim();
+          if(!commentText) return;
+
+          // Initialize comments array if it doesn't exist
+          if(!Array.isArray(state.comments)){
+            state.comments = [];
+          }
+
+          // Add new comment with user name and timestamp
+          state.comments.push({
+            text: commentText,
+            userName: (currentUserData && currentUserData.displayName) || 'Người dùng',
+            timestamp: new Date().toISOString()
+          });
+
+          state.updatedAt = new Date().toISOString();
+          commentInput.value = '';
+          syncTaskState();
+          updateUI();
+          showToast('Comment đã được lưu', 'success');
+        }
+      };
+
+      $$('[data-comment-save]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          const id = btn.dataset.commentSave;
+          saveComment(id);
+        });
+      });
+
+      // Comment input - Enter key support
+      $$('[data-comment-input]').forEach(textarea => {
+        textarea.addEventListener('keydown', e => {
+          if(e.key === 'Enter' && !e.shiftKey){
+            e.preventDefault();
+            const id = textarea.dataset.commentInput;
+            saveComment(id);
           }
         });
       });
@@ -2869,32 +2968,28 @@
 
           // Show comment section for completed tasks
           const commentSection = document.querySelector(`[data-comment-section="${task.id}"]`);
-          const commentDisplay = document.querySelector(`[data-comment-display="${task.id}"]`);
-          const commentText = document.querySelector(`[data-comment-text="${task.id}"]`);
-          const commentInput = document.querySelector(`[data-comment-input="${task.id}"]`);
-          const commentToggle = document.querySelector(`[data-comment-toggle="${task.id}"]`);
+          const commentsList = document.querySelector(`[data-comments-list="${task.id}"]`);
 
           if(commentSection) commentSection.classList.remove('hidden');
-          if(commentInput) commentInput.value = state.comment || '';
 
-          // Display existing comment with "see more" functionality
-          if(commentDisplay && commentText && state.comment){
-            const lines = state.comment.split('\n');
-            const hasMultipleLines = lines.length > 2;
-            const shortText = lines.slice(0, 2).join('\n');
-
-            commentText.textContent = shortText;
-            commentText.dataset.fullText = state.comment;
-            commentText.dataset.shortText = shortText;
-            commentText.dataset.expanded = 'false';
-
-            commentDisplay.classList.remove('hidden');
-            if(commentToggle){
-              commentToggle.classList.toggle('hidden', !hasMultipleLines);
-              commentToggle.textContent = 'Xem thêm';
+          // Display all comments with user names
+          if(commentsList){
+            commentsList.innerHTML = '';
+            if(Array.isArray(state.comments) && state.comments.length > 0){
+              state.comments.forEach(comment => {
+                const commentDiv = document.createElement('div');
+                commentDiv.className = 'bg-gray-50 p-3 rounded border border-gray-200';
+                const timestamp = comment.timestamp ? new Date(comment.timestamp).toLocaleString('vi-VN') : '';
+                commentDiv.innerHTML = `
+                  <div class="flex items-start justify-between mb-1">
+                    <span class="font-semibold text-sm text-gray-800">${escapeHtml(comment.userName || 'Người dùng')}</span>
+                    <span class="text-xs text-gray-500">${timestamp}</span>
+                  </div>
+                  <div class="text-sm text-gray-700 whitespace-pre-wrap">${escapeHtml(comment.text)}</div>
+                `;
+                commentsList.appendChild(commentDiv);
+              });
             }
-          } else if(commentDisplay){
-            commentDisplay.classList.add('hidden');
           }
         } else {
           if(card){
@@ -6004,6 +6099,7 @@ Mô tả: ${task.description || 'Không có'}
         applyFilters();
         renderCoverPage(currentSettings);
         renderSidebar(currentSettings);
+        renderLoginPage(currentSettings);
         applyFavicon(currentSettings.faviconUrl || '');
         renderAvatar(currentSettings.avatarUrl || '');
         populateSettingsForm(currentSettings);
@@ -6134,6 +6230,15 @@ Mô tả: ${task.description || 'Không có'}
     const avatarChooseBtn = $('#setting-avatar-choose');
     const avatarChangeBtn = $('#setting-avatar-change');
     const avatarRemoveBtn = $('#setting-avatar-remove');
+    const loginBgUploadInput = $('#setting-login-bg-upload');
+    const loginBgDefaultWrapper = $('#setting-login-bg-default');
+    const loginBgActiveWrapper = $('#setting-login-bg-active');
+    const loginBgFilenameLabel = $('#setting-login-bg-filename');
+    const loginBgSelectedLabel = $('#setting-login-bg-selected-name');
+    const loginBgPreviewEl = $('#login-bg-preview');
+    const loginBgChooseBtn = $('#setting-login-bg-choose');
+    const loginBgChangeBtn = $('#setting-login-bg-change');
+    const loginBgRemoveBtn = $('#setting-login-bg-remove');
     const coverColorInput = $('#setting-cover-color');
     const computePreviewSettings = (extra = {}) => {
       const previewSettings = { ...currentSettings };
@@ -6146,6 +6251,11 @@ Mô tả: ${task.description || 'Không có'}
         previewSettings.coverImageUrl = '';
       } else if(coverImageUploadInput && coverImageUploadInput.files && coverImageUploadInput.files[0] && coverImagePreviewEl && coverImagePreviewEl.src){
         previewSettings.coverImageUrl = coverImagePreviewEl.src;
+      }
+      if(pendingFileRemovals.loginBg){
+        previewSettings.loginBgUrl = '';
+      } else if(loginBgUploadInput && loginBgUploadInput.files && loginBgUploadInput.files[0] && loginBgPreviewEl && loginBgPreviewEl.src){
+        previewSettings.loginBgUrl = loginBgPreviewEl.src;
       }
       return { ...previewSettings, ...extra };
     };
@@ -6164,6 +6274,7 @@ Mô tả: ${task.description || 'Không có'}
       onPreviewChange: () => {
         renderCoverPage(computePreviewSettings({ coverColor: getPreviewCoverColor() }));
         renderSidebar(computePreviewSettings());
+        renderLoginPage(computePreviewSettings());
       },
     });
     faviconFileControl = createSettingsFileControl({
@@ -6209,6 +6320,21 @@ Mô tả: ${task.description || 'Không có'}
       removeBtn: avatarRemoveBtn,
       onPreviewChange: (value) => {
         renderAvatar(value || '');
+      },
+    });
+    loginBgFileControl = createSettingsFileControl({
+      key: 'loginBg',
+      input: loginBgUploadInput,
+      defaultWrapper: loginBgDefaultWrapper,
+      activeWrapper: loginBgActiveWrapper,
+      defaultLabel: loginBgFilenameLabel,
+      selectedLabel: loginBgSelectedLabel,
+      preview: loginBgPreviewEl,
+      chooseBtn: loginBgChooseBtn,
+      changeBtn: loginBgChangeBtn,
+      removeBtn: loginBgRemoveBtn,
+      onPreviewChange: () => {
+        renderLoginPage(computePreviewSettings());
       },
     });
     if(coverColorInput){
