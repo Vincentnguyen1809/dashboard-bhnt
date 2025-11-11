@@ -42,8 +42,9 @@
     .completed-comment.collapsible.expanded .comment-content{ max-height:none; }
     .see-more-btn{ margin-top:0.5rem; color:#2563eb; font-size:0.875rem; font-weight:500; cursor:pointer; background:none; border:none; padding:0; text-decoration:underline; }
     .see-more-btn:hover{ color:#1d4ed8; }
-    .task-input-group{ display:flex; gap:0.5rem; }
-    .task-link-input{ flex:1; border:1px solid #d1d5db; border-radius:0.375rem; padding:0.5rem 0.75rem; font-size:1rem; color:#374151; transition:.2s; }
+    .task-input-group{ display:flex; gap:0.5rem; align-items:center; width:100%; flex-wrap:nowrap; }
+    .task-complete-btn{ margin-left:auto; }
+    .task-link-input{ flex:1; min-width:0; border:1px solid #d1d5db; border-radius:0.375rem; padding:0.5rem 0.75rem; font-size:1rem; color:#374151; transition:.2s; }
     .task-link-input:focus{ outline:none; border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.1); }
     .task-link-input:disabled{ background:#f9fafb; color:#9ca3af; cursor:not-allowed; }
     .task-btn{ padding:0.5rem 1rem; font-size:0.875rem; font-weight:500; border-radius:0.375rem; transition:.2s; cursor:pointer; border:none; white-space:nowrap; }
@@ -52,6 +53,12 @@
     .btn-complete:hover:not(:disabled){ background:#059669; }
     .btn-view{ background:#0ea5e9; color:#fff; }
     .btn-view:hover:not(:disabled){ background:#0284c7; }
+    .task-btn.btn-secondary{ background:#e5e7eb; color:#1f2937; }
+    .task-btn.btn-secondary:hover:not(:disabled){ background:#d1d5db; }
+    .task-btn.btn-danger{ background:#ef4444; color:#fff; }
+    .task-btn.btn-danger:hover:not(:disabled){ background:#dc2626; }
+    .task-btn.btn-outline{ background:#fff; color:#1f2937; border:1px solid #d1d5db; }
+    .task-btn.btn-outline:hover:not(:disabled){ background:#f3f4f6; }
     .task-completed-actions{ display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; }
     .task-icon-btn{ width:2.5rem; height:2.5rem; border-radius:0.375rem; border:1px solid #d1d5db; background:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:.2s; }
     .task-icon-btn:hover{ background:#e5e7eb; }
@@ -245,8 +252,6 @@
     @media (max-width: 768px) {
       .stat-card, .card-section { padding: 1rem; margin-bottom: 1rem; }
       .modal-content { max-width: 95%; margin: 1rem; padding: 1.25rem; }
-      .task-input-group { flex-direction: column; }
-      .task-btn { width: 100%; }
       .task-header { flex-direction: column; align-items: flex-start; }
       .task-status { margin-top: 0.5rem; }
       .chart-container { max-width: 100%; height: 250px; }
@@ -684,8 +689,8 @@
 
           <!-- Admin-only links -->
           <div id="admin-nav-section" class="hidden border-t border-gray-300 pt-2 mt-2">
-            <a class="nav-link" href="/quan-ly-ke-hoach" id="nav-plan-manager"><span class="emoji">🗂️</span><span>Quản Lý Kế Hoạch</span></a>
             <a class="nav-link" href="/quan-ly-nguoi-dung" id="nav-user-management"><span class="emoji">👥</span><span>Quản Lý Người Dùng</span></a>
+            <a class="nav-link" href="/quan-ly-ke-hoach" id="nav-plan-manager"><span class="emoji">🗂️</span><span>Quản Lý Kế Hoạch</span></a>
             <a class="nav-link" href="/cai-dat"><span class="emoji">🔧</span><span>Cài Đặt</span></a>
           </div>
         </nav>
@@ -727,7 +732,7 @@
             <div id="notification-dropdown" class="notification-dropdown" role="menu" aria-hidden="true">
               <div class="notification-header">
                 <span class="text-sm font-semibold text-gray-700">Thông báo</span>
-                <button type="button" id="notification-mark-read" class="mark-all-read">Đánh dấu đã đọc</button>
+                <span class="text-xs text-gray-400">Nhấn vào từng thông báo để đánh dấu đã đọc</span>
               </div>
               <ul id="notification-list" class="notification-list" role="list"></ul>
               <div id="notification-empty" class="notification-empty">Không có thông báo quan trọng.</div>
@@ -1603,6 +1608,7 @@
     let notifications = [];
     let notificationState = {};
     let notificationsInitialized = false;
+    let activityLogs = [];
 
     // Auth & User Management State
     let auth = null;
@@ -1617,6 +1623,8 @@
     let assignees = [];
     let taskComments = {};
     let expandedMenus = new Set(); // Track which menus are expanded
+    const openCommentSections = new Set();
+    const autoOpenedCommentSections = new Set();
 
     // Modal State
     let currentEditingUserId = null;
@@ -1678,6 +1686,9 @@
       if(!state) return false;
       const link = (state.link || '').trim();
       return link !== '' && isValidUrl(link);
+    }
+    function getCurrentUserName(){
+      return (currentUserData && (currentUserData.displayName || currentUserData.email)) || 'Người dùng';
     }
     function updateCompleteButtonState(taskId){
       const group = document.querySelector(`[data-input-group="${taskId}"]`);
@@ -2257,11 +2268,21 @@
       const sanitized = {};
       Object.keys(taskState).forEach(id => {
         const state = taskState[id] || {};
+        const rawComments = Array.isArray(state.comments) ? state.comments : [];
+        const comments = rawComments
+          .slice(-50)
+          .map(comment => ({
+            text: String(comment.text || '').trim().slice(0, 2000),
+            userName: String(comment.userName || '').trim().slice(0, 200),
+            timestamp: normalizeTimestamp(comment.timestamp),
+          }))
+          .filter(comment => comment.text.length > 0);
         sanitized[id] = {
           completed: !!state.completed,
           link: (state.link || '').trim(),
           completedAt: normalizeTimestamp(state.completedAt),
           updatedAt: normalizeTimestamp(state.updatedAt),
+          comments,
         };
       });
       return sanitized;
@@ -2274,12 +2295,17 @@
           link: '',
           completedAt: null,
           updatedAt: null,
-          comment: '',  // Add comment field for completed tasks
+          comments: [],
         };
       }
-      // Ensure comment field exists for existing entries
-      if(taskState[id].comment === undefined){
-        taskState[id].comment = '';
+      if(!Array.isArray(taskState[id].comments)){
+        const legacyComment = typeof taskState[id].comment === 'string' && taskState[id].comment.trim()
+          ? [{ text: taskState[id].comment.trim(), userName: '', timestamp: new Date().toISOString() }]
+          : [];
+        taskState[id].comments = legacyComment;
+      }
+      if(taskState[id].comment !== undefined){
+        delete taskState[id].comment;
       }
       return taskState[id];
     }
@@ -2289,14 +2315,92 @@
       const normalized = {};
       Object.keys(defaults).forEach(id => {
         const existing = rawState && rawState[id] ? rawState[id] : {};
+        const rawComments = Array.isArray(existing.comments) ? existing.comments : [];
+        const comments = rawComments
+          .map(comment => ({
+            text: String(comment.text || '').trim(),
+            userName: String(comment.userName || '').trim(),
+            timestamp: normalizeTimestamp(comment.timestamp),
+          }))
+          .filter(comment => comment.text.length > 0)
+          .slice(-50);
         normalized[id] = {
           completed: !!existing.completed,
           link: (existing.link || '').trim(),
           completedAt: normalizeTimestamp(existing.completedAt),
           updatedAt: normalizeTimestamp(existing.updatedAt),
+          comments,
         };
       });
       return normalized;
+    }
+
+    function sanitizeActivityLogs(){
+      if(!Array.isArray(activityLogs)) return [];
+      return activityLogs
+        .slice(0, 200)
+        .map(entry => ({
+          id: entry.id || `${entry.taskId || 'log'}-${normalizeTimestamp(entry.updatedAt) || Date.now()}`,
+          taskId: entry.taskId || '',
+          taskName: (entry.taskName || '').trim(),
+          phase: (entry.phase || '').trim(),
+          status: (entry.status || 'completed').trim(),
+          completedAt: normalizeTimestamp(entry.completedAt),
+          updatedAt: normalizeTimestamp(entry.updatedAt) || new Date().toISOString(),
+          performedBy: (entry.performedBy || '').trim().slice(0, 200),
+        }))
+        .filter(entry => entry.taskId && entry.updatedAt);
+    }
+
+    function normalizeActivityLogs(rawLogs){
+      if(!Array.isArray(rawLogs)) return [];
+      return rawLogs
+        .map(log => {
+          const taskMeta = taskMap[log.taskId] || {};
+          const normalizedUpdatedAt = normalizeTimestamp(log.updatedAt) || normalizeTimestamp(log.completedAt) || new Date().toISOString();
+          return {
+            id: typeof log.id === 'string' && log.id ? log.id : `${log.taskId || 'log'}-${normalizedUpdatedAt}`,
+            taskId: log.taskId || '',
+            taskName: (log.taskName || taskMeta.title || '').trim(),
+            phase: (log.phase || taskMeta.phase || '').trim(),
+            status: (log.status || (log.completedAt ? 'completed' : 'updated') || 'completed').trim(),
+            completedAt: normalizeTimestamp(log.completedAt),
+            updatedAt: normalizedUpdatedAt,
+            performedBy: (log.performedBy || '').trim(),
+          };
+        })
+        .filter(log => log.taskId && log.updatedAt)
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+        .slice(0, 200);
+    }
+
+    function recordActivityEntry({ taskId, taskName, phase, status, timestamp = new Date().toISOString(), completedAt = null, performedBy }){
+      if(!taskId) return;
+      const performer = performedBy || getCurrentUserName();
+      const entry = {
+        id: `${taskId}-${Date.now()}`,
+        taskId,
+        taskName: taskName || `Task ${taskId}`,
+        phase: phase || '-',
+        status,
+        completedAt: completedAt || (status === 'completed' ? timestamp : null),
+        updatedAt: timestamp,
+        performedBy: performer,
+      };
+      activityLogs = [entry, ...activityLogs].slice(0, 200);
+    }
+
+    function recordTaskActivity(taskId, status, timestamp = new Date().toISOString()){
+      const task = taskMap[taskId];
+      if(!task) return;
+      recordActivityEntry({
+        taskId,
+        taskName: task.title,
+        phase: task.phase,
+        status,
+        timestamp,
+        completedAt: status === 'completed' ? timestamp : null,
+      });
     }
 
     function showLinkFeedback(taskId, message = '', type = 'error'){
@@ -2319,6 +2423,66 @@
         feedbackEl.textContent = '';
         delete linkFeedbackTimers[taskId];
       }, 2500);
+    }
+
+    function saveTaskComment(taskId){
+      if(!ensureProjectReady()) return;
+      const commentInput = document.querySelector(`[data-comment-input="${taskId}"]`);
+      if(!commentInput) return;
+      const commentText = commentInput.value.trim();
+      if(!commentText) return;
+
+      const state = ensureTaskEntry(taskId);
+      if(!Array.isArray(state.comments)){
+        state.comments = [];
+      }
+
+      state.comments.push({
+        text: commentText,
+        userName: getCurrentUserName(),
+        timestamp: new Date().toISOString(),
+      });
+
+      state.updatedAt = new Date().toISOString();
+      commentInput.value = '';
+      openCommentSections.add(taskId);
+      syncTaskState();
+      updateUI();
+      showToast('Comment đã được lưu', 'success');
+    }
+
+    function initializeCommentSection(taskId){
+      const section = document.querySelector(`[data-comment-section="${taskId}"]`);
+      if(!section || section.dataset.ready === 'true') return;
+      section.innerHTML = `
+        <div class="mt-3 pt-3 border-t border-gray-200">
+          <label class="block text-sm font-medium text-gray-700 mb-2">💬 Comments</label>
+          <div class="task-comments-list mb-3 space-y-2" data-comments-list="${taskId}"></div>
+          <div class="flex gap-2">
+            <textarea class="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y" rows="2" placeholder="Nhập comment..." data-comment-input="${taskId}"></textarea>
+            <button type="button" class="task-btn btn-complete self-end px-4 py-2" data-comment-save="${taskId}">💬 Comment</button>
+          </div>
+        </div>
+      `;
+      section.dataset.ready = 'true';
+      section.setAttribute('aria-hidden', 'true');
+
+      const saveBtn = section.querySelector(`[data-comment-save="${taskId}"]`);
+      if(saveBtn && !saveBtn.dataset.bound){
+        saveBtn.dataset.bound = 'true';
+        saveBtn.addEventListener('click', () => saveTaskComment(taskId));
+      }
+
+      const commentInput = section.querySelector(`[data-comment-input="${taskId}"]`);
+      if(commentInput && !commentInput.dataset.bound){
+        commentInput.dataset.bound = 'true';
+        commentInput.addEventListener('keydown', e => {
+          if(e.key === 'Enter' && !e.shiftKey){
+            e.preventDefault();
+            saveTaskComment(taskId);
+          }
+        });
+      }
     }
 
     function showNoteTypeFeedback(message = '', type = 'info'){
@@ -2407,6 +2571,7 @@
           link: '',
           completedAt: null,
           updatedAt: null,
+          comments: [],
         };
       });
       return state;
@@ -2445,9 +2610,10 @@
           </div>
           <div class="task-link-feedback" data-link-feedback="${t.id}"></div>
           <div class="task-completed-actions hidden" data-completed-actions="${t.id}">
-            <button type="button" class="task-btn btn-view task-view-btn" data-view-btn="${t.id}" disabled>View</button>
-            <button type="button" class="task-btn" style="background:#3b82f6; color:#fff;" data-edit-link="${t.id}">Sửa link</button>
-            <button type="button" class="task-btn" style="background:#ef4444; color:#fff;" data-delete-link="${t.id}">Xóa link</button>
+            <button type="button" class="task-btn btn-view task-view-btn" data-view-btn="${t.id}" disabled>🔗 View link</button>
+            <button type="button" class="task-btn btn-secondary" data-edit-link="${t.id}">✏️ Edit</button>
+            <button type="button" class="task-btn btn-danger" data-delete-link="${t.id}">🗑️ Delete</button>
+            <button type="button" class="task-btn btn-outline" data-comment-toggle="${t.id}" aria-expanded="false">💬 Comment</button>
             <div class="edit-dropdown-wrapper">
               <button type="button" class="task-icon-btn" data-dropdown-btn="${t.id}" aria-label="Tùy chọn chỉnh sửa task">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536M16.768 3.768a2 2 0 112.828 2.828L7 19.192 3 21l1.808-4z"></path></svg>
@@ -2459,19 +2625,7 @@
             </div>
           </div>
           <!-- Comment section for completed tasks -->
-          <div class="task-comment-section hidden" data-comment-section="${t.id}">
-            <div class="mt-3 pt-3 border-t border-gray-200">
-              <label class="block text-sm font-medium text-gray-700 mb-2">💬 Comments</label>
-              <div class="task-comments-list mb-3 space-y-2" data-comments-list="${t.id}">
-                <!-- Comments will be displayed here -->
-              </div>
-              <div class="flex gap-2">
-                <textarea class="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
-                          rows="2" placeholder="Nhập comment..." data-comment-input="${t.id}"></textarea>
-                <button type="button" class="task-btn btn-complete self-end px-4 py-2" data-comment-save="${t.id}">💬 Comment</button>
-              </div>
-            </div>
-          </div>
+          <div class="task-comment-section hidden" data-comment-section="${t.id}" aria-hidden="true"></div>
         </div>`;
       return card;
     }
@@ -2599,8 +2753,8 @@
           state.completedAt = nowIso;
           state.updatedAt = nowIso;
           taskState[id] = state;
+          recordTaskActivity(id, 'completed', nowIso);
           updateUI();
-          renderActivityLog();
           syncTaskState();
           showLinkFeedback(id, '');
         });
@@ -2615,115 +2769,40 @@
 
       // Edit link buttons
       $$('[data-edit-link]').forEach(btn => {
-        btn.addEventListener('click', e => {
-          if(!ensureProjectReady()) return;
+        btn.addEventListener('click', () => {
           const id = btn.dataset.editLink;
-          const state = ensureTaskEntry(id);
-          state.completed = false;
-          state.completedAt = null;
-          state.updatedAt = new Date().toISOString();
-          updateUI();
-          renderActivityLog();
-          syncTaskState();
-          showLinkFeedback(id, '');
-          setTimeout(() => {
-            const input = document.querySelector(`[data-task-id="${id}"]`);
-            if(input){ input.disabled = false; input.focus(); input.select(); }
-          }, 80);
+          handleEditTask(id);
         });
       });
 
       // Delete link buttons
       $$('[data-delete-link]').forEach(btn => {
-        btn.addEventListener('click', e => {
-          if(!ensureProjectReady()) return;
+        btn.addEventListener('click', () => {
           const id = btn.dataset.deleteLink;
-          if(confirm('Bạn có chắc chắn muốn xóa link này không?')){
-            const state = ensureTaskEntry(id);
-            state.completed = false;
-            state.link = '';
-            state.completedAt = null;
-            state.updatedAt = new Date().toISOString();
-            updateUI();
-            renderActivityLog();
-            syncTaskState();
-            showLinkFeedback(id, '');
-            showToast('Đã xóa link', 'success');
-          }
+          handleDeleteTaskClick(id);
         });
       });
 
-      // Comment save buttons
-      const saveComment = (id) => {
-        if(!ensureProjectReady()) return;
-        const commentInput = document.querySelector(`[data-comment-input="${id}"]`);
-        const state = ensureTaskEntry(id);
-
-        if(commentInput){
-          const commentText = commentInput.value.trim();
-          if(!commentText) return;
-
-          // Initialize comments array if it doesn't exist
-          if(!Array.isArray(state.comments)){
-            state.comments = [];
-          }
-
-          // Add new comment with user name and timestamp
-          state.comments.push({
-            text: commentText,
-            userName: (currentUserData && currentUserData.displayName) || 'Người dùng',
-            timestamp: new Date().toISOString()
-          });
-
-          state.updatedAt = new Date().toISOString();
-          commentInput.value = '';
-          syncTaskState();
-          updateUI();
-          showToast('Comment đã được lưu', 'success');
-        }
-      };
-
-      $$('[data-comment-save]').forEach(btn => {
-        btn.addEventListener('click', e => {
-          const id = btn.dataset.commentSave;
-          saveComment(id);
-        });
-      });
-
-      // Comment input - Enter key support
-      $$('[data-comment-input]').forEach(textarea => {
-        textarea.addEventListener('keydown', e => {
-          if(e.key === 'Enter' && !e.shiftKey){
-            e.preventDefault();
-            const id = textarea.dataset.commentInput;
-            saveComment(id);
-          }
-        });
-      });
-
-      // Comment toggle buttons (see more / see less)
+      // Toggle comment sections
       $$('[data-comment-toggle]').forEach(btn => {
-        btn.addEventListener('click', e => {
+        btn.addEventListener('click', () => {
           const id = btn.dataset.commentToggle;
-          const commentText = document.querySelector(`[data-comment-text="${id}"]`);
-
-          if(commentText){
-            const isExpanded = commentText.dataset.expanded === 'true';
-            const fullText = commentText.dataset.fullText || '';
-            const shortText = commentText.dataset.shortText || '';
-
-            if(isExpanded){
-              commentText.textContent = shortText;
-              commentText.dataset.expanded = 'false';
-              btn.textContent = 'Xem thêm';
-            } else {
-              commentText.textContent = fullText;
-              commentText.dataset.expanded = 'true';
-              btn.textContent = 'Thu gọn';
-            }
+          if(!id) return;
+          if(openCommentSections.has(id)){
+            openCommentSections.delete(id);
+          } else {
+            openCommentSections.add(id);
+          }
+          updateUI();
+          if(openCommentSections.has(id)){
+            setTimeout(() => {
+              const input = document.querySelector(`[data-comment-input="${id}"]`);
+              if(input){ input.focus(); }
+            }, 80);
           }
         });
       });
+
     }
 
     function setupDropdowns(){
@@ -2758,7 +2837,11 @@
       const state = ensureTaskEntry(id);
       state.completed = false;
       state.completedAt = null;
-      state.updatedAt = new Date().toISOString();
+      const nowIso = new Date().toISOString();
+      state.updatedAt = nowIso;
+      openCommentSections.delete(id);
+      autoOpenedCommentSections.delete(id);
+      recordTaskActivity(id, 'reopened', nowIso);
       updateUI();
       renderActivityLog();
       syncTaskState();
@@ -2778,13 +2861,16 @@
     }
     function confirmDeleteTask(){
       const id = currentDeleteTaskId;
-      if(!id || !taskState[id]) return;
-      taskState[id] = {
-        completed:false,
-        link:'',
-        completedAt:null,
-        updatedAt:new Date().toISOString(),
-      };
+      if(!id) return;
+      const state = ensureTaskEntry(id);
+      state.completed = false;
+      state.link = '';
+      state.completedAt = null;
+      const nowIso = new Date().toISOString();
+      state.updatedAt = nowIso;
+      openCommentSections.delete(id);
+      autoOpenedCommentSections.delete(id);
+      recordTaskActivity(id, 'deleted', nowIso);
       updateUI();
       renderActivityLog();
       syncTaskState();
@@ -2794,6 +2880,7 @@
         deleteTaskModal.setAttribute('aria-hidden','true');
       }
       showLinkFeedback(id, '');
+      showToast('Đã xóa link', 'success');
     }
     function cancelDeleteTask(){
       currentDeleteTaskId = null;
@@ -2854,27 +2941,13 @@
       const toggleBtn = $('#activity-log-toggle');
       if(!tbody) return;
 
-      const sanitized = sanitizeTaskState();
-      const toTime = (iso) => {
-        if(!iso) return 0;
-        const time = new Date(iso).getTime();
-        return Number.isFinite(time) ? time : 0;
-      };
-      const entries = Object.keys(sanitized).map(id => {
-        const state = sanitized[id];
-        const meta = taskMap[id] || {};
-        const completedAt = state.completedAt || null;
-        const updatedAt = state.updatedAt || null;
-        const lastActivity = Math.max(toTime(completedAt), toTime(updatedAt));
-        return {
-          id,
-          title: meta.title || `Task ${id}`,
-          phase: meta.phase || '',
-          completedAt,
-          updatedAt,
-          lastActivity,
-        };
-      }).filter(entry => entry.completedAt || entry.updatedAt).sort((a,b) => b.lastActivity - a.lastActivity);
+      const entries = Array.isArray(activityLogs)
+        ? activityLogs.slice().sort((a, b) => {
+            const aTime = new Date(a.updatedAt || 0).getTime();
+            const bTime = new Date(b.updatedAt || 0).getTime();
+            return bTime - aTime;
+          })
+        : [];
 
       const total = entries.length;
       const visibleEntries = activityLogShowAll ? entries : entries.slice(0, 10);
@@ -2883,25 +2956,21 @@
       if(visibleEntries.length === 0){
         tbody.innerHTML = '<tr><td colspan="5" class="text-center text-gray-500 py-6">Chưa có hoạt động nào.</td></tr>';
       } else {
+        const statusMap = {
+          completed: { text: 'Hoàn thành', className: 'text-green-600 font-semibold' },
+          updated: { text: 'Đang cập nhật', className: 'text-orange-500 font-semibold' },
+          reopened: { text: 'Đã mở lại', className: 'text-amber-600 font-semibold' },
+          edited: { text: 'Đã chỉnh sửa', className: 'text-blue-600 font-semibold' },
+          deleted: { text: 'Đã xóa', className: 'text-red-600 font-semibold' },
+        };
         visibleEntries.forEach(entry => {
+          const statusConfig = statusMap[entry.status] || { text: 'Hoạt động', className: 'text-blue-600 font-semibold' };
+          const performer = entry.performedBy ? ` – ${escapeHtml(entry.performedBy)}` : '';
           const tr = document.createElement('tr');
-          const completedTime = toTime(entry.completedAt);
-          const updatedTime = toTime(entry.updatedAt);
-          let statusText = 'Chưa hoàn thành';
-          let statusClass = 'text-gray-500';
-          if(entry.completedAt){
-            if(entry.updatedAt && updatedTime > completedTime){
-              statusText = 'Đang chỉnh sửa';
-              statusClass = 'text-orange-500 font-semibold';
-            } else {
-              statusText = 'Hoàn thành';
-              statusClass = 'text-green-600 font-semibold';
-            }
-          }
           tr.innerHTML = `
             <td>${phaseLabels[entry.phase] || entry.phase || '-'}</td>
-            <td><span class="${statusClass}">${statusText}</span></td>
-            <td><button type="button" class="task-log-link" data-jump-task="${entry.id}">${entry.title}</button></td>
+            <td><span class="${statusConfig.className}">${statusConfig.text}${performer}</span></td>
+            <td><button type="button" class="task-log-link" data-jump-task="${entry.taskId}">${escapeHtml(entry.taskName || `Task ${entry.taskId}`)}</button></td>
             <td>${entry.completedAt ? formatDateTime(entry.completedAt) : '-'}</td>
             <td>${entry.updatedAt ? formatDateTime(entry.updatedAt) : '-'}</td>`;
           tbody.appendChild(tr);
@@ -2967,10 +3036,31 @@
           }
 
           // Show comment section for completed tasks
+          initializeCommentSection(task.id);
           const commentSection = document.querySelector(`[data-comment-section="${task.id}"]`);
           const commentsList = document.querySelector(`[data-comments-list="${task.id}"]`);
+          const commentToggleBtn = document.querySelector(`[data-comment-toggle="${task.id}"]`);
+          const commentCount = Array.isArray(state.comments) ? state.comments.length : 0;
+          if(commentCount > 0 && !openCommentSections.has(task.id) && !autoOpenedCommentSections.has(task.id)){
+            openCommentSections.add(task.id);
+            autoOpenedCommentSections.add(task.id);
+          }
+          const shouldShowComments = openCommentSections.has(task.id);
 
-          if(commentSection) commentSection.classList.remove('hidden');
+          if(commentSection){
+            commentSection.classList.toggle('hidden', !shouldShowComments);
+            commentSection.setAttribute('aria-hidden', shouldShowComments ? 'false' : 'true');
+          }
+          if(commentToggleBtn){
+            let toggleLabel = '💬 Comment';
+            if(shouldShowComments){
+              toggleLabel = 'Ẩn comment';
+            } else if(commentCount > 0){
+              toggleLabel = `Xem comment (${commentCount})`;
+            }
+            commentToggleBtn.textContent = toggleLabel;
+            commentToggleBtn.setAttribute('aria-expanded', shouldShowComments ? 'true' : 'false');
+          }
 
           // Display all comments with user names
           if(commentsList){
@@ -3017,7 +3107,17 @@
 
           // Hide comment section for non-completed tasks
           const commentSection = document.querySelector(`[data-comment-section="${task.id}"]`);
-          if(commentSection) commentSection.classList.add('hidden');
+          const commentToggleBtn = document.querySelector(`[data-comment-toggle="${task.id}"]`);
+          openCommentSections.delete(task.id);
+          if(commentSection){
+            commentSection.classList.add('hidden');
+            commentSection.setAttribute('aria-hidden', 'true');
+          }
+          if(commentToggleBtn){
+            commentToggleBtn.textContent = '💬 Comment';
+            commentToggleBtn.setAttribute('aria-expanded', 'false');
+          }
+          autoOpenedCommentSections.delete(task.id);
         }
         updateCompleteButtonState(task.id);
       });
@@ -3051,14 +3151,21 @@
       refreshNotifications();
     }
 
+    function findCompletionPerformer(taskId){
+      if(!Array.isArray(activityLogs)) return null;
+      const entry = activityLogs.find(log => log.taskId === taskId && log.status === 'completed');
+      return entry && entry.performedBy ? entry.performedBy : null;
+    }
+
     function pushNotification(type, task, userName){
       if(!task) return;
       const now = new Date();
       const owner = (task.owner || '').trim();
-      const performedBy = userName || (currentUserData ? currentUserData.displayName : null) || 'Người dùng';
+      const taskTitle = (task.title || task.name || 'Task').trim();
+      const performedBy = userName || findCompletionPerformer(task.id) || (currentUserData ? (currentUserData.displayName || currentUserData.email) : null) || 'Người dùng';
       const message = type === 'completed'
-        ? `${performedBy} đã hoàn thành task: ${task.title}.`
-        : `Task: ${task.title} hiện đã quá hạn (Phụ trách: ${owner || 'Chưa gán'}).`;
+        ? `${performedBy} đã hoàn thành task: ${taskTitle}.`
+        : `Task: ${taskTitle} hiện đã quá hạn (Phụ trách: ${owner || 'Chưa gán'}).`;
       notifications.unshift({
         id: `${type}-${task.id}-${now.getTime()}`,
         taskId: task.id,
@@ -3111,7 +3218,7 @@
         const deadlineInfo = evaluateDeadline(task.deadline, nowCompleted);
         const nowOverdue = !nowCompleted && deadlineInfo && deadlineInfo.status === 'danger';
         if(nowCompleted && !prev.completed && !silent){
-          pushNotification('completed', task);
+          pushNotification('completed', task, findCompletionPerformer(task.id));
         }
         if(nowOverdue && !prev.overdue && !silent){
           pushNotification('overdue', task);
@@ -3796,26 +3903,20 @@
                 </div>
                 <div class="task-action-area">
                   ${!isCompleted ? `
-                    <div class="space-y-2">
+                    <div class="task-input-group">
                       <input type="url"
-                        class="task-link-input w-full"
+                        class="task-link-input"
                         id="dynamic-task-input-${task.id}"
                         placeholder="Dán link (tài liệu, file, trang kết quả...)" />
-                      <textarea
-                        class="task-link-input w-full"
-                        id="dynamic-task-comment-${task.id}"
-                        placeholder="Nhập ghi chú hoặc nhận xét (tùy chọn)..."
-                        rows="3"
-                        style="resize: vertical; min-height: 60px;"></textarea>
                       <button type="button"
-                        class="task-btn btn-complete"
+                        class="task-btn btn-complete task-complete-btn"
                         onclick="completeDynamicTask('${menuId}', '${task.id}')"
                         id="dynamic-task-btn-${task.id}">
                         Hoàn Thành
                       </button>
                     </div>
                   ` : `
-                    <div class="task-link-feedback space-y-2">
+                    <div class="task-link-feedback space-y-3">
                       <div>
                         <span class="text-sm text-green-600 font-medium">✅ Đã hoàn thành</span>
                         ${task.completedLink ? `
@@ -3828,19 +3929,11 @@
                         ` : ''}
                       </div>
                       ${task.completedComment ? `
-                        <div class="completed-comment-wrapper">
-                          <div class="text-sm text-gray-700 font-medium mb-1">💬 Ghi chú:</div>
-                          <div class="completed-comment ${task.completedComment.split('\\n').length > 2 ? 'collapsible' : ''}" id="comment-${task.id}">
-                            <div class="comment-content" style="white-space: pre-wrap;">${escapeHtml(task.completedComment)}</div>
-                            ${task.completedComment.split('\\n').length > 2 ? `
-                              <button class="see-more-btn" onclick="toggleComment('${task.id}')" id="toggle-btn-${task.id}">
-                                Xem thêm
-                              </button>
-                            ` : ''}
-                          </div>
+                        <div class="bg-gray-50 border border-gray-200 rounded px-3 py-2 text-sm text-gray-700" data-dynamic-comment-preview="${task.id}">
+                          ${escapeHtml(task.completedComment)}
                         </div>
                       ` : ''}
-                      <div class="flex gap-2 mt-3">
+                      <div class="flex flex-wrap gap-2">
                         <button type="button" class="task-btn btn-view px-3 py-1.5 text-sm" onclick="viewCompletedTask('${menuId}', '${task.id}')">
                           👁️ Xem
                         </button>
@@ -3850,6 +3943,21 @@
                         <button type="button" class="task-btn px-3 py-1.5 text-sm" style="background:#ef4444; color:#fff;" onclick="deleteCompletedTask('${menuId}', '${task.id}')">
                           🗑️ Xóa
                         </button>
+                        <button type="button" class="task-btn btn-outline px-3 py-1.5 text-sm" onclick="toggleDynamicComment('${menuId}', '${task.id}')" id="dynamic-comment-toggle-${task.id}">
+                          💬 Bình luận
+                        </button>
+                      </div>
+                      <div class="hidden space-y-2" id="dynamic-comment-${task.id}" data-dynamic-comment-section="${task.id}">
+                        <label class="block text-sm font-medium text-gray-700">Cập nhật bình luận</label>
+                        <textarea
+                          class="task-link-input w-full"
+                          rows="3"
+                          id="dynamic-comment-input-${task.id}"
+                          placeholder="Nhập bình luận cho task...">${escapeHtml(task.completedComment || '')}</textarea>
+                        <div class="flex justify-end gap-2">
+                          <button type="button" class="task-btn btn-secondary px-3 py-1.5 text-sm" onclick="cancelDynamicComment('${task.id}')">Hủy</button>
+                          <button type="button" class="task-btn btn-complete px-3 py-1.5 text-sm" onclick="saveDynamicComment('${menuId}', '${task.id}')">Lưu</button>
+                        </div>
                       </div>
                     </div>
                   `}
@@ -3862,10 +3970,9 @@
     }
 
     async function completeDynamicTask(menuId, taskId){
+      if(!ensureProjectReady()) return;
       const inputEl = $(`#dynamic-task-input-${taskId}`);
-      const commentEl = $(`#dynamic-task-comment-${taskId}`);
       const link = inputEl ? inputEl.value.trim() : '';
-      const comment = commentEl ? commentEl.value.trim() : '';
 
       if(!link){
         showToast('Vui lòng nhập link trước khi hoàn thành task', 'error');
@@ -3881,6 +3988,14 @@
       }
 
       try {
+        const tasks = dynamicTasks[menuId] || [];
+        const task = tasks.find(t => t.id === taskId);
+        const assignee = task ? assignees.find(a => a.id === task.assigneeId) : null;
+        const assigneeName = assignee ? assignee.name : '';
+        const performer = getCurrentUserName();
+        const menu = dynamicMenus.find(m => m.id === menuId);
+        const phaseLabel = menu ? menu.name : menuId;
+        const timestamp = new Date().toISOString();
         const projectId = ensureProjectId();
         const updateData = {
           completed: true,
@@ -3889,14 +4004,29 @@
           updatedAt: serverTimestamp()
         };
 
-        // Add comment if provided
-        if(comment){
-          updateData.completedComment = comment;
-        }
-
         await updateDoc(doc(db, 'projects', projectId, 'menus', menuId, 'tasks', taskId), updateData);
 
         showToast('Hoàn thành task thành công!', 'success');
+        recordActivityEntry({
+          taskId: `dynamic-${taskId}`,
+          taskName: task ? task.name : taskId,
+          phase: phaseLabel,
+          status: 'completed',
+          timestamp,
+          completedAt: timestamp,
+          performedBy: performer,
+        });
+        renderActivityLog();
+        syncTaskState();
+
+        pushNotification('completed', {
+          id: `dynamic-${taskId}`,
+          title: task ? task.name : taskId,
+          name: task ? task.name : taskId,
+          owner: assigneeName,
+        }, performer);
+        renderNotifications();
+        if(inputEl) inputEl.value = '';
         await loadMenuTasks(menuId);
         showDynamicMenuSection(menuId);
         renderDynamicOverview(); // Update overview
@@ -3920,23 +4050,78 @@
 
     window.completeDynamicTask = completeDynamicTask;
 
-    // Toggle comment See more/Collapse functionality
-    function toggleComment(taskId){
-      const commentEl = $(`#comment-${taskId}`);
-      const btnEl = $(`#toggle-btn-${taskId}`);
-      if(!commentEl || !btnEl) return;
-
-      const isExpanded = commentEl.classList.contains('expanded');
-      if(isExpanded){
-        commentEl.classList.remove('expanded');
-        btnEl.textContent = 'Xem thêm';
-      } else {
-        commentEl.classList.add('expanded');
-        btnEl.textContent = 'Thu gọn';
+    function toggleDynamicComment(menuId, taskId){
+      const section = document.getElementById(`dynamic-comment-${taskId}`);
+      const toggleBtn = document.getElementById(`dynamic-comment-toggle-${taskId}`);
+      if(!section || !toggleBtn) return;
+      const willShow = section.classList.contains('hidden');
+      section.classList.toggle('hidden');
+      toggleBtn.textContent = willShow ? 'Ẩn bình luận' : '💬 Bình luận';
+      if(willShow){
+        const textarea = document.getElementById(`dynamic-comment-input-${taskId}`);
+        if(textarea){
+          textarea.focus();
+          textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+        }
       }
     }
 
-    window.toggleComment = toggleComment;
+    async function saveDynamicComment(menuId, taskId){
+      if(!ensureProjectReady()) return;
+      const textarea = document.getElementById(`dynamic-comment-input-${taskId}`);
+      if(!textarea) return;
+      const comment = textarea.value.trim();
+
+      try {
+        const tasks = dynamicTasks[menuId] || [];
+        const task = tasks.find(t => t.id === taskId);
+        const performer = getCurrentUserName();
+        const menu = dynamicMenus.find(m => m.id === menuId);
+        const phaseLabel = menu ? menu.name : menuId;
+        const timestamp = new Date().toISOString();
+        const projectId = ensureProjectId();
+
+        await updateDoc(doc(db, 'projects', projectId, 'menus', menuId, 'tasks', taskId), {
+          completedComment: comment,
+          updatedAt: serverTimestamp()
+        });
+
+        showToast('Đã lưu bình luận', 'success');
+        recordActivityEntry({
+          taskId: `dynamic-${taskId}`,
+          taskName: task ? task.name : taskId,
+          phase: phaseLabel,
+          status: 'edited',
+          timestamp,
+          performedBy: performer,
+        });
+        renderActivityLog();
+        syncTaskState();
+
+        cancelDynamicComment(taskId);
+        await loadMenuTasks(menuId);
+        showDynamicMenuSection(menuId);
+      } catch(error){
+        console.error('Error saving comment:', error);
+        showToast('Lỗi khi lưu bình luận', 'error');
+      }
+    }
+
+    function cancelDynamicComment(taskId){
+      const section = document.getElementById(`dynamic-comment-${taskId}`);
+      const toggleBtn = document.getElementById(`dynamic-comment-toggle-${taskId}`);
+      if(section) section.classList.add('hidden');
+      if(toggleBtn) toggleBtn.textContent = '💬 Bình luận';
+      const textarea = document.getElementById(`dynamic-comment-input-${taskId}`);
+      const preview = document.querySelector(`[data-dynamic-comment-preview="${taskId}"]`);
+      if(textarea){
+        textarea.value = preview ? preview.textContent.trim() : '';
+      }
+    }
+
+    window.toggleDynamicComment = toggleDynamicComment;
+    window.saveDynamicComment = saveDynamicComment;
+    window.cancelDynamicComment = cancelDynamicComment;
 
     // View completed task details
     async function viewCompletedTask(menuId, taskId){
@@ -3977,6 +4162,7 @@ Mô tả: ${task.description || 'Không có'}
 
     // Edit completed task
     async function editCompletedTask(menuId, taskId){
+      if(!ensureProjectReady()) return;
       const tasks = dynamicTasks[menuId] || [];
       const task = tasks.find(t => t.id === taskId);
       if(!task) return;
@@ -3984,13 +4170,10 @@ Mô tả: ${task.description || 'Không có'}
       const newLink = prompt('📎 Cập nhật Link:', task.completedLink || '');
       if(newLink === null) return; // User cancelled
 
-      const newComment = prompt('💬 Cập nhật Ghi chú:', task.completedComment || '');
-      if(newComment === null) return; // User cancelled
-
-      // Validate link if provided
-      if(newLink && newLink.trim()){
+      const trimmedLink = newLink.trim();
+      if(trimmedLink){
         try {
-          new URL(newLink.trim());
+          new URL(trimmedLink);
         } catch(e){
           showToast('Link không hợp lệ. Vui lòng nhập URL đầy đủ (bắt đầu bằng http:// hoặc https://)', 'error');
           return;
@@ -3999,15 +4182,27 @@ Mô tả: ${task.description || 'Không có'}
 
       try {
         const projectId = ensureProjectId();
-        const updateData = {
-          completedLink: newLink.trim(),
-          completedComment: newComment.trim(),
+        await updateDoc(doc(db, 'projects', projectId, 'menus', menuId, 'tasks', taskId), {
+          completedLink: trimmedLink,
           updatedAt: serverTimestamp()
-        };
+        });
 
-        await updateDoc(doc(db, 'projects', projectId, 'menus', menuId, 'tasks', taskId), updateData);
+        const performer = getCurrentUserName();
+        const menu = dynamicMenus.find(m => m.id === menuId);
+        const phaseLabel = menu ? menu.name : menuId;
+        const timestamp = new Date().toISOString();
+        recordActivityEntry({
+          taskId: `dynamic-${taskId}`,
+          taskName: task.name,
+          phase: phaseLabel,
+          status: 'edited',
+          timestamp,
+          performedBy: performer,
+        });
+        renderActivityLog();
+        syncTaskState();
 
-        showToast('Cập nhật thành công!', 'success');
+        showToast('Cập nhật link thành công!', 'success');
         await loadMenuTasks(menuId);
         showDynamicMenuSection(menuId);
       } catch(error){
@@ -4018,11 +4213,18 @@ Mô tả: ${task.description || 'Không có'}
 
     // Delete completed task content
     async function deleteCompletedTask(menuId, taskId){
+      if(!ensureProjectReady()) return;
       if(!confirm('⚠️ Bạn có chắc chắn muốn xóa nội dung đã hoàn thành?\n\nHành động này sẽ:\n- Xóa link đã gửi\n- Xóa ghi chú\n- Đặt lại task về trạng thái "Chưa xong"\n\nBạn có muốn tiếp tục?')){
         return;
       }
 
       try {
+        const tasks = dynamicTasks[menuId] || [];
+        const task = tasks.find(t => t.id === taskId);
+        const performer = getCurrentUserName();
+        const menu = dynamicMenus.find(m => m.id === menuId);
+        const phaseLabel = menu ? menu.name : menuId;
+        const timestamp = new Date().toISOString();
         const projectId = ensureProjectId();
         const updateData = {
           completed: false,
@@ -4035,6 +4237,16 @@ Mô tả: ${task.description || 'Không có'}
         await updateDoc(doc(db, 'projects', projectId, 'menus', menuId, 'tasks', taskId), updateData);
 
         showToast('Đã xóa nội dung hoàn thành. Task quay lại trạng thái "Chưa xong".', 'success');
+        recordActivityEntry({
+          taskId: `dynamic-${taskId}`,
+          taskName: task ? task.name : taskId,
+          phase: phaseLabel,
+          status: 'deleted',
+          timestamp,
+          performedBy: performer,
+        });
+        renderActivityLog();
+        syncTaskState();
         await loadMenuTasks(menuId);
         showDynamicMenuSection(menuId);
         renderDynamicOverview(); // Update overview
@@ -4216,7 +4428,10 @@ Mô tả: ${task.description || 'Không có'}
 
     async function syncTaskState(){
       if(!isProjectReady) return;
-      await updateProjectData({ taskState: sanitizeTaskState() });
+      await updateProjectData({
+        taskState: sanitizeTaskState(),
+        activityLogs: sanitizeActivityLogs(),
+      });
     }
 
     async function ensureProjectDocument(projectId){
@@ -4225,6 +4440,7 @@ Mô tả: ${task.description || 'Không có'}
       if(!snapshot.exists()){
         await setDoc(projectRef, {
           taskState: buildDefaultTaskState(),
+          activityLogs: [],
           notes: [],
           customTypes: defaultCustomTypes,
           selectedNoteType: defaultCustomTypes[0] || '',
@@ -4252,11 +4468,19 @@ Mô tả: ${task.description || 'Không có'}
                    normalizeTimestamp(prev.updatedAt) !== norm.updatedAt;
           });
         }
+        const updates = {};
         if(needsUpdate){
-          await updateDoc(projectRef, { taskState: normalized, updatedAt: serverTimestamp() });
+          updates.taskState = normalized;
         }
         if(!data.settings){
-          await updateDoc(projectRef, { settings: defaultSettings, updatedAt: serverTimestamp() });
+          updates.settings = defaultSettings;
+        }
+        if(!Array.isArray(data.activityLogs)){
+          updates.activityLogs = [];
+        }
+        if(Object.keys(updates).length > 0){
+          updates.updatedAt = serverTimestamp();
+          await updateDoc(projectRef, updates);
         }
       }
     }
@@ -5586,36 +5810,26 @@ Mô tả: ${task.description || 'Không có'}
 
       if(!container) return;
 
-      const isExpanded = container.classList.contains('expanded');
+      const targetId = `tasks-${menuId}`;
+      const wasExpanded = container.classList.contains('expanded');
 
-      // ACCORDION LOGIC: Close all other menus first
-      expandedMenus.forEach(otherMenuId => {
-        if(otherMenuId !== menuId){
-          const otherContainer = $(`#tasks-${otherMenuId}`);
-          const otherIcon = $(`#toggle-icon-${otherMenuId}`);
-          if(otherContainer){
-            otherContainer.classList.remove('expanded');
-          }
-          if(otherIcon){
-            otherIcon.textContent = '▼';
-          }
+      $$('.tasks-list').forEach(list => {
+        if(list.id !== targetId){
+          list.classList.remove('expanded');
+          const otherIcon = $(`#toggle-icon-${list.id.replace('tasks-','')}`);
+          if(otherIcon) otherIcon.textContent = '▼';
         }
       });
 
-      // Clear the expanded menus set
       expandedMenus.clear();
 
-      // Toggle the clicked menu
-      if(isExpanded){
+      if(wasExpanded){
         container.classList.remove('expanded');
-        // expandedMenus is already cleared, so don't add anything
+        if(icon) icon.textContent = '▼';
       } else {
         container.classList.add('expanded');
         expandedMenus.add(menuId);
-      }
-
-      if(icon){
-        icon.textContent = isExpanded ? '▼' : '▲';
+        if(icon) icon.textContent = '▲';
       }
     }
 
@@ -5775,12 +5989,14 @@ Mô tả: ${task.description || 'Không có'}
       if(isAdmin){
         html += `
           <div class="border-t border-gray-300 pt-2 mt-2">
+            <a class="nav-link" href="/quan-ly-nguoi-dung" id="nav-user-management"><span class="emoji">👥</span><span>Quản Lý Người Dùng</span></a>
             <a class="nav-link" href="/quan-ly-ke-hoach" id="nav-plan-manager"><span class="emoji">🗂️</span><span>Quản Lý Kế Hoạch</span></a>
+            <a class="nav-link" href="/cai-dat"><span class="emoji">🔧</span><span>Cài Đặt</span></a>
           </div>
         `;
+      } else {
+        html += '<a class="nav-link" href="/cai-dat"><span class="emoji">🔧</span><span>Cài Đặt</span></a>';
       }
-
-      html += '<a class="nav-link" href="/cai-dat"><span class="emoji">🔧</span><span>Cài Đặt</span></a>';
 
       nav.innerHTML = html;
 
@@ -6104,6 +6320,7 @@ Mô tả: ${task.description || 'Không có'}
           notificationsInitialized = false;
         }
         taskState = normalizeTaskState(data.taskState || {});
+        activityLogs = normalizeActivityLogs(data.activityLogs || []);
         notes = Array.isArray(data.notes) ? data.notes.map(note => ({ ...note })) : [];
         customTypes = Array.isArray(data.customTypes) && data.customTypes.length ? data.customTypes.slice(0,10) : defaultCustomTypes.slice();
         if(customTypes.length === 0) customTypes = defaultCustomTypes.slice();
@@ -6370,26 +6587,12 @@ Mô tả: ${task.description || 'Không có'}
     });
     const notificationBell = $('#notification-bell');
     const notificationDropdown = $('#notification-dropdown');
-    const notificationMarkReadBtn = $('#notification-mark-read');
     if(notificationBell && notificationDropdown){
       notificationBell.addEventListener('click', e => {
         e.preventDefault();
         const isOpen = notificationDropdown.classList.toggle('show');
         notificationDropdown.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
         notificationBell.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-      });
-    }
-    if(notificationMarkReadBtn){
-      notificationMarkReadBtn.addEventListener('click', e => {
-        e.preventDefault();
-        let changed = false;
-        notifications.forEach(item => {
-          if(!item.read){
-            item.read = true;
-            changed = true;
-          }
-        });
-        if(changed) renderNotifications();
       });
     }
     const notificationList = $('#notification-list');
@@ -6400,10 +6603,15 @@ Mô tả: ${task.description || 'Không có'}
         const index = parseInt(item.getAttribute('data-notification-index'), 10);
         if(isNaN(index) || index < 0 || index >= notifications.length) return;
         const notification = notifications[index];
-        if(notification && !notification.read){
+        if(!notification) return;
+        if(!notification.read){
           notification.read = true;
           renderNotifications();
         }
+        if(notification.taskId){
+          navigateToTask(notification.taskId);
+        }
+        closeNotificationDropdown();
       });
     }
     document.addEventListener('click', e => {
