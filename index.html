@@ -550,6 +550,11 @@
           <p>Vận hành: <strong id="cover-contact-ops">[Chưa cập nhật]</strong></p>
         </div>
       </div>
+      <div id="cover-youtube-container" class="hidden w-full max-w-3xl mx-auto">
+        <div class="aspect-w-16 aspect-h-9 relative" style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;">
+          <iframe id="cover-youtube-iframe" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        </div>
+      </div>
       <button id="start-plan-btn" class="task-btn btn-complete text-lg px-10 py-3">BẮT ĐẦU KẾ HOẠCH</button>
     </div>
   </section>
@@ -1112,6 +1117,11 @@
                       <input type="color" id="setting-cover-text-color" class="h-10 w-24 border border-gray-200 rounded" />
                       <p class="settings-helper">Màu chữ cho tiêu đề và mô tả trên Cover.</p>
                     </div>
+                    <div>
+                      <label class="text-sm font-medium text-gray-700" for="setting-cover-youtube">Link YouTube Cover Page</label>
+                      <input type="url" id="setting-cover-youtube" class="filter-input" placeholder="https://www.youtube.com/watch?v=..." />
+                      <p class="settings-helper">Video YouTube sẽ hiển thị trên trang Cover, ngay phía trên nút "BẮT ĐẦU KẾ HOẠCH".</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1577,6 +1587,7 @@
     let dynamicTasks = {};
     let assignees = [];
     let taskComments = {};
+    let expandedMenus = new Set(); // Track which menus are expanded
 
     // Modal State
     let currentEditingUserId = null;
@@ -1833,6 +1844,14 @@
         }, 300);
       }, 3000);
     }
+    // Helper function to extract YouTube video ID from URL
+    function extractYouTubeVideoId(url){
+      if(!url) return null;
+      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+      const match = url.match(regExp);
+      return (match && match[2].length === 11) ? match[2] : null;
+    }
+
     function renderCoverPage(settings = {}){
       const logoEl = $('#cover-logo');
       const logoWrapper = $('#cover-logo-wrapper');
@@ -1844,6 +1863,8 @@
       const coverTitleEl = $('#cover-title');
       const coverDescEl = $('#cover-description');
       const coverContentWrapper = $('#cover-content-wrapper');
+      const youtubeContainer = $('#cover-youtube-container');
+      const youtubeIframe = $('#cover-youtube-iframe');
 
       const logoUrl = (settings.logoUrl || '').trim();
       if(logoEl){
@@ -1920,6 +1941,19 @@
           coverSection.classList.add('cover-has-color');
         }
       }
+
+      // Render YouTube video if provided
+      if(youtubeContainer && youtubeIframe){
+        const youtubeUrl = (settings.coverYoutubeUrl || '').trim();
+        const videoId = extractYouTubeVideoId(youtubeUrl);
+        if(videoId){
+          youtubeIframe.src = `https://www.youtube.com/embed/${videoId}`;
+          youtubeContainer.classList.remove('hidden');
+        } else {
+          youtubeIframe.src = '';
+          youtubeContainer.classList.add('hidden');
+        }
+      }
     }
     function renderSidebar(settings = {}){
       const logoEl = $('#sidebar-logo');
@@ -1971,6 +2005,7 @@
       const coverFontInput = $('#setting-cover-font');
       const coverTextSizeInput = $('#setting-cover-text-size');
       const coverTextColorInput = $('#setting-cover-text-color');
+      const coverYoutubeInput = $('#setting-cover-youtube');
 
       if(sloganInput) sloganInput.value = settings.slogan || '';
       if(managerInput) managerInput.value = settings.contactManager || '';
@@ -1987,6 +2022,7 @@
         const textColor = (settings.coverTextColor || '').trim();
         coverTextColorInput.value = textColor && /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(textColor) ? textColor : '#1e3a8a';
       }
+      if(coverYoutubeInput) coverYoutubeInput.value = settings.coverYoutubeUrl || '';
 
       const logoInput = $('#setting-logo-upload'); if(logoInput) logoInput.value = '';
       const faviconInput = $('#setting-favicon-upload'); if(faviconInput) faviconInput.value = '';
@@ -2012,6 +2048,7 @@
       const coverFontInput = $('#setting-cover-font');
       const coverTextSizeInput = $('#setting-cover-text-size');
       const coverTextColorInput = $('#setting-cover-text-color');
+      const coverYoutubeInput = $('#setting-cover-youtube');
 
       const nextSettings = { ...currentSettings };
       nextSettings.slogan = sloganInput ? sloganInput.value.trim() : '';
@@ -2025,6 +2062,7 @@
       nextSettings.coverTextSize = coverTextSizeInput ? coverTextSizeInput.value.trim() : defaultSettings.coverTextSize;
       const textColorValue = coverTextColorInput ? (coverTextColorInput.value || '').trim() : '';
       nextSettings.coverTextColor = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(textColorValue) ? textColorValue : defaultSettings.coverTextColor;
+      nextSettings.coverYoutubeUrl = coverYoutubeInput ? coverYoutubeInput.value.trim() : '';
 
       if(pendingFileRemovals.logo){
         nextSettings.logoUrl = '';
@@ -3520,6 +3558,11 @@
           header.classList.add('hidden');
         }
       }
+
+      // Reload data when showing specific sections
+      if(id === 'user-management' && isAdmin){
+        loadUsers();
+      }
     }
 
     function showDynamicMenuSection(menuId){
@@ -4614,6 +4657,8 @@
     }
 
     async function showAddUserModal(){
+      if(!checkAdminPermission()) return;
+
       currentEditingUserId = null;
       $('#user-modal-title').textContent = 'Thêm Người Dùng';
       $('#user-email').value = '';
@@ -4623,6 +4668,7 @@
       $('#user-password').parentElement.classList.remove('hidden');
       $('#user-role').value = 'employee';
       $('#user-error-message').classList.add('hidden');
+      $('#user-error-message').textContent = '';
       $('#user-modal').classList.add('active');
     }
 
@@ -4675,29 +4721,56 @@
             throw new Error('Mật khẩu phải có ít nhất 6 ký tự');
           }
 
-          // Create auth user
-          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-
-          // Add to Firestore
-          await setDoc(doc(db, 'users', userCredential.user.uid), {
-            email,
-            displayName,
-            role,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
-          });
-
-          // Sign out the newly created user and sign back in as admin
-          await signOut(auth);
-          const adminPassword = prompt('Nhập lại mật khẩu của bạn để xác nhận:');
+          // Prompt for admin password BEFORE creating user to ensure we can sign back in
+          const adminPassword = prompt('⚠️ Tạo người dùng sẽ tạm thời đăng xuất bạn.\n\nNhập mật khẩu của bạn để xác nhận:');
           if(!adminPassword){
             throw new Error('Cần nhập mật khẩu để xác nhận');
           }
-          await signInWithEmailAndPassword(auth, currentUserData.email, adminPassword);
+
+          // Verify admin password first
+          const adminEmail = currentUserData.email;
+          const credential = EmailAuthProvider.credential(adminEmail, adminPassword);
+          try {
+            await reauthenticateWithCredential(currentUser, credential);
+          } catch(authError){
+            throw new Error('Mật khẩu không đúng. Vui lòng thử lại.');
+          }
+
+          // Create auth user (this will automatically sign in the new user)
+          let userCredential;
+          let newUserId;
+          try {
+            userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            newUserId = userCredential.user.uid;
+          } catch(authError){
+            // If auth creation fails, throw with clear message
+            throw authError;
+          }
+
+          // Add to Firestore (we're now signed in as the new user)
+          try {
+            await setDoc(doc(db, 'users', newUserId), {
+              email,
+              displayName,
+              role,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp()
+            });
+          } catch(firestoreError){
+            // Firestore creation failed - auth user exists but Firestore doc doesn't
+            // Sign out and sign admin back in, then show error
+            await signOut(auth);
+            await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
+            throw new Error(`⚠️ Tài khoản đã tạo trong Firebase Auth nhưng lưu thông tin thất bại.\n\nEmail: ${email}\nBạn cần xóa user này trong Firebase Console > Authentication.\n\nLỗi: ${firestoreError.message}`);
+          }
+
+          // Sign out the newly created user and sign back in as admin
+          await signOut(auth);
+          await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
 
           showToast('Thêm người dùng thành công', 'success');
           $('#user-modal').classList.remove('active');
-          await loadUsers();
+          // Don't need to reload users - it will reload when we navigate/refresh
         }
       } catch(error){
         console.error('Error saving user:', error);
@@ -4897,6 +4970,16 @@
           await loadMenuTasks(menu.id);
         }
       }
+
+      // Restore expanded state for menus that were previously expanded
+      expandedMenus.forEach(menuId => {
+        const container = $(`#tasks-${menuId}`);
+        const icon = $(`#toggle-icon-${menuId}`);
+        if(container){
+          container.classList.add('expanded');
+          if(icon) icon.textContent = '▲';
+        }
+      });
     }
 
     async function showAddMenuModal(){
@@ -5219,6 +5302,13 @@
 
       const isExpanded = container.classList.contains('expanded');
       container.classList.toggle('expanded');
+
+      // Track expanded state
+      if(isExpanded){
+        expandedMenus.delete(menuId);
+      } else {
+        expandedMenus.add(menuId);
+      }
 
       if(icon){
         icon.textContent = isExpanded ? '▼' : '▲';
@@ -6009,13 +6099,35 @@
     const sidebarLogoutBtn = $('#sidebar-logout-btn');
     if(sidebarLogoutBtn) sidebarLogoutBtn.addEventListener('click', handleLogout);
 
+    // Helper function to check if user form has data
+    function hasUserFormData(){
+      const email = $('#user-email').value.trim();
+      const displayName = $('#user-display-name').value.trim();
+      const password = $('#user-password').value.trim();
+      return email || displayName || password;
+    }
+
+    // Helper function to close user modal with confirmation
+    function closeUserModalWithConfirm(){
+      if(hasUserFormData()){
+        if(confirm('Bạn có chắc chắn muốn hủy? Thông tin đã nhập sẽ bị mất.')){
+          $('#user-modal').classList.remove('active');
+          // Clear form
+          $('#user-email').value = '';
+          $('#user-display-name').value = '';
+          $('#user-password').value = '';
+          $('#user-error-message').classList.add('hidden');
+        }
+      } else {
+        $('#user-modal').classList.remove('active');
+      }
+    }
+
     if(addUserBtn) addUserBtn.addEventListener('click', showAddUserModal);
     if(userForm) userForm.addEventListener('submit', handleUserFormSubmit);
-    if(userCancelBtn) userCancelBtn.addEventListener('click', () => {
-      $('#user-modal').classList.remove('active');
-    });
+    if(userCancelBtn) userCancelBtn.addEventListener('click', closeUserModalWithConfirm);
     if(userModal) userModal.addEventListener('click', e => {
-      if(e.target === userModal) $('#user-modal').classList.remove('active');
+      if(e.target === userModal) closeUserModalWithConfirm();
     });
     if(cancelDeleteUserBtn) cancelDeleteUserBtn.addEventListener('click', () => {
       $('#delete-user-modal').classList.remove('active');
