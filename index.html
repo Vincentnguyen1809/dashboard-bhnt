@@ -6,6 +6,7 @@
   <title>Master Plan: Dịch Vụ Marketing BHNT — Final</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
   <!-- New TaskItem and TaskList components -->
   <script src="./TaskItem.js"></script>
   <script src="./TaskList.js"></script>
@@ -243,6 +244,14 @@
     .task-item-btn:hover{ background:#e5e7eb; }
     .task-item-btn.danger{ color:#dc2626; }
     .task-item-btn.danger:hover{ background:#fef2f2; border-color:#fca5a5; }
+    /* Drag-and-Drop Styles for Admin Task List */
+    .task-item.sortable-ghost{ opacity:0.4; background:#e0e7ff; border:2px dashed #6366f1; }
+    .task-item.sortable-chosen{ transform:scale(1.01); box-shadow:0 8px 16px rgba(0,0,0,0.12); }
+    .task-item[data-draggable="true"]{ cursor:move; transition:transform 0.2s ease, box-shadow 0.2s ease; }
+    .task-item[data-draggable="true"]:hover{ transform:translateY(-1px); box-shadow:0 2px 8px rgba(0,0,0,0.08); }
+    .task-drag-handle{ display:inline-flex; align-items:center; justify-content:center; width:1.5rem; height:1.5rem; color:#9ca3af; cursor:grab; user-select:none; margin-right:0.5rem; font-size:1.125rem; line-height:1; }
+    .task-drag-handle:active{ cursor:grabbing; }
+    .task-drag-handle:hover{ color:#6b7280; }
     .assignee-chip{ display:inline-flex; align-items:center; gap:0.5rem; background:#dbeafe; color:#1e40af; padding:0.375rem 0.75rem; border-radius:9999px; font-size:0.8125rem; font-weight:500; }
     .assignee-chip button{ background:none; border:none; color:#1e40af; cursor:pointer; font-size:1rem; line-height:1; padding:0; margin-left:0.25rem; }
     .assignee-chip button:hover{ color:#1e3a8a; }
@@ -6733,6 +6742,104 @@ Mô tả: ${task.description || 'Không có'}
       }
     }
 
+    // ========= TASK DRAG-AND-DROP REORDERING =========
+    /**
+     * Initialize Sortable.js for admin task list
+     * @param {string} menuId - The menu ID
+     */
+    function initializeTaskSortable(menuId){
+      const container = $(`#tasks-${menuId}`);
+      if(!container || typeof Sortable === 'undefined'){
+        console.warn('⚠️ [SORTABLE] Container or Sortable.js not available');
+        return;
+      }
+
+      // Destroy existing sortable instance if any
+      if(window.taskSortables?.[menuId]){
+        window.taskSortables[menuId].destroy();
+      }
+
+      // Initialize storage for sortable instances
+      if(!window.taskSortables){
+        window.taskSortables = {};
+      }
+
+      // Create new Sortable instance
+      window.taskSortables[menuId] = new Sortable(container, {
+        animation: 150,
+        handle: '.task-drag-handle',
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        dragClass: 'sortable-drag',
+        onEnd: async (evt) => {
+          if(evt.oldIndex === evt.newIndex) return;
+
+          console.log('🔄 [DRAG] Task reordered:', { menuId, oldIndex: evt.oldIndex, newIndex: evt.newIndex });
+
+          // Get tasks array
+          const tasks = dynamicTasks[menuId] || [];
+
+          // Move the task in the array
+          const [movedTask] = tasks.splice(evt.oldIndex, 1);
+          tasks.splice(evt.newIndex, 0, movedTask);
+
+          // Update order field for all tasks
+          tasks.forEach((task, index) => {
+            task.order = index;
+          });
+
+          // Update local state (optimistic UI)
+          dynamicTasks[menuId] = tasks;
+
+          // Save to Firestore
+          await handleTaskReorder(menuId, tasks);
+        }
+      });
+
+      console.log('✅ [SORTABLE] Initialized for menu:', menuId);
+    }
+
+    /**
+     * Handle task reorder - batch update to Firestore
+     * @param {string} menuId - The menu ID
+     * @param {Array} tasks - Reordered tasks array with updated order fields
+     */
+    async function handleTaskReorder(menuId, tasks){
+      if(!db || !isProjectReady){
+        console.error('❌ [REORDER] Database not ready');
+        showToast('Không thể lưu thứ tự task', 'error');
+        return;
+      }
+
+      try {
+        const projectId = ensureProjectId();
+        const batch = writeBatch(db);
+
+        // Update order field for each task
+        tasks.forEach((task, index) => {
+          const taskRef = doc(db, 'projects', projectId, 'menus', menuId, 'tasks', task.id);
+          batch.update(taskRef, {
+            order: index,
+            updatedAt: serverTimestamp()
+          });
+        });
+
+        await batch.commit();
+        console.log('✅ [REORDER] Task order saved to Firebase');
+        showToast('Đã lưu thứ tự task', 'success');
+
+        // Update the dynamic overview and user view
+        renderDynamicOverview();
+
+      } catch(error){
+        console.error('❌ [REORDER] Failed to save task order:', error);
+        showToast('Lỗi khi lưu thứ tự task', 'error');
+
+        // Reload tasks to restore correct order
+        await loadMenuTasks(menuId);
+      }
+    }
+
     function renderMenuTasks(menuId){
       const container = $(`#tasks-${menuId}`);
       if(!container) return;
@@ -6761,8 +6868,9 @@ Mô tả: ${task.description || 'Không có'}
         }
 
         return `
-          <div class="task-item">
+          <div class="task-item" data-task-id="${task.id}" ${isAdmin ? 'data-draggable="true"' : ''}>
             <div class="task-item-header">
+              ${isAdmin ? '<span class="task-drag-handle" title="Kéo để sắp xếp">⠿</span>' : ''}
               <div class="task-item-title">${task.name}</div>
               <div class="task-item-actions">
                 ${isAdmin ? `
@@ -6780,6 +6888,11 @@ Mô tả: ${task.description || 'Không có'}
           </div>
         `;
       }).join('');
+
+      // Initialize drag-and-drop for admin users
+      if(isAdmin){
+        initializeTaskSortable(menuId);
+      }
     }
 
     function toggleMenuTasks(menuId){
