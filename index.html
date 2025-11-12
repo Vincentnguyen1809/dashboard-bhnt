@@ -3890,10 +3890,9 @@
       '/': { layout: 'cover', section: null, navHref: null },
       '/login': { layout: 'login', section: null, navHref: null },
       '/tongquan': { layout: 'app', section: 'overview', navHref: DEFAULT_NAV_HREF },
-      '/giaidoan1': { layout: 'app', section: 'gd1', navHref: sectionToPath.gd1 },
-      '/giaidoan2': { layout: 'app', section: 'gd2', navHref: sectionToPath.gd2 },
-      '/giaidoan3': { layout: 'app', section: 'gd3', navHref: sectionToPath.gd3 },
-      '/giaidoan4': { layout: 'app', section: 'gd4', navHref: sectionToPath.gd4 },
+      // NOTE: Phase routes (giaidoan1-4) are now DYNAMIC and handled by the router's resolve() function
+      // They are loaded from Firestore menus collection and use the slug field
+      // DO NOT add hardcoded phase routes here - they will cause conflicts with dynamic slugs
       '/ghichu': { layout: 'app', section: 'notes', navHref: sectionToPath.notes },
       '/quan-ly-nguoi-dung': { layout: 'app', section: 'user-management', navHref: sectionToPath['user-management'] },
       '/quan-ly-ke-hoach': { layout: 'app', section: 'plan-manager', navHref: sectionToPath['plan-manager'] },
@@ -3924,6 +3923,8 @@
     }
 
     function showDynamicMenuSection(menuId){
+      console.log('📄 [MENU] Showing dynamic menu section for ID:', menuId);
+
       // Show the dynamic-menu section
       $$('.content-section').forEach(s => s.classList.toggle('hidden', s.id !== 'dynamic-menu'));
       const main = document.querySelector('main');
@@ -3931,7 +3932,27 @@
 
       // Find the menu
       const menu = dynamicMenus.find(m => m.id === menuId);
-      if(!menu) return;
+      if(!menu) {
+        console.error('❌ [MENU] Menu not found:', menuId, {
+          availableMenus: dynamicMenus.map(m => ({id: m.id, slug: m.slug, name: m.name}))
+        });
+
+        // Show 404 error message
+        const tasksContainer = $('#dynamic-menu-tasks-container');
+        if(tasksContainer){
+          tasksContainer.innerHTML = `
+            <div class="card-section text-center py-12">
+              <div class="text-6xl mb-4">🔍</div>
+              <h3 class="text-xl font-bold text-gray-700 mb-2">Không tìm thấy menu</h3>
+              <p class="text-gray-500 mb-6">Menu này có thể đã bị xóa hoặc URL không chính xác.</p>
+              <a href="/tongquan" class="task-btn btn-complete">Về trang Tổng Quan</a>
+            </div>
+          `;
+        }
+        return;
+      }
+
+      console.log('✅ [MENU] Loaded menu:', menu.name);
 
       // Update page title
       const header = $('#current-section-title');
@@ -4405,31 +4426,46 @@ Mô tả: ${task.description || 'Không có'}
       const defaultRoute = config['/'];
       function resolve(pathname){
         const normalized = normalizeRoutePath(pathname);
+        console.log('🔀 [ROUTER] Resolving path:', normalized);
 
         // Check static routes first
         if(config[normalized]){
+          console.log('✅ [ROUTER] Found static route:', normalized);
           return { path: normalized, route: config[normalized] };
         }
 
         // Check dynamic menu routes
         const pathWithoutSlash = normalized.startsWith('/') ? normalized.slice(1) : normalized;
+        console.log('🔍 [ROUTER] Checking dynamic menus for slug:', pathWithoutSlash, {
+          availableMenus: dynamicMenus.length,
+          slugs: dynamicMenus.map(m => m.slug || `no-slug-${m.id}`)
+        });
+
         const dynamicMenu = dynamicMenus.find(m =>
           m.type === 'task-list' && (m.slug === pathWithoutSlash || `dynamic-menu/${m.id}` === pathWithoutSlash)
         );
 
         if(dynamicMenu){
+          console.log('✅ [ROUTER] Found dynamic menu:', {
+            menuId: dynamicMenu.id,
+            slug: dynamicMenu.slug,
+            name: dynamicMenu.name
+          });
           return {
             path: normalized,
             route: {
               layout: 'app',
               section: 'dynamic-menu',
               navHref: normalized,
-              menuId: dynamicMenu.id
+              menuId: dynamicMenu.id,
+              menuName: dynamicMenu.name
             }
           };
         }
 
-        return { path: '/', route: defaultRoute };
+        // 404 - Route not found
+        console.warn('⚠️ [ROUTER] Route not found, redirecting to home:', normalized);
+        return { path: '/', route: defaultRoute, notFound: true };
       }
       function handle(pathname){
         const { path, route } = resolve(pathname);
@@ -5442,16 +5478,41 @@ Mô tả: ${task.description || 'Không có'}
     async function loadDynamicMenus(){
       if(!db) return;
       try {
-        const menusSnapshot = await getDocs(query(collection(db, 'projects', ensureProjectId(), 'menus'), orderBy('order')));
-        dynamicMenus = [];
-        menusSnapshot.forEach(doc => {
-          dynamicMenus.push({ id: doc.id, ...doc.data() });
+        const projectId = ensureProjectId();
+        const menusRef = collection(db, 'projects', projectId, 'menus');
+
+        // Use real-time listener instead of one-time fetch
+        console.log('📡 [MENU SYNC] Setting up real-time menu listener');
+        onSnapshot(query(menusRef, orderBy('order')), snapshot => {
+          const oldMenuSlugs = dynamicMenus.map(m => m.slug || m.id).join(',');
+          dynamicMenus = [];
+          snapshot.forEach(doc => {
+            dynamicMenus.push({ id: doc.id, ...doc.data() });
+          });
+          const newMenuSlugs = dynamicMenus.map(m => m.slug || m.id).join(',');
+
+          console.log('📡 [MENU SYNC] Menus updated:', {
+            count: dynamicMenus.length,
+            slugs: dynamicMenus.map(m => m.slug || m.id),
+            changed: oldMenuSlugs !== newMenuSlugs
+          });
+
+          // Re-render sidebar and overview when menus change
+          renderDynamicMenus();
+          renderSidebarDynamic();
+          renderDynamicOverview();
+
+          // If we're on a dynamic menu page and slug changed, re-route
+          if(router && window.location.pathname !== '/' && window.location.pathname !== '/login'){
+            const currentPath = window.location.pathname;
+            console.log('📡 [MENU SYNC] Re-evaluating current route:', currentPath);
+            router.handleCurrent();
+          }
+        }, error => {
+          console.error('❌ [MENU SYNC] Error listening to menus:', error);
         });
-        await renderDynamicMenus();
-        renderSidebarDynamic();
-        renderDynamicOverview(); // Update overview page with dynamic data
       } catch(error){
-        console.error('Error loading menus:', error);
+        console.error('❌ [MENU SYNC] Error setting up menu listener:', error);
       }
     }
 
