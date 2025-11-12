@@ -1716,6 +1716,22 @@
     function getCurrentUserName(){
       return (currentUserData && (currentUserData.displayName || currentUserData.email)) || 'Người dùng';
     }
+
+    /**
+     * Get the current URL path for a menu ID (Single Source of Truth)
+     * Always fetches from the latest dynamicMenus array
+     * @param {string} menuId - The menu document ID
+     * @returns {string} The URL path (e.g., "/giai-doan1")
+     */
+    function getMenuPath(menuId){
+      const menu = dynamicMenus.find(m => m.id === menuId);
+      if(!menu){
+        console.warn('⚠️ [MENU PATH] Menu not found:', menuId);
+        return '/tongquan'; // Fallback to overview
+      }
+      const slug = menu.slug || `dynamic-menu/${menuId}`;
+      return `/${slug}`;
+    }
     function updateCompleteButtonState(taskId){
       const group = document.querySelector(`[data-input-group="${taskId}"]`);
       if(!group) return;
@@ -2400,7 +2416,7 @@
         .slice(0, 200);
     }
 
-    function recordActivityEntry({ taskId, taskName, phase, status, timestamp = new Date().toISOString(), completedAt = null, performedBy }){
+    function recordActivityEntry({ taskId, taskName, phase, status, timestamp = new Date().toISOString(), completedAt = null, performedBy, menuId }){
       if(!taskId) return;
       const performer = performedBy || getCurrentUserName();
       const entry = {
@@ -2412,6 +2428,7 @@
         completedAt: completedAt || (status === 'completed' ? timestamp : null),
         updatedAt: timestamp,
         performedBy: performer,
+        menuId: menuId || null, // Store menu ID for dynamic tasks
       };
       activityLogs = [entry, ...activityLogs].slice(0, 200);
     }
@@ -3054,10 +3071,11 @@
           const statusConfig = statusMap[entry.status] || { text: 'Hoạt động', className: 'text-blue-600 font-semibold' };
           const performer = entry.performedBy ? ` – ${escapeHtml(entry.performedBy)}` : '';
           const tr = document.createElement('tr');
+          const menuIdAttr = entry.menuId ? ` data-menu-id="${escapeHtml(entry.menuId)}"` : '';
           tr.innerHTML = `
             <td>${phaseLabels[entry.phase] || entry.phase || '-'}</td>
             <td><span class="${statusConfig.className}">${statusConfig.text}${performer}</span></td>
-            <td><button type="button" class="task-log-link" data-jump-task="${entry.taskId}">${escapeHtml(entry.taskName || `Task ${entry.taskId}`)}</button></td>
+            <td><button type="button" class="task-log-link" data-jump-task="${entry.taskId}"${menuIdAttr}>${escapeHtml(entry.taskName || `Task ${entry.taskId}`)}</button></td>
             <td>${entry.completedAt ? formatDateTime(entry.completedAt) : '-'}</td>
             <td>${entry.updatedAt ? formatDateTime(entry.updatedAt) : '-'}</td>`;
           tbody.appendChild(tr);
@@ -4132,6 +4150,7 @@
           timestamp,
           completedAt: timestamp,
           performedBy: performer,
+          menuId: menuId, // Store menu ID for navigation
         });
         renderActivityLog();
         syncTaskState();
@@ -4211,6 +4230,7 @@
           status: 'edited',
           timestamp,
           performedBy: performer,
+          menuId: menuId, // Store menu ID for navigation
         });
         renderActivityLog();
         syncTaskState();
@@ -4315,6 +4335,7 @@ Mô tả: ${task.description || 'Không có'}
           status: 'edited',
           timestamp,
           performedBy: performer,
+          menuId: menuId, // Store menu ID for navigation
         });
         renderActivityLog();
         syncTaskState();
@@ -4361,6 +4382,7 @@ Mô tả: ${task.description || 'Không có'}
           status: 'deleted',
           timestamp,
           performedBy: performer,
+          menuId: menuId, // Store menu ID for navigation
         });
         renderActivityLog();
         syncTaskState();
@@ -4498,8 +4520,71 @@ Mô tả: ${task.description || 'Không có'}
       };
     }
 
-    function navigateToTask(taskId){
+    function navigateToTask(taskId, menuId = null){
       if(!taskId) return;
+      console.log('🔗 [NAV] Navigating to task:', taskId, menuId ? `(menu: ${menuId})` : '');
+
+      // Check if this is a dynamic task (from dynamic menus)
+      if(taskId.startsWith('dynamic-')){
+        // Extract actual task ID
+        const actualTaskId = taskId.substring(8); // Remove "dynamic-" prefix
+
+        // If menuId is provided (from activity log), use it directly
+        let foundMenu = null;
+        if(menuId){
+          foundMenu = dynamicMenus.find(m => m.id === menuId);
+          if(foundMenu){
+            console.log('✅ [NAV] Using provided menu ID:', menuId);
+          }
+        }
+
+        // If not found or not provided, search through all menus
+        if(!foundMenu){
+          console.log('🔍 [NAV] Searching for task in all menus...');
+          for(const searchMenuId in dynamicTasks){
+            const tasks = dynamicTasks[searchMenuId] || [];
+            const task = tasks.find(t => t.id === actualTaskId);
+            if(task){
+              foundMenu = dynamicMenus.find(m => m.id === searchMenuId);
+              break;
+            }
+          }
+        }
+
+        if(foundMenu){
+          // Use the CURRENT slug from the database (Single Source of Truth)
+          const targetPath = getMenuPath(foundMenu.id);
+          console.log('✅ [NAV] Found dynamic task in menu:', {
+            menuId: foundMenu.id,
+            menuName: foundMenu.name,
+            currentPath: targetPath
+          });
+
+          if(router){
+            router.navigate(targetPath);
+          }
+
+          // Scroll to the task card after navigation
+          setTimeout(() => {
+            const card = document.getElementById('dynamic-task-' + actualTaskId);
+            if(card){
+              card.scrollIntoView({ behavior:'smooth', block:'center' });
+              card.classList.add('ring-2','ring-offset-2','ring-blue-400');
+              setTimeout(() => {
+                card.classList.remove('ring-2','ring-offset-2','ring-blue-400');
+              }, 2000);
+            } else {
+              console.warn('⚠️ [NAV] Task card not found in DOM:', 'dynamic-task-' + actualTaskId);
+            }
+          }, 300); // Wait for page to render
+          return;
+        } else {
+          console.error('❌ [NAV] Dynamic task not found in any menu:', actualTaskId);
+          return;
+        }
+      }
+
+      // Handle static tasks (legacy gd1-4 tasks)
       const meta = taskMap[taskId];
       const sectionId = meta ? meta.phase : null;
       if(sectionId){
@@ -4511,6 +4596,7 @@ Mô tả: ${task.description || 'Không có'}
           showSection(sectionId);
         }
       }
+
       const card = document.getElementById('task-card-' + taskId);
       if(card){
         card.scrollIntoView({ behavior:'smooth', block:'center' });
@@ -6764,7 +6850,9 @@ Mô tả: ${task.description || 'Không có'}
       const trigger = e.target.closest('[data-jump-task]');
       if(trigger){
         e.preventDefault();
-        navigateToTask(trigger.getAttribute('data-jump-task'));
+        const taskId = trigger.getAttribute('data-jump-task');
+        const menuId = trigger.getAttribute('data-menu-id');
+        navigateToTask(taskId, menuId);
       }
     });
     const notificationBell = $('#notification-bell');
