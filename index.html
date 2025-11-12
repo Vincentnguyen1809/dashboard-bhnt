@@ -2643,6 +2643,7 @@
           <!-- Comment section for completed tasks -->
           <div class="task-comment-section hidden" data-comment-section="${t.id}" aria-hidden="true"></div>
         </div>`;
+      console.log(`📦 [CREATE] Created task card for "${t.title}" (${t.id})`);
       return card;
     }
 
@@ -3085,10 +3086,15 @@
       let total = 0, done = 0;
       const phaseCounts = { gd1:{total:0,completed:0}, gd2:{total:0,completed:0}, gd3:{total:0,completed:0}, gd4:{total:0,completed:0} };
 
+      console.log('🔍 [DEBUG] updateUI() called. Total tasks:', allTasks.length);
+      console.log('🔍 [DEBUG] taskState object:', taskState);
+
       allTasks.forEach(task => {
         const state = ensureTaskEntry(task.id);
         total++;
         if(phaseCounts[task.phase]) phaseCounts[task.phase].total++;
+
+        console.log(`🔍 [DEBUG] Task ${task.id} - Title: "${task.title}", Completed: ${state.completed}, Link: "${state.link}"`);
 
         const card = document.getElementById('task-card-'+task.id);
         const statusBadge = document.getElementById('task-status-'+task.id);
@@ -3103,6 +3109,10 @@
         if(input) input.value = state.link || '';
 
         if(state.completed){
+          console.log(`✅ [DEBUG] Task ${task.id} IS COMPLETED - Showing footer`);
+          if(!actions){
+            console.error(`❌ [ERROR] Task ${task.id} - Footer element NOT FOUND in DOM!`);
+          }
           done++;
           if(phaseCounts[task.phase]) phaseCounts[task.phase].completed++;
           if(card){ card.classList.add('completed'); card.classList.remove('overdue'); }
@@ -6398,14 +6408,26 @@ Mô tả: ${task.description || 'Không có'}
       await ensureProjectDocument(projectId);
 
       onSnapshot(projectRef, snapshot => {
-        if(!snapshot.exists()) return;
+        console.log('🔥 [FIRESTORE] Snapshot received');
+        if(!snapshot.exists()){
+          console.warn('⚠️ [FIRESTORE] Project document does not exist');
+          return;
+        }
         const data = snapshot.data() || {};
+        console.log('🔥 [FIRESTORE] Project data loaded:', {
+          hasTaskState: !!data.taskState,
+          taskStateKeys: data.taskState ? Object.keys(data.taskState).length : 0,
+          hasSettings: !!data.settings
+        });
+
         if(!isProjectReady){
           notifications = [];
           notificationState = {};
           notificationsInitialized = false;
         }
         taskState = normalizeTaskState(data.taskState || {});
+        console.log('🔥 [FIRESTORE] taskState after normalize:', taskState);
+
         activityLogs = normalizeActivityLogs(data.activityLogs || []);
         notes = Array.isArray(data.notes) ? data.notes.map(note => ({ ...note })) : [];
         customTypes = Array.isArray(data.customTypes) && data.customTypes.length ? data.customTypes.slice(0,10) : defaultCustomTypes.slice();
@@ -6424,6 +6446,7 @@ Mô tả: ${task.description || 'Không có'}
         applyFavicon(currentSettings.faviconUrl || '');
         renderAvatar(currentSettings.avatarUrl || '');
         populateSettingsForm(currentSettings);
+        console.log('🔥 [FIRESTORE] Calling updateUI() to refresh task display');
         updateUI();
         updateShareLink();
       }, error => {
@@ -6454,11 +6477,15 @@ Mô tả: ${task.description || 'Không có'}
     document.addEventListener('keydown', e => { if(e.key === 'Escape') { closeNoteDetailModal(); cancelEditOptions(); cancelEditLink(); } });
 
     // ========= BOOT =========
+    console.log('🚀 [BOOT] Starting application boot sequence');
     router = createRouter(routeConfig);
+    console.log('🚀 [BOOT] Rendering tasks...');
     renderTasks();
+    console.log('🚀 [BOOT] Binding task events...');
     bindTaskEvents();
     bindNav();
     initChart();
+    console.log('🚀 [BOOT] Calling initial updateUI() (before Firestore data loads)');
     updateUI();
 
     filteredNotes = notes.slice();
