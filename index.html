@@ -4252,15 +4252,15 @@
                               Cập nhật Link
                             </button>
                             <button type="button"
-                                    style="display:flex; align-items:center; gap:10px; width:100%; padding:12px 16px; background:#fff; border:none; border-top:1px solid #f3f4f6; text-align:left; cursor:pointer; transition:background 0.15s; color:#ef4444; font-size:0.875rem;"
-                                    onclick="confirmDeleteTask('${menuId}', '${task.id}', '${task.name}'); toggleEditMenu('${task.id}')"
-                                    onmouseover="this.style.background='#fef2f2'"
+                                    style="display:flex; align-items:center; gap:10px; width:100%; padding:12px 16px; background:#fff; border:none; border-top:1px solid #f3f4f6; text-align:left; cursor:pointer; transition:background 0.15s; color:#f59e0b; font-size:0.875rem;"
+                                    onclick="handleRemoveResult('${menuId}', '${task.id}', '${task.name}'); toggleEditMenu('${task.id}')"
+                                    onmouseover="this.style.background='#fffbeb'"
                                     onmouseout="this.style.background='#fff'">
                               <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                                <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
-                                <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                                <path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+                                <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
                               </svg>
-                              Xóa Task
+                              Gỡ kết quả
                             </button>
                           </div>
                         </div>
@@ -4288,7 +4288,7 @@
                                   </div>
                                   ${comment.userId === (currentUser?.uid || '') ? `
                                     <div style="display:flex; gap:4px;">
-                                      <button onclick="editComment('${task.id}', '${comment.id}')" style="padding:4px 8px; font-size:0.75rem; color:#6b7280; background:none; border:none; cursor:pointer;">✏️</button>
+                                      <button onclick="editComment('${menuId}', '${task.id}', '${comment.id}')" style="padding:4px 8px; font-size:0.75rem; color:#6b7280; background:none; border:none; cursor:pointer;">✏️</button>
                                       <button onclick="deleteComment('${menuId}', '${task.id}', '${comment.id}')" style="padding:4px 8px; font-size:0.75rem; color:#ef4444; background:none; border:none; cursor:pointer;">🗑️</button>
                                     </div>
                                   ` : ''}
@@ -4302,8 +4302,9 @@
                         <!-- Add Comment Form -->
                         <div style="display:flex; flex-direction:column; gap:8px;">
                           <textarea id="comment-input-${task.id}"
-                                    placeholder="Nhập bình luận của bạn..."
+                                    placeholder="Nhập bình luận của bạn... (Enter để gửi, Shift+Enter để xuống dòng)"
                                     rows="3"
+                                    onkeydown="handleCommentKeyPress(event, '${menuId}', '${task.id}')"
                                     style="width:100%; padding:10px; border:1px solid #d1d5db; border-radius:6px; font-size:0.875rem; resize:vertical; font-family:inherit;"></textarea>
                           <div style="display:flex; justify-content:flex-end; gap:8px;">
                             <button type="button"
@@ -4874,12 +4875,81 @@ Mô tả: ${task.description || 'Không có'}
     }
 
     /**
-     * Edit a comment
+     * Edit a comment - Uses prompt for simplicity
      */
-    async function editComment(taskId, commentId){
-      console.log('✏️ [EDIT COMMENT] Editing comment:', { taskId, commentId });
-      showToast('Chức năng chỉnh sửa bình luận đang được phát triển', 'error');
-      // TODO: Implement edit comment functionality
+    async function editComment(menuId, taskId, commentId){
+      if(!ensureProjectReady()) return;
+
+      console.log('✏️ [EDIT COMMENT] Editing comment:', { menuId, taskId, commentId });
+
+      try {
+        const projectId = ensureProjectId();
+        const tasks = dynamicTasks[menuId] || [];
+        const task = tasks.find(t => t.id === taskId);
+
+        if(!task || !task.comments){
+          showToast('Không tìm thấy bình luận', 'error');
+          return;
+        }
+
+        // Find the comment to edit
+        const comment = task.comments.find(c => c.id === commentId);
+        if(!comment){
+          showToast('Không tìm thấy bình luận', 'error');
+          return;
+        }
+
+        // Check ownership
+        if(comment.userId !== (currentUser?.uid || '')){
+          showToast('Bạn chỉ có thể chỉnh sửa bình luận của mình', 'error');
+          return;
+        }
+
+        // Prompt for new text
+        const newText = prompt('Chỉnh sửa bình luận:', comment.text);
+
+        if(newText === null) return; // User cancelled
+
+        if(newText.trim() === ''){
+          showToast('Bình luận không được để trống', 'error');
+          return;
+        }
+
+        // Update the comment
+        const updatedComments = task.comments.map(c => {
+          if(c.id === commentId){
+            return {
+              ...c,
+              text: newText.trim(),
+              updatedAt: new Date().toISOString(),
+              edited: true
+            };
+          }
+          return c;
+        });
+
+        // Update Firestore
+        await updateDoc(doc(db, 'projects', projectId, 'menus', menuId, 'tasks', taskId), {
+          comments: updatedComments,
+          updatedAt: serverTimestamp()
+        });
+
+        showToast('Đã cập nhật bình luận', 'success');
+
+        // Reload tasks
+        await loadMenuTasks(menuId);
+        await showDynamicMenuSection(menuId);
+
+        // Reopen comment section
+        setTimeout(() => {
+          const commentSection = document.getElementById(`comment-section-${taskId}`);
+          if(commentSection) commentSection.style.display = 'block';
+        }, 100);
+
+      } catch(error){
+        console.error('❌ Error editing comment:', error);
+        showToast('Lỗi khi chỉnh sửa bình luận', 'error');
+      }
     }
 
     /**
@@ -4930,6 +5000,57 @@ Mô tả: ${task.description || 'Không có'}
       }
     }
 
+    /**
+     * Handle keyboard shortcuts in comment textarea
+     * Enter: Submit comment
+     * Shift+Enter: New line
+     */
+    function handleCommentKeyPress(event, menuId, taskId){
+      // Check if Enter key pressed without Shift
+      if(event.key === 'Enter' && !event.shiftKey){
+        event.preventDefault(); // Prevent default new line
+        submitComment(menuId, taskId); // Submit comment immediately
+      }
+      // If Shift+Enter, allow default behavior (new line)
+    }
+
+    /**
+     * Handle removing task result (revert to incomplete state)
+     * This does NOT delete the task - it just clears the completion data
+     */
+    async function handleRemoveResult(menuId, taskId, taskName){
+      if(!ensureProjectReady()) return;
+
+      const confirmed = confirm(`⚠️ GỠ KẾT QUẢ\n\nBạn có chắc chắn muốn gỡ kết quả của task này?\n\n"${taskName}"\n\nTask sẽ quay về trạng thái "Chưa xong" và bạn có thể nộp lại kết quả.`);
+
+      if(!confirmed) return;
+
+      console.log('🔄 [REMOVE RESULT] Reverting task to incomplete:', { menuId, taskId });
+
+      try {
+        const projectId = ensureProjectId();
+
+        // Update task to incomplete state
+        await updateDoc(doc(db, 'projects', projectId, 'menus', menuId, 'tasks', taskId), {
+          completed: false,
+          completedLink: '',
+          completedComment: '',
+          completedAt: null,
+          updatedAt: serverTimestamp()
+        });
+
+        showToast('Đã gỡ kết quả. Task quay về trạng thái "Chưa xong".', 'success');
+
+        // Reload and re-render
+        await loadMenuTasks(menuId);
+        await showDynamicMenuSection(menuId);
+        renderDynamicOverview();
+      } catch(error){
+        console.error('❌ Error removing result:', error);
+        showToast('Lỗi khi gỡ kết quả', 'error');
+      }
+    }
+
     // ========= END NEW REFACTORED UI FUNCTIONS =========
 
     // ✅ EXPOSE ALL NEW FUNCTIONS TO GLOBAL SCOPE
@@ -4943,6 +5064,8 @@ Mô tả: ${task.description || 'Không có'}
     window.submitComment = submitComment;
     window.editComment = editComment;
     window.deleteComment = deleteComment;
+    window.handleCommentKeyPress = handleCommentKeyPress;
+    window.handleRemoveResult = handleRemoveResult;
 
     // Old function exports (keep for backward compatibility)
     window.viewCompletedTask = viewCompletedTask;
