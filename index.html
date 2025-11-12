@@ -3963,31 +3963,73 @@
      * @returns {boolean} - True if task is completed
      */
     function isTaskComplete(task){
-      if(!task) return false;
+      if(!task){
+        console.warn('⚠️ [isTaskComplete] Task is null or undefined');
+        return false;
+      }
+
+      // ✅ FIX ISSUE 2: Add comprehensive debug logging
+      console.group(`🔍 [isTaskComplete] Checking task: ${task.id || task.name}`);
+      console.log('📦 Full task object:', task);
+      console.log('📊 Completion indicators:', {
+        'task.completed': task.completed,
+        'task.isCompleted': task.isCompleted,
+        'task.status': task.status,
+        'task.completedAt': task.completedAt,
+        'task.completedLink': task.completedLink,
+        'task.completionLink': task.completionLink
+      });
 
       // Primary check: Boolean 'completed' field
-      if(task.completed === true) return true;
+      if(task.completed === true){
+        console.log('✅ MATCH: task.completed === true');
+        console.groupEnd();
+        return true;
+      }
 
       // Fallback 1: Boolean 'isCompleted' field (alternative naming)
-      if(task.isCompleted === true) return true;
+      if(task.isCompleted === true){
+        console.log('✅ MATCH: task.isCompleted === true');
+        console.groupEnd();
+        return true;
+      }
 
       // Fallback 2: Check status string (case-insensitive)
       if(task.status){
         const normalizedStatus = task.status.toLowerCase().trim();
+        console.log(`🔤 Normalized status: "${normalizedStatus}"`);
+
         const completedVariants = [
           'completed',
           'hoàn thành',
           'đã hoàn thành',
           'done',
           'xong',
-          'complete'
+          'complete',
+          'success',
+          'finished'
         ];
-        if(completedVariants.includes(normalizedStatus)) return true;
+
+        if(completedVariants.includes(normalizedStatus)){
+          console.log(`✅ MATCH: status "${normalizedStatus}" is in completed variants`);
+          console.groupEnd();
+          return true;
+        } else {
+          console.log(`❌ NO MATCH: status "${normalizedStatus}" not in ${JSON.stringify(completedVariants)}`);
+        }
+      } else {
+        console.log('❌ NO STATUS: task.status is empty/null');
       }
 
       // Fallback 3: Check for completion indicators (link or timestamp)
-      if(task.completedAt || task.completedLink || task.completionLink) return true;
+      if(task.completedAt || task.completedLink || task.completionLink){
+        console.log('✅ MATCH: Found completion indicators (timestamp or link)');
+        console.groupEnd();
+        return true;
+      }
 
+      console.log('❌ FINAL RESULT: Task is NOT completed (no indicators matched)');
+      console.groupEnd();
       return false;
     }
 
@@ -4066,11 +4108,13 @@
           `;
         } else {
           // Render tasks with interactive UI
+          console.log(`📋 [RENDER] Rendering ${tasks.length} tasks for menu ${menuId}`);
           tasksContainer.innerHTML = tasks.map(task => {
             const assignee = assignees.find(a => a.id === task.assigneeId);
             const assigneeName = assignee ? assignee.name : 'Chưa gán';
             // ✅ FIX ISSUE B: Use comprehensive completion check helper function
             const isCompleted = isTaskComplete(task);
+            console.log(`📝 [RENDER] Task ${task.id} - isCompleted: ${isCompleted}, will render: ${isCompleted ? 'ACTION BUTTONS' : 'INPUT FIELD'}`);
             const startDateStr = task.startDate ? formatDateFromISO(task.startDate) : 'Chưa đặt';
             const endDateStr = task.endDate ? formatDateFromISO(task.endDate) : 'Chưa đặt';
 
@@ -5871,10 +5915,51 @@ Mô tả: ${task.description || 'Không có'}
           return;
         }
 
-        // Check if slug is unique (excluding current menu if editing)
-        const slugExists = dynamicMenus.some(m => m.slug === slug && m.id !== currentEditingMenuId);
-        if(slugExists){
-          errorEl.textContent = 'URL Slug này đã được sử dụng. Vui lòng chọn slug khác.';
+        // ✅ FIX ISSUE 1: Enhanced slug validation with Firestore check
+        try {
+          const projectId = ensureProjectId();
+          const menusRef = collection(db, 'projects', projectId, 'menus');
+
+          // Get current menu data if editing
+          let currentMenuSlug = null;
+          if(currentEditingMenuId){
+            const currentMenu = dynamicMenus.find(m => m.id === currentEditingMenuId);
+            currentMenuSlug = currentMenu?.slug;
+            console.log('🔍 [SLUG UPDATE] Current menu:', {
+              id: currentEditingMenuId,
+              oldSlug: currentMenuSlug,
+              newSlug: slug
+            });
+          }
+
+          // Skip validation if slug hasn't changed
+          if(currentEditingMenuId && currentMenuSlug === slug){
+            console.log('✅ [SLUG UPDATE] Slug unchanged, skipping validation');
+          } else {
+            // Query Firestore directly to check for duplicate slugs
+            const slugQuery = query(menusRef, where('slug', '==', slug));
+            const slugSnapshot = await getDocs(slugQuery);
+
+            // Check if slug exists on a DIFFERENT menu
+            const conflictingMenus = [];
+            slugSnapshot.forEach(doc => {
+              if(doc.id !== currentEditingMenuId){
+                conflictingMenus.push({ id: doc.id, ...doc.data() });
+              }
+            });
+
+            if(conflictingMenus.length > 0){
+              console.error('❌ [SLUG UPDATE] Slug conflict detected:', conflictingMenus);
+              errorEl.textContent = `URL Slug "${slug}" đã được sử dụng bởi menu "${conflictingMenus[0].name}". Vui lòng chọn slug khác.`;
+              errorEl.classList.remove('hidden');
+              return;
+            }
+
+            console.log('✅ [SLUG UPDATE] No conflicts found, slug is available');
+          }
+        } catch(validationError){
+          console.error('❌ [SLUG UPDATE] Validation error:', validationError);
+          errorEl.textContent = 'Lỗi khi kiểm tra slug. Vui lòng thử lại.';
           errorEl.classList.remove('hidden');
           return;
         }
@@ -5909,15 +5994,25 @@ Mô tả: ${task.description || 'Không có'}
         };
 
         if(currentEditingMenuId){
-          // Update
+          // Update existing menu
+          console.log('📝 [MENU UPDATE] Updating menu:', currentEditingMenuId, menuData);
           await updateDoc(doc(db, 'projects', projectId, 'menus', currentEditingMenuId), menuData);
           showToast('Cập nhật menu thành công', 'success');
+
+          // ✅ Force router refresh to update slug routes
+          console.log('🔄 [MENU UPDATE] Forcing router refresh...');
+          setTimeout(() => {
+            if(router){
+              router.handleCurrent();
+            }
+          }, 500);
         } else {
-          // Create
+          // Create new menu
           const maxOrder = dynamicMenus.length > 0 ? Math.max(...dynamicMenus.map(m => m.order || 0)) : 0;
           menuData.order = maxOrder + 1;
           menuData.createdAt = serverTimestamp();
 
+          console.log('➕ [MENU CREATE] Creating new menu:', menuData);
           await addDoc(collection(db, 'projects', projectId, 'menus'), menuData);
           showToast('Thêm menu thành công', 'success');
         }
@@ -5925,8 +6020,8 @@ Mô tả: ${task.description || 'Không có'}
         $('#menu-modal').classList.remove('active');
         await loadDynamicMenus();
       } catch(error){
-        console.error('Error saving menu:', error);
-        errorEl.textContent = 'Lỗi khi lưu menu';
+        console.error('❌ [MENU SAVE] Error saving menu:', error);
+        errorEl.textContent = 'Lỗi khi lưu menu: ' + (error.message || 'Unknown error');
         errorEl.classList.remove('hidden');
       } finally {
         submitBtn.disabled = false;
