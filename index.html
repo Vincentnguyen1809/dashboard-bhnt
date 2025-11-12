@@ -4163,47 +4163,59 @@
                       </button>
                     </div>
                   ` : `
-                    <div class="task-link-feedback space-y-3">
-                      <div>
-                        <span class="text-sm text-green-600 font-medium">✅ Đã hoàn thành</span>
-                        ${task.completedLink ? `
-                          <a href="${escapeHtml(task.completedLink)}" target="_blank" rel="noopener noreferrer" class="text-sm text-blue-600 hover:underline break-all ml-2">
-                            ${escapeHtml(task.completedLink)}
-                          </a>
-                        ` : ''}
-                        ${task.completedAt ? `
-                          <span class="text-xs text-gray-500 block mt-1">Hoàn thành lúc: ${formatTimestamp(task.completedAt)}</span>
-                        ` : ''}
+                    <!-- ✅ COMPLETED TASK ACTIONS -->
+                    <div class="task-completed-section" style="display:block !important; visibility:visible !important;">
+                      <!-- Completion Info -->
+                      <div style="margin-bottom:12px;">
+                        <span class="text-sm text-green-600 font-medium" style="display:inline-block;">✅ Đã hoàn thành</span>
+                        ${task.completedLink ? `<a href="${task.completedLink}" target="_blank" rel="noopener noreferrer" class="text-sm text-blue-600 hover:underline" style="margin-left:8px; word-break:break-all;">${task.completedLink}</a>` : ''}
+                        ${task.completedAt ? `<span class="text-xs text-gray-500" style="display:block; margin-top:4px;">Hoàn thành lúc: ${formatTimestamp(task.completedAt)}</span>` : ''}
                       </div>
-                      ${task.completedComment ? `
-                        <div class="bg-gray-50 border border-gray-200 rounded px-3 py-2 text-sm text-gray-700" data-dynamic-comment-preview="${task.id}">
-                          ${escapeHtml(task.completedComment)}
-                        </div>
-                      ` : ''}
-                      <div class="flex flex-wrap gap-2">
-                        <button type="button" class="task-btn btn-view px-3 py-1.5 text-sm" onclick="viewCompletedTask('${menuId}', '${task.id}')">
+
+                      <!-- Completion Comment Preview -->
+                      ${task.completedComment ? `<div style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:6px; padding:10px; margin-bottom:12px; font-size:0.875rem; color:#374151;">${task.completedComment}</div>` : ''}
+
+                      <!-- ✅ ACTION BUTTONS - GUARANTEED VISIBLE -->
+                      <div class="action-buttons" style="display:flex !important; flex-wrap:wrap; gap:8px; margin-top:12px; visibility:visible !important;">
+                        <button type="button"
+                          class="task-btn btn-view"
+                          style="display:inline-flex !important; align-items:center; padding:6px 12px; font-size:0.875rem; background:#0ea5e9; color:#fff; border:none; border-radius:6px; cursor:pointer;"
+                          onclick="viewCompletedTask('${menuId}', '${task.id}')">
                           👁️ Xem
                         </button>
-                        <button type="button" class="task-btn btn-complete px-3 py-1.5 text-sm" onclick="editCompletedTask('${menuId}', '${task.id}')">
+                        <button type="button"
+                          class="task-btn btn-complete"
+                          style="display:inline-flex !important; align-items:center; padding:6px 12px; font-size:0.875rem; background:#10b981; color:#fff; border:none; border-radius:6px; cursor:pointer;"
+                          onclick="editCompletedTask('${menuId}', '${task.id}')">
                           ✏️ Sửa
                         </button>
-                        <button type="button" class="task-btn px-3 py-1.5 text-sm" style="background:#ef4444; color:#fff;" onclick="deleteCompletedTask('${menuId}', '${task.id}')">
+                        <button type="button"
+                          class="task-btn"
+                          style="display:inline-flex !important; align-items:center; padding:6px 12px; font-size:0.875rem; background:#ef4444; color:#fff; border:none; border-radius:6px; cursor:pointer;"
+                          onclick="deleteCompletedTask('${menuId}', '${task.id}')">
                           🗑️ Xóa
                         </button>
-                        <button type="button" class="task-btn btn-outline px-3 py-1.5 text-sm" onclick="toggleDynamicComment('${menuId}', '${task.id}')" id="dynamic-comment-toggle-${task.id}">
+                        <button type="button"
+                          class="task-btn btn-outline"
+                          style="display:inline-flex !important; align-items:center; padding:6px 12px; font-size:0.875rem; background:#fff; color:#1f2937; border:1px solid #d1d5db; border-radius:6px; cursor:pointer;"
+                          onclick="toggleDynamicComment('${menuId}', '${task.id}')"
+                          id="dynamic-comment-toggle-${task.id}">
                           💬 Bình luận
                         </button>
                       </div>
-                      <div class="hidden space-y-2" id="dynamic-comment-${task.id}" data-dynamic-comment-section="${task.id}">
-                        <label class="block text-sm font-medium text-gray-700">Cập nhật bình luận</label>
+
+                      <!-- Comment Section (Hidden by default) -->
+                      <div class="hidden" id="dynamic-comment-${task.id}" style="margin-top:16px; display:none;">
+                        <label class="block text-sm font-medium text-gray-700" style="margin-bottom:8px;">Cập nhật bình luận</label>
                         <textarea
-                          class="task-link-input w-full"
+                          class="task-link-input"
+                          style="width:100%; border:1px solid #d1d5db; border-radius:6px; padding:8px; font-size:1rem; resize:vertical;"
                           rows="3"
                           id="dynamic-comment-input-${task.id}"
-                          placeholder="Nhập bình luận cho task...">${escapeHtml(task.completedComment || '')}</textarea>
-                        <div class="flex justify-end gap-2">
-                          <button type="button" class="task-btn btn-secondary px-3 py-1.5 text-sm" onclick="cancelDynamicComment('${task.id}')">Hủy</button>
-                          <button type="button" class="task-btn btn-complete px-3 py-1.5 text-sm" onclick="saveDynamicComment('${menuId}', '${task.id}')">Lưu</button>
+                          placeholder="Nhập bình luận cho task...">${task.completedComment || ''}</textarea>
+                        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
+                          <button type="button" class="task-btn btn-secondary" style="padding:6px 12px; font-size:0.875rem; background:#e5e7eb; color:#1f2937; border:none; border-radius:6px; cursor:pointer;" onclick="cancelDynamicComment('${task.id}')">Hủy</button>
+                          <button type="button" class="task-btn btn-complete" style="padding:6px 12px; font-size:0.875rem; background:#10b981; color:#fff; border:none; border-radius:6px; cursor:pointer;" onclick="saveDynamicComment('${menuId}', '${task.id}')">Lưu</button>
                         </div>
                       </div>
                     </div>
