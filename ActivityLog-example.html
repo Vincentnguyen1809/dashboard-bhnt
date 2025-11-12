@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ActivityLog Component - Usage Example</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f3f4f6;
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      padding: 2rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    /* Table Styling */
+    .notes-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .notes-table th {
+      background: #f9fafb;
+      padding: 0.75rem;
+      text-align: left;
+      font-weight: 600;
+      border-bottom: 2px solid #e5e7eb;
+    }
+
+    .notes-table td {
+      padding: 0.75rem;
+      border-bottom: 1px solid #f3f4f6;
+    }
+
+    .notes-table tr:hover {
+      background: #f9fafb;
+    }
+
+    /* Status Colors */
+    .text-green-600 { color: #059669; }
+    .text-blue-600 { color: #2563eb; }
+    .text-red-600 { color: #dc2626; }
+    .text-purple-600 { color: #9333ea; }
+    .text-yellow-600 { color: #d97706; }
+    .text-gray-600 { color: #4b5563; }
+
+    /* Pagination Styling */
+    .pagination {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      justify-content: center;
+      margin-top: 1rem;
+    }
+
+    .pagination-btn {
+      padding: 0.5rem 1rem;
+      background: white;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #374151;
+      transition: all 0.2s;
+    }
+
+    .pagination-btn:hover:not(:disabled) {
+      background: #f3f4f6;
+      border-color: #9ca3af;
+    }
+
+    .pagination-btn.active {
+      background: #3b82f6;
+      color: white;
+      border-color: #3b82f6;
+    }
+
+    .pagination-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .pagination-ellipsis {
+      color: #9ca3af;
+      padding: 0.5rem;
+    }
+
+    /* Demo Controls */
+    .demo-controls {
+      margin-bottom: 2rem;
+      padding: 1rem;
+      background: #f9fafb;
+      border-radius: 6px;
+    }
+
+    .demo-controls h2 {
+      margin-bottom: 1rem;
+      font-size: 1.25rem;
+    }
+
+    .demo-controls button {
+      padding: 0.5rem 1rem;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-right: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .demo-controls button:hover {
+      background: #2563eb;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="demo-controls">
+      <h2>Demo Controls</h2>
+      <button onclick="loadSampleData(10)">Load 10 Activities</button>
+      <button onclick="loadSampleData(50)">Load 50 Activities</button>
+      <button onclick="loadSampleData(100)">Load 100 Activities</button>
+      <button onclick="loadSampleData(0)">Clear All</button>
+    </div>
+
+    <!-- ActivityLog will render here -->
+    <div id="activity-log-container"></div>
+  </div>
+
+  <!-- Include the ActivityLog component -->
+  <script src="ActivityLog.js"></script>
+
+  <script>
+    // Initialize the ActivityLog component
+    let activityLog = null;
+
+    // Sample data generator
+    function generateSampleActivities(count) {
+      const users = ['John Doe', 'Jane Smith', 'Bob Johnson', 'Alice Williams', 'Charlie Brown'];
+      const statuses = ['completed', 'edited', 'deleted', 'created', 'updated', 'pending'];
+      const actions = [
+        'Task updated',
+        'Task completed',
+        'Task deleted',
+        'Comment added',
+        'Status changed',
+        'Priority modified',
+        'Assignment changed',
+        'Due date updated'
+      ];
+
+      const activities = [];
+      for (let i = 1; i <= count; i++) {
+        activities.push({
+          id: `ACT-${String(i).padStart(5, '0')}`,
+          content: actions[Math.floor(Math.random() * actions.length)],
+          user: users[Math.floor(Math.random() * users.length)],
+          timestamp: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000), // Random date within last 30 days
+          status: statuses[Math.floor(Math.random() * statuses.length)]
+        });
+      }
+
+      return activities;
+    }
+
+    // Load sample data
+    function loadSampleData(count) {
+      const activities = generateSampleActivities(count);
+
+      if (activityLog) {
+        // Update existing component
+        activityLog.updateActivities(activities);
+      } else {
+        // Create new component
+        activityLog = new ActivityLog({
+          containerId: 'activity-log-container',
+          activities: activities,
+          itemsPerPage: 10
+        });
+      }
+    }
+
+    // Initialize with sample data on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      loadSampleData(50);
+    });
+  </script>
+
+  <!-- Usage Instructions -->
+  <div class="container" style="margin-top: 2rem;">
+    <h2 style="margin-bottom: 1rem;">Usage Instructions</h2>
+
+    <h3 style="margin-top: 1.5rem; margin-bottom: 0.5rem;">1. Basic Usage</h3>
+    <pre style="background: #f9fafb; padding: 1rem; border-radius: 6px; overflow-x: auto;"><code>// Create a new ActivityLog instance
+const activityLog = new ActivityLog({
+  containerId: 'activity-log-container',
+  activities: myActivitiesArray,
+  itemsPerPage: 10  // Optional, defaults to 10
+});</code></pre>
+
+    <h3 style="margin-top: 1.5rem; margin-bottom: 0.5rem;">2. Data Format</h3>
+    <pre style="background: #f9fafb; padding: 1rem; border-radius: 6px; overflow-x: auto;"><code>const activities = [
+  {
+    id: 'ACT-001',
+    content: 'Task completed',
+    user: 'John Doe',
+    timestamp: new Date(),
+    status: 'completed'  // completed, edited, deleted, created, updated, pending
+  },
+  // ... more activities
+];</code></pre>
+
+    <h3 style="margin-top: 1.5rem; margin-bottom: 0.5rem;">3. Update Activities</h3>
+    <pre style="background: #f9fafb; padding: 1rem; border-radius: 6px; overflow-x: auto;"><code>// Update with new data
+activityLog.updateActivities(newActivitiesArray);</code></pre>
+
+    <h3 style="margin-top: 1.5rem; margin-bottom: 0.5rem;">4. Integration with Your Existing Code</h3>
+    <pre style="background: #f9fafb; padding: 1rem; border-radius: 6px; overflow-x: auto;"><code>// In your index.html, add the script tag:
+&lt;script src="ActivityLog.js"&gt;&lt;/script&gt;
+
+// Add container element:
+&lt;div id="activity-log-container"&gt;&lt;/div&gt;
+
+// Initialize in your main script:
+const activityLog = new ActivityLog({
+  containerId: 'activity-log-container',
+  activities: activityLogs,  // Your existing activityLogs array
+  itemsPerPage: 10
+});
+
+// Update when data changes:
+// (e.g., in your Firestore onSnapshot callback)
+onSnapshot(collection, (snapshot) => {
+  const activities = snapshot.docs.map(doc => doc.data());
+  activityLog.updateActivities(activities);
+});</code></pre>
+
+    <h3 style="margin-top: 1.5rem; margin-bottom: 0.5rem;">5. Features</h3>
+    <ul style="margin-left: 1.5rem; line-height: 1.8;">
+      <li>✅ Client-side pagination (10 items per page)</li>
+      <li>✅ Proper event handling (no onclick errors)</li>
+      <li>✅ Status color coding</li>
+      <li>✅ Responsive design</li>
+      <li>✅ Previous/Next navigation</li>
+      <li>✅ Smart page number display with ellipsis</li>
+      <li>✅ Automatic timestamp formatting</li>
+      <li>✅ Empty state handling</li>
+    </ul>
+  </div>
+</body>
+</html>
