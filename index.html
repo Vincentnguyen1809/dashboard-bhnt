@@ -6,6 +6,9 @@
   <title>Master Plan: Dịch Vụ Marketing BHNT — Final</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- New TaskItem and TaskList components -->
+  <script src="./TaskItem.js"></script>
+  <script src="./TaskList.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Inter', sans-serif; background-color: #f5f5f5; }
@@ -2623,44 +2626,46 @@
     taskState = buildDefaultTaskState();
 
     // ========= RENDER =========
-    function createTaskCard(t){
-      const card = document.createElement('div');
-      card.className = 'task-card';
-      card.id = 'task-card-' + t.id;
-      card.dataset.phase = t.phase;
-      card.dataset.start = t.startDate || '';
-      card.dataset.end = t.endDate || '';
-      card.innerHTML = `
-        <div class="task-header">
-          <h4 class="task-title">${t.title}</h4>
-          <span id="task-status-${t.id}" class="task-status status-pending">CHƯA XONG</span>
-        </div>
-        <div class="task-details">
-          <div class="task-details-label">Chi tiết:</div>
-          <ul class="task-detail-list">${t.details.map(d=>`<li>${d}</li>`).join('')}</ul>
-        </div>
-        <div class="task-meta">
-          <span>Bắt đầu: <strong>${t.startDate}</strong></span><span>|</span>
-          <span>Hoàn thành dự kiến: <strong>${t.endDate}</strong></span><span>|</span>
-          <span>Thời lượng: ${t.durationDays || 1} ngày</span><span>|</span>
-          <span>Phụ trách: ${t.owner}</span>
-          <span class="deadline-countdown" data-deadline="${t.deadline}"></span>
-        </div>
-        <div class="task-action-area">
-          <div class="task-input-group" data-input-group="${t.id}">
-            <input type="url" class="task-link-input" data-task-id="${t.id}" data-phase="${t.phase}" placeholder="Dán link (tài liệu, file, trang kết quả...)"/>
-            <button type="button" class="task-btn btn-complete task-complete-btn" data-task-id="${t.id}" disabled>Hoàn Thành</button>
-          </div>
-          <div class="task-link-feedback" data-link-feedback="${t.id}"></div>
-          <div class="task-completed-actions hidden" data-completed-actions="${t.id}">
-            <button type="button" class="task-btn btn-view task-view-btn" data-view-btn="${t.id}" disabled>🔗 View</button>
-            <button type="button" class="task-btn btn-outline" data-comment-toggle="${t.id}" aria-expanded="false">💬 Comment</button>
-            <button type="button" class="task-btn btn-secondary" data-edit-link="${t.id}">✏️ Edit</button>
-          </div>
-          <!-- Comment section for completed tasks -->
-          <div class="task-comment-section hidden" data-comment-section="${t.id}" aria-hidden="true"></div>
-        </div>`;
-      console.log(`📦 [CREATE] Created task card for "${t.title}" (${t.id})`);
+    function createTaskCard(t, slug='tongquan'){
+      // Use the new TaskItem component
+      const taskState = ensureTaskEntry(t.id);
+
+      const card = createTaskItem({
+        task: t,
+        taskState: taskState,
+        slug: slug,
+        onComplete: ({taskId, slug}) => {
+          const inputEl = document.getElementById(`task-input-${taskId}`);
+          if(inputEl && inputEl.value.trim()){
+            const link = inputEl.value.trim();
+            taskState.link = link;
+            taskState.completed = true;
+            taskState.completedAt = new Date().toISOString();
+            taskState.updatedAt = new Date().toISOString();
+            recordTaskActivity(taskId, 'completed', taskState.completedAt);
+            updateUI();
+            renderActivityLog();
+            syncTaskState();
+          }
+        },
+        onView: ({taskId, slug}) => {
+          handleViewLink(taskId);
+        },
+        onEdit: ({taskId, slug}) => {
+          handleEditTask(taskId);
+        },
+        onComment: ({taskId, slug}) => {
+          if(!openCommentSections.has(taskId)){
+            openCommentSections.add(taskId);
+          } else {
+            openCommentSections.delete(taskId);
+          }
+          updateUI();
+        },
+        isAdmin: isAdmin
+      });
+
+      console.log(`📦 [CREATE] Created task card for "${t.title}" (${t.id}) using TaskItem component`);
       return card;
     }
 
@@ -2679,7 +2684,7 @@
       tasksData.forEach(t => {
         ensureTaskEntry(t.id);
         const m = mounts[t.week];
-        if(m) m.appendChild(createTaskCard(t));
+        if(m) m.appendChild(createTaskCard(t, 'tongquan')); // Pass default slug for static tasks
       });
 
       allTasks = $$('.task-link-input').map(input => {
@@ -3113,6 +3118,7 @@
         if(phaseCounts[task.phase]) phaseCounts[task.phase].total++;
 
         console.log(`🔍 [DEBUG] Task ${task.id} - Title: "${task.title}", Completed: ${state.completed}, Link: "${state.link}"`);
+        console.log('Current Task Status:', task.status); // CRITICAL DEBUG
 
         const card = document.getElementById('task-card-'+task.id);
         const statusBadge = document.getElementById('task-status-'+task.id);
@@ -3122,23 +3128,15 @@
         const viewBtn = actions ? actions.querySelector('[data-view-btn]') : null;
         const countdownSpan = card ? card.querySelector('.deadline-countdown') : null;
 
-        // Check for BOTH English 'completed', Vietnamese status strings, or boolean completed field
-        const isTaskCompleted = state.completed ||
-                                task.status === 'completed' ||
-                                task.status === 'Hoàn thành' ||
-                                task.status === 'Đã hoàn thành' ||
-                                task.status === 'HOÀN THÀNH' ||
-                                state.status === 'completed' ||
-                                state.status === 'Hoàn thành' ||
-                                state.status === 'Đã hoàn thành' ||
-                                state.status === 'HOÀN THÀNH';
+        // Use robust status checking from TaskItem component
+        const taskIsCompleted = isTaskCompleted(task, state);
 
-        const deadlineInfo = evaluateDeadline(task.deadline, isTaskCompleted);
+        const deadlineInfo = evaluateDeadline(task.deadline, taskIsCompleted);
         const isOverdueTask = deadlineInfo && deadlineInfo.status === 'danger';
 
         if(input) input.value = state.link || '';
 
-        if(isTaskCompleted){
+        if(taskIsCompleted){
           console.log(`✅ [DEBUG] Task ${task.id} IS COMPLETED - Showing footer`);
           if(!actions){
             console.error(`❌ [ERROR] Task ${task.id} - Footer element NOT FOUND in DOM!`);
