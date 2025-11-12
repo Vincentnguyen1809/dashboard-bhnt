@@ -1,178 +1,56 @@
 /**
  * ActivityLog Component
- * A vanilla JavaScript component for displaying paginated activity logs
+ * A React component for displaying paginated activity logs
  *
- * @param {Object} config - Configuration object
- * @param {string} config.containerId - ID of the container element
- * @param {Array} config.activities - Array of activity objects
- * @param {number} config.itemsPerPage - Number of items per page (default: 10)
+ * Props:
+ * - activities: Array of activity objects [{ id, content, user, timestamp, status }]
+ * - itemsPerPage: Number of items per page (default: 10)
  */
-class ActivityLog {
-  constructor(config) {
-    this.containerId = config.containerId;
-    this.activities = config.activities || [];
-    this.itemsPerPage = config.itemsPerPage || 10;
-    this.currentPage = 1;
-    this.container = null;
 
-    this.init();
-  }
+import React, { useState } from 'react';
 
-  /**
-   * Initialize the component
-   */
-  init() {
-    this.container = document.getElementById(this.containerId);
-    if (!this.container) {
-      console.error(`Container with ID "${this.containerId}" not found`);
-      return;
+const ActivityLog = ({ activities = [], itemsPerPage = 10 }) => {
+  // State for current page
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Constants
+  const ITEMS_PER_PAGE = itemsPerPage;
+
+  // Calculate total pages
+  const totalPages = Math.ceil(activities.length / ITEMS_PER_PAGE);
+
+  // Get current page data using slice
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const currentData = activities.slice(startIndex, endIndex);
+
+  // Handle page change
+  const handlePageChange = (pageNumber) => {
+    if (pageNumber >= 1 && pageNumber <= totalPages) {
+      setCurrentPage(pageNumber);
     }
-    this.render();
-  }
+  };
 
-  /**
-   * Update activities data and re-render
-   * @param {Array} activities - New activities array
-   */
-  updateActivities(activities) {
-    this.activities = activities || [];
-    this.currentPage = 1; // Reset to first page
-    this.render();
-  }
-
-  /**
-   * Calculate total pages
-   * @returns {number} Total number of pages
-   */
-  getTotalPages() {
-    return Math.ceil(this.activities.length / this.itemsPerPage);
-  }
-
-  /**
-   * Get activities for the current page
-   * @returns {Array} Sliced activities for current page
-   */
-  getCurrentPageData() {
-    const startIndex = (this.currentPage - 1) * this.itemsPerPage;
-    const endIndex = startIndex + this.itemsPerPage;
-    return this.activities.slice(startIndex, endIndex);
-  }
-
-  /**
-   * Handle page change
-   * @param {number} page - Page number to navigate to
-   */
-  goToPage(page) {
-    const totalPages = this.getTotalPages();
-
-    // Validate page number
-    if (page < 1 || page > totalPages) {
-      return;
+  // Handle previous page
+  const handlePrevious = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
     }
+  };
 
-    this.currentPage = page;
-    this.render();
-  }
-
-  /**
-   * Go to previous page
-   */
-  previousPage() {
-    if (this.currentPage > 1) {
-      this.goToPage(this.currentPage - 1);
+  // Handle next page
+  const handleNext = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
     }
-  }
+  };
 
-  /**
-   * Go to next page
-   */
-  nextPage() {
-    const totalPages = this.getTotalPages();
-    if (this.currentPage < totalPages) {
-      this.goToPage(this.currentPage + 1);
-    }
-  }
-
-  /**
-   * Get status badge HTML
-   * @param {string} status - Activity status
-   * @returns {string} HTML for status badge
-   */
-  getStatusBadge(status) {
-    const statusMap = {
-      completed: { text: 'Completed', className: 'text-green-600' },
-      edited: { text: 'Edited', className: 'text-blue-600' },
-      deleted: { text: 'Deleted', className: 'text-red-600' },
-      created: { text: 'Created', className: 'text-purple-600' },
-      updated: { text: 'Updated', className: 'text-yellow-600' },
-      pending: { text: 'Pending', className: 'text-gray-600' }
-    };
-
-    const statusInfo = statusMap[status] || { text: status, className: 'text-gray-600' };
-    return `<span class="${statusInfo.className}" style="font-weight: 500;">${statusInfo.text}</span>`;
-  }
-
-  /**
-   * Format timestamp
-   * @param {string|Date} timestamp - Timestamp to format
-   * @returns {string} Formatted timestamp
-   */
-  formatTimestamp(timestamp) {
-    if (!timestamp) return '-';
-
-    try {
-      const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
-      return date.toLocaleString('vi-VN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch (error) {
-      return timestamp.toString();
-    }
-  }
-
-  /**
-   * Render table rows
-   * @returns {string} HTML for table rows
-   */
-  renderTableRows() {
-    const currentData = this.getCurrentPageData();
-
-    if (currentData.length === 0) {
-      return `
-        <tr>
-          <td colspan="5" style="text-align: center; padding: 2rem; color: #9ca3af;">
-            No activities found
-          </td>
-        </tr>
-      `;
-    }
-
-    return currentData.map(activity => `
-      <tr>
-        <td>${activity.id || '-'}</td>
-        <td>${activity.content || '-'}</td>
-        <td>${activity.user || '-'}</td>
-        <td>${this.formatTimestamp(activity.timestamp)}</td>
-        <td>${this.getStatusBadge(activity.status)}</td>
-      </tr>
-    `).join('');
-  }
-
-  /**
-   * Generate page numbers for pagination
-   * @returns {Array} Array of page numbers or ellipsis
-   */
-  getPageNumbers() {
-    const totalPages = this.getTotalPages();
-    const current = this.currentPage;
+  // Generate page numbers with ellipsis
+  const getPageNumbers = () => {
     const pages = [];
 
     if (totalPages <= 7) {
-      // Show all pages if total is 7 or less
+      // Show all pages if 7 or less
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
       }
@@ -180,13 +58,13 @@ class ActivityLog {
       // Always show first page
       pages.push(1);
 
-      if (current > 3) {
+      if (currentPage > 3) {
         pages.push('...');
       }
 
       // Show pages around current page
-      const start = Math.max(2, current - 1);
-      const end = Math.min(totalPages - 1, current + 1);
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
 
       for (let i = start; i <= end; i++) {
         if (!pages.includes(i)) {
@@ -194,7 +72,7 @@ class ActivityLog {
         }
       }
 
-      if (current < totalPages - 2) {
+      if (currentPage < totalPages - 2) {
         pages.push('...');
       }
 
@@ -205,141 +83,297 @@ class ActivityLog {
     }
 
     return pages;
-  }
+  };
 
-  /**
-   * Render pagination controls
-   * @returns {string} HTML for pagination
-   */
-  renderPagination() {
-    const totalPages = this.getTotalPages();
+  // Format timestamp
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return '-';
 
-    if (totalPages <= 1) {
-      return ''; // No pagination needed
+    try {
+      const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+      return date.toLocaleString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return String(timestamp);
     }
+  };
 
-    const pageNumbers = this.getPageNumbers();
-    const current = this.currentPage;
+  // Get status badge styling
+  const getStatusStyle = (status) => {
+    const statusMap = {
+      completed: { color: '#059669', label: 'Completed' },
+      edited: { color: '#2563eb', label: 'Edited' },
+      deleted: { color: '#dc2626', label: 'Deleted' },
+      created: { color: '#9333ea', label: 'Created' },
+      updated: { color: '#d97706', label: 'Updated' },
+      pending: { color: '#4b5563', label: 'Pending' }
+    };
 
-    const pageButtons = pageNumbers.map(page => {
-      if (page === '...') {
-        return '<span class="pagination-ellipsis">...</span>';
-      }
+    const statusInfo = statusMap[status] || { color: '#4b5563', label: status };
+    return statusInfo;
+  };
 
-      const isActive = page === current;
-      const activeClass = isActive ? 'active' : '';
+  const pageNumbers = getPageNumbers();
+  const showingStart = activities.length > 0 ? startIndex + 1 : 0;
+  const showingEnd = Math.min(endIndex, activities.length);
 
-      return `<button
-        class="pagination-btn ${activeClass}"
-        data-page="${page}"
-        ${isActive ? 'disabled' : ''}
-      >${page}</button>`;
-    }).join('');
-
-    return `
-      <div class="pagination" style="display: flex; gap: 0.5rem; align-items: center; justify-content: center; margin-top: 1rem;">
-        <button
-          class="pagination-btn"
-          data-action="previous"
-          ${current === 1 ? 'disabled' : ''}
-        >Previous</button>
-
-        ${pageButtons}
-
-        <button
-          class="pagination-btn"
-          data-action="next"
-          ${current === totalPages ? 'disabled' : ''}
-        >Next</button>
+  return (
+    <div className="activity-log-wrapper" style={{ width: '100%' }}>
+      {/* Header */}
+      <div
+        className="activity-log-header"
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '1rem'
+        }}
+      >
+        <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '600' }}>
+          Activity Log
+        </h3>
+        <span
+          className="activity-count"
+          style={{ color: '#6b7280', fontSize: '0.875rem' }}
+        >
+          {activities.length > 0
+            ? `Showing ${showingStart}-${showingEnd} of ${activities.length}`
+            : 'No activities'}
+        </span>
       </div>
-    `;
-  }
 
-  /**
-   * Attach event listeners to pagination buttons
-   */
-  attachEventListeners() {
-    if (!this.container) return;
-
-    // Remove old listeners by cloning and replacing the pagination container
-    const paginationContainer = this.container.querySelector('.pagination');
-    if (!paginationContainer) return;
-
-    // Event delegation for pagination clicks
-    paginationContainer.addEventListener('click', (e) => {
-      const button = e.target.closest('button');
-      if (!button) return;
-
-      const page = button.getAttribute('data-page');
-      const action = button.getAttribute('data-action');
-
-      if (page) {
-        this.goToPage(parseInt(page, 10));
-      } else if (action === 'previous') {
-        this.previousPage();
-      } else if (action === 'next') {
-        this.nextPage();
-      }
-    });
-  }
-
-  /**
-   * Render the complete component
-   */
-  render() {
-    if (!this.container) return;
-
-    const totalPages = this.getTotalPages();
-    const startIndex = (this.currentPage - 1) * this.itemsPerPage + 1;
-    const endIndex = Math.min(this.currentPage * this.itemsPerPage, this.activities.length);
-
-    this.container.innerHTML = `
-      <div class="activity-log-wrapper">
-        <div class="activity-log-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-          <h3 style="margin: 0;">Activity Log</h3>
-          <span class="activity-count" style="color: #6b7280; font-size: 0.875rem;">
-            ${this.activities.length > 0 ? `Showing ${startIndex}-${endIndex} of ${this.activities.length}` : 'No activities'}
-          </span>
-        </div>
-
-        <div class="activity-log-table-wrapper" style="overflow-x: auto;">
-          <table class="notes-table activity-table" style="width: 100%; border-collapse: collapse;">
-            <thead>
+      {/* Table */}
+      <div
+        className="activity-log-table-wrapper"
+        style={{ overflowX: 'auto', marginBottom: '1rem' }}
+      >
+        <table
+          className="activity-table"
+          style={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            overflow: 'hidden'
+          }}
+        >
+          <thead>
+            <tr>
+              <th style={tableHeaderStyle}>ID</th>
+              <th style={tableHeaderStyle}>Content</th>
+              <th style={tableHeaderStyle}>User</th>
+              <th style={tableHeaderStyle}>Timestamp</th>
+              <th style={tableHeaderStyle}>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {currentData.length === 0 ? (
               <tr>
-                <th style="background: #f9fafb; padding: 0.75rem; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb;">ID</th>
-                <th style="background: #f9fafb; padding: 0.75rem; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb;">Content</th>
-                <th style="background: #f9fafb; padding: 0.75rem; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb;">User</th>
-                <th style="background: #f9fafb; padding: 0.75rem; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb;">Timestamp</th>
-                <th style="background: #f9fafb; padding: 0.75rem; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb;">Status</th>
+                <td
+                  colSpan="5"
+                  style={{
+                    textAlign: 'center',
+                    padding: '2rem',
+                    color: '#9ca3af'
+                  }}
+                >
+                  No activities found
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              ${this.renderTableRows()}
-            </tbody>
-          </table>
-        </div>
-
-        ${this.renderPagination()}
+            ) : (
+              currentData.map((activity, index) => {
+                const statusInfo = getStatusStyle(activity.status);
+                return (
+                  <tr
+                    key={activity.id || index}
+                    style={{ transition: 'background-color 0.2s' }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f9fafb';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'white';
+                    }}
+                  >
+                    <td style={tableCellStyle}>{activity.id || '-'}</td>
+                    <td style={tableCellStyle}>{activity.content || '-'}</td>
+                    <td style={tableCellStyle}>{activity.user || '-'}</td>
+                    <td style={tableCellStyle}>
+                      {formatTimestamp(activity.timestamp)}
+                    </td>
+                    <td style={tableCellStyle}>
+                      <span
+                        style={{
+                          color: statusInfo.color,
+                          fontWeight: '500'
+                        }}
+                      >
+                        {statusInfo.label}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
       </div>
-    `;
 
-    // Attach event listeners after rendering
-    this.attachEventListeners();
-  }
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div
+          className="pagination"
+          style={{
+            display: 'flex',
+            gap: '0.5rem',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginTop: '1rem'
+          }}
+        >
+          {/* Previous Button */}
+          <button
+            onClick={handlePrevious}
+            disabled={currentPage === 1}
+            style={{
+              ...paginationButtonStyle,
+              ...(currentPage === 1 ? disabledButtonStyle : {})
+            }}
+            onMouseEnter={(e) => {
+              if (currentPage !== 1) {
+                e.currentTarget.style.backgroundColor = '#f3f4f6';
+                e.currentTarget.style.borderColor = '#9ca3af';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (currentPage !== 1) {
+                e.currentTarget.style.backgroundColor = 'white';
+                e.currentTarget.style.borderColor = '#d1d5db';
+              }
+            }}
+          >
+            Previous
+          </button>
 
-  /**
-   * Destroy the component and clean up
-   */
-  destroy() {
-    if (this.container) {
-      this.container.innerHTML = '';
-    }
-    this.activities = [];
-    this.currentPage = 1;
-  }
-}
+          {/* Page Numbers */}
+          {pageNumbers.map((page, index) => {
+            if (page === '...') {
+              return (
+                <span
+                  key={`ellipsis-${index}`}
+                  style={{
+                    color: '#9ca3af',
+                    padding: '0.5rem'
+                  }}
+                >
+                  ...
+                </span>
+              );
+            }
 
-// Export for use in other files
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = ActivityLog;
-}
+            const isActive = page === currentPage;
+
+            return (
+              <button
+                key={page}
+                onClick={() => handlePageChange(page)}
+                disabled={isActive}
+                style={{
+                  ...paginationButtonStyle,
+                  ...(isActive ? activeButtonStyle : {})
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor = '#f3f4f6';
+                    e.currentTarget.style.borderColor = '#9ca3af';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor = 'white';
+                    e.currentTarget.style.borderColor = '#d1d5db';
+                  }
+                }}
+              >
+                {page}
+              </button>
+            );
+          })}
+
+          {/* Next Button */}
+          <button
+            onClick={handleNext}
+            disabled={currentPage === totalPages}
+            style={{
+              ...paginationButtonStyle,
+              ...(currentPage === totalPages ? disabledButtonStyle : {})
+            }}
+            onMouseEnter={(e) => {
+              if (currentPage !== totalPages) {
+                e.currentTarget.style.backgroundColor = '#f3f4f6';
+                e.currentTarget.style.borderColor = '#9ca3af';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (currentPage !== totalPages) {
+                e.currentTarget.style.backgroundColor = 'white';
+                e.currentTarget.style.borderColor = '#d1d5db';
+              }
+            }}
+          >
+            Next
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Styles
+const tableHeaderStyle = {
+  background: '#f9fafb',
+  padding: '0.75rem',
+  textAlign: 'left',
+  fontWeight: '600',
+  borderBottom: '2px solid #e5e7eb',
+  fontSize: '0.875rem',
+  color: '#374151'
+};
+
+const tableCellStyle = {
+  padding: '0.75rem',
+  borderBottom: '1px solid #f3f4f6',
+  fontSize: '0.875rem',
+  color: '#1f2937'
+};
+
+const paginationButtonStyle = {
+  padding: '0.5rem 1rem',
+  backgroundColor: 'white',
+  border: '1px solid #d1d5db',
+  borderRadius: '6px',
+  cursor: 'pointer',
+  fontSize: '0.875rem',
+  fontWeight: '500',
+  color: '#374151',
+  transition: 'all 0.2s',
+  minWidth: '40px'
+};
+
+const activeButtonStyle = {
+  backgroundColor: '#3b82f6',
+  color: 'white',
+  borderColor: '#3b82f6',
+  cursor: 'default'
+};
+
+const disabledButtonStyle = {
+  opacity: 0.5,
+  cursor: 'not-allowed'
+};
+
+export default ActivityLog;
