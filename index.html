@@ -3253,8 +3253,9 @@
 
       const totalText = $('#total-progress-text');
       const totalBar = $('#total-progress-bar');
-      if(totalText) totalText.textContent = `${done} / ${total} Tasks`;
-      if(totalBar) totalBar.style.width = (total > 0 ? (done/total)*100 : 0) + '%';
+      // 🔧 FIX: Use the NEW dynamic system instead of old hardcoded allTasks
+      // The old system counted 80 hardcoded tasks, but we should use dynamicTasks (44 tasks)
+      updateTotalProgress(); // Delegate to function that uses dynamicTasks
 
       ['gd1','gd2','gd3','gd4'].forEach(ph => {
         const d = phaseCounts[ph];
@@ -3265,14 +3266,24 @@
         if(b) b.style.width = pct + '%';
       });
 
+      // 🔧 FIX: Progress chart and total percent are now updated by updateTotalProgress()
+      // which uses the NEW dynamic system (dynamicTasks) instead of old allTasks
       if(progressChart){
-        progressChart.data.datasets[0].data = [done, Math.max(0, total - done)];
+        // Calculate from dynamicTasks instead of allTasks
+        let totalTasksForChart = 0;
+        let completedTasksForChart = 0;
+        dynamicMenus.forEach(menu => {
+          if(menu.type === 'task-list'){
+            const tasks = dynamicTasks[menu.id] || [];
+            totalTasksForChart += tasks.length;
+            completedTasksForChart += tasks.filter(t => t.completed).length;
+          }
+        });
+        progressChart.data.datasets[0].data = [completedTasksForChart, Math.max(0, totalTasksForChart - completedTasksForChart)];
         progressChart.update();
       }
 
-      const totalPercentEl = $('#total-progress-percent');
-      const totalPercent = total > 0 ? Math.round((done / total) * 100) : 0;
-      if(totalPercentEl) totalPercentEl.textContent = `${totalPercent}%`;
+      // Total percent is already updated by updateTotalProgress() above
 
       calculateDeadlines();
       renderActivityLog();
