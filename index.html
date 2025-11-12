@@ -2514,9 +2514,10 @@
         state.comments = [];
       }
 
+      const commenterName = getCurrentUserName();
       state.comments.push({
         text: commentText,
-        userName: getCurrentUserName(),
+        userName: commenterName,
         timestamp: new Date().toISOString(),
       });
 
@@ -2526,6 +2527,13 @@
       syncTaskState();
       updateUI();
       showToast('Comment đã được lưu', 'success');
+
+      // ✅ NEW: Create notification for comment
+      const task = allTasks.find(t => t.id === taskId);
+      if(task){
+        pushNotification('comment', task, commenterName);
+        renderNotifications();
+      }
     }
 
     function initializeCommentSection(taskId){
@@ -3409,15 +3417,38 @@
       return entry && entry.performedBy ? entry.performedBy : null;
     }
 
-    function pushNotification(type, task, userName){
+    function pushNotification(type, task, userName, additionalData = {}){
       if(!task) return;
       const now = new Date();
-      const owner = (task.owner || '').trim();
+      const owner = (task.owner || task.assignee || '').trim();
       const taskTitle = (task.title || task.name || 'Task').trim();
       const performedBy = userName || findCompletionPerformer(task.id) || (currentUserData ? (currentUserData.displayName || currentUserData.email) : null) || 'Người dùng';
-      const message = type === 'completed'
-        ? `${performedBy} đã hoàn thành task: ${taskTitle}.`
-        : `Task: ${taskTitle} hiện đã quá hạn (Phụ trách: ${owner || 'Chưa gán'}).`;
+
+      let message = '';
+      switch(type){
+        case 'completed':
+          message = `${performedBy} đã hoàn thành task: ${taskTitle}.`;
+          break;
+        case 'overdue':
+          message = `Task: ${taskTitle} hiện đã quá hạn (Phụ trách: ${owner || 'Chưa gán'}).`;
+          break;
+        case 'comment':
+          message = `${performedBy} đã bình luận về task: ${taskTitle}.`;
+          break;
+        default:
+          message = `Hoạt động mới trên task: ${taskTitle}.`;
+      }
+
+      // For comments, don't notify the commenter themselves
+      if(type === 'comment'){
+        const currentUserNameLower = getCurrentUserName().toLowerCase().trim();
+        const performedByLower = performedBy.toLowerCase().trim();
+        if(currentUserNameLower === performedByLower){
+          console.log('🔕 [NOTIFICATION] Skipping comment notification for commenter:', performedBy);
+          return; // Don't notify yourself
+        }
+      }
+
       notifications.unshift({
         id: `${type}-${task.id}-${now.getTime()}`,
         taskId: task.id,
@@ -3425,13 +3456,60 @@
         message,
         timestamp: now.toISOString(),
         read: false,
+        ...additionalData
       });
-      if(notifications.length > 30){
-        notifications = notifications.slice(0, 30);
+
+      // Limit to 50 notifications to prevent memory issues
+      if(notifications.length > 50){
+        notifications = notifications.slice(0, 50);
+      }
+
+      console.log('✅ [NOTIFICATION] Created notification:', { type, taskTitle, performedBy, total: notifications.length });
+    }
+
+    /**
+     * Clean up old read notifications (5-day retention policy)
+     * - Keep unread notifications forever
+     * - Delete read notifications older than 5 days
+     */
+    function cleanupNotifications(){
+      const now = new Date();
+      const FIVE_DAYS_MS = 5 * 24 * 60 * 60 * 1000; // 5 days in milliseconds
+      const beforeCount = notifications.length;
+
+      notifications = notifications.filter(notification => {
+        // Keep all unread notifications
+        if(!notification.read){
+          return true;
+        }
+
+        // For read notifications, check if they're older than 5 days
+        const notificationDate = new Date(notification.timestamp);
+        const ageMs = now - notificationDate;
+
+        // Keep if less than 5 days old, delete if older
+        const shouldKeep = ageMs < FIVE_DAYS_MS;
+
+        if(!shouldKeep){
+          console.log('🗑️ [CLEANUP] Deleting old read notification:', {
+            type: notification.type,
+            age: Math.round(ageMs / (24 * 60 * 60 * 1000)),
+            message: notification.message.substring(0, 50)
+          });
+        }
+
+        return shouldKeep;
+      });
+
+      const deletedCount = beforeCount - notifications.length;
+      if(deletedCount > 0){
+        console.log(`✅ [CLEANUP] Deleted ${deletedCount} old read notifications (5-day policy)`);
       }
     }
 
     function renderNotifications(){
+      // ✅ NEW: Clean up old read notifications before rendering
+      cleanupNotifications();
       const list = $('#notification-list');
       const emptyState = $('#notification-empty');
       const badge = $('#notification-badge');
@@ -4583,6 +4661,12 @@
         });
         renderActivityLog();
         syncTaskState();
+
+        // ✅ NEW: Create notification for comment
+        if(task){
+          pushNotification('comment', task, performer, { menuId });
+          renderNotifications();
+        }
 
         cancelDynamicComment(taskId);
         await loadMenuTasks(menuId);
