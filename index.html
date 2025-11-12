@@ -292,11 +292,24 @@
   <!-- Delete Task Modal -->
   <div id="delete-task-modal" class="modal-overlay" aria-hidden="true">
     <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="delete-task-title">
-      <h3 id="delete-task-title" class="modal-title">Xác nhận xóa</h3>
-      <p class="modal-message">Bạn có chắc chắn muốn xóa task này không? Link đã nhập sẽ bị xóa và task sẽ trở về trạng thái chưa hoàn thành.</p>
+      <h3 id="delete-task-title" class="modal-title">Xác nhận xóa kết quả</h3>
+      <p class="modal-message">Bạn có chắc chắn muốn xóa kết quả này không? (Are you sure you want to delete this result?)</p>
       <div class="modal-buttons">
         <button id="cancel-delete-task-btn" class="task-btn btn-cancel">Không</button>
         <button id="confirm-delete-task-btn" class="task-btn" style="background-color:#ef4444; color:#fff;">Có</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Options Modal -->
+  <div id="edit-options-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="edit-options-title">
+      <h3 id="edit-options-title" class="modal-title">Chọn hành động</h3>
+      <p class="modal-message">Bạn muốn làm gì với task đã hoàn thành này?</p>
+      <div class="modal-buttons">
+        <button id="btn-edit-link-option" class="task-btn btn-complete">✏️ Chỉnh sửa Link</button>
+        <button id="btn-delete-result-option" class="task-btn" style="background-color:#ef4444; color:#fff;">🗑️ Xóa Kết Quả</button>
+        <button id="cancel-edit-options-btn" class="task-btn btn-cancel">Hủy</button>
       </div>
     </div>
   </div>
@@ -2699,6 +2712,10 @@
     const deleteTaskModal = $('#delete-task-modal');
     const confirmDeleteTaskBtn = $('#confirm-delete-task-btn');
     const cancelDeleteTaskBtn = $('#cancel-delete-task-btn');
+    const editOptionsModal = $('#edit-options-modal');
+    const btnEditLinkOption = $('#btn-edit-link-option');
+    const btnDeleteResultOption = $('#btn-delete-result-option');
+    const cancelEditOptionsBtn = $('#cancel-edit-options-btn');
     const editLinkModal = $('#edit-link-modal');
     const confirmEditLinkBtn = $('#confirm-edit-link-btn');
     const cancelEditLinkBtn = $('#cancel-edit-link-btn');
@@ -2827,6 +2844,20 @@
     function handleEditLink(id){
       if(!ensureProjectReady()) return;
       currentEditLinkTaskId = id;
+      // Show the edit options modal first
+      if(editOptionsModal){
+        editOptionsModal.classList.add('active');
+        editOptionsModal.setAttribute('aria-hidden','false');
+      }
+    }
+    function showEditLinkModal(){
+      const id = currentEditLinkTaskId;
+      if(!id) return;
+      // Close edit options modal
+      if(editOptionsModal){
+        editOptionsModal.classList.remove('active');
+        editOptionsModal.setAttribute('aria-hidden','true');
+      }
       const state = ensureTaskEntry(id);
       if(editLinkInput){
         editLinkInput.value = state.link || '';
@@ -2846,6 +2877,28 @@
         setTimeout(() => {
           if(editLinkInput){ editLinkInput.focus(); editLinkInput.select(); }
         }, 100);
+      }
+    }
+    function showDeleteResultModal(){
+      const id = currentEditLinkTaskId;
+      if(!id) return;
+      // Close edit options modal
+      if(editOptionsModal){
+        editOptionsModal.classList.remove('active');
+        editOptionsModal.setAttribute('aria-hidden','true');
+      }
+      // Set the current delete task ID and show delete modal
+      currentDeleteTaskId = id;
+      if(deleteTaskModal){
+        deleteTaskModal.classList.add('active');
+        deleteTaskModal.setAttribute('aria-hidden','false');
+      }
+    }
+    function cancelEditOptions(){
+      currentEditLinkTaskId = null;
+      if(editOptionsModal){
+        editOptionsModal.classList.remove('active');
+        editOptionsModal.setAttribute('aria-hidden','true');
       }
     }
     function confirmEditLink(){
@@ -6375,19 +6428,24 @@ Mô tả: ${task.description || 'Không có'}
     // ========= MODALS WIRING =========
     if(confirmDeleteTaskBtn) confirmDeleteTaskBtn.addEventListener('click', confirmDeleteTask);
     if(cancelDeleteTaskBtn) cancelDeleteTaskBtn.addEventListener('click', cancelDeleteTask);
+    if(btnEditLinkOption) btnEditLinkOption.addEventListener('click', showEditLinkModal);
+    if(btnDeleteResultOption) btnDeleteResultOption.addEventListener('click', showDeleteResultModal);
+    if(cancelEditOptionsBtn) cancelEditOptionsBtn.addEventListener('click', cancelEditOptions);
     if(confirmEditLinkBtn) confirmEditLinkBtn.addEventListener('click', confirmEditLink);
     if(cancelEditLinkBtn) cancelEditLinkBtn.addEventListener('click', cancelEditLink);
     if(confirmDeleteNoteBtn) confirmDeleteNoteBtn.addEventListener('click', confirmDeleteNote);
     if(cancelDeleteNoteBtn) cancelDeleteNoteBtn.addEventListener('click', cancelDeleteNote);
     const deleteTaskModalEl = $('#delete-task-modal');
+    const editOptionsModalEl = $('#edit-options-modal');
     const editLinkModalEl = $('#edit-link-modal');
     const deleteNoteModalEl = $('#delete-note-modal');
     if(deleteTaskModalEl) deleteTaskModalEl.addEventListener('click', e => { if(e.target === deleteTaskModalEl) cancelDeleteTask(); });
+    if(editOptionsModalEl) editOptionsModalEl.addEventListener('click', e => { if(e.target === editOptionsModalEl) cancelEditOptions(); });
     if(editLinkModalEl) editLinkModalEl.addEventListener('click', e => { if(e.target === editLinkModalEl) cancelEditLink(); });
     if(deleteNoteModalEl) deleteNoteModalEl.addEventListener('click', e => { if(e.target === deleteNoteModalEl) cancelDeleteNote(); });
     if(noteModalCloseBtn) noteModalCloseBtn.addEventListener('click', e => { e.preventDefault(); closeNoteDetailModal(); });
     if(noteDetailModal) noteDetailModal.addEventListener('click', e => { if(e.target === noteDetailModal) closeNoteDetailModal(); });
-    document.addEventListener('keydown', e => { if(e.key === 'Escape') { closeNoteDetailModal(); cancelEditLink(); } });
+    document.addEventListener('keydown', e => { if(e.key === 'Escape') { closeNoteDetailModal(); cancelEditOptions(); cancelEditLink(); } });
 
     // ========= BOOT =========
     router = createRouter(routeConfig);
