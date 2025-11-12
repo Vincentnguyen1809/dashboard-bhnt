@@ -20,19 +20,41 @@ function normalizeStatus(status) {
 /**
  * Check if a task is completed based on various status indicators
  * CRITICAL: Handles all Vietnamese and English variations
+ * Checks multiple possible property names to be robust
+ *
  * @param {Object} task - The task object
  * @param {Object} taskState - The task state object (contains completed flag)
  * @returns {boolean} - True if task is completed
  */
 function isTaskCompleted(task, taskState = {}) {
-  // Primary check: taskState.completed boolean flag
+  // CRITICAL DEBUG: Log everything to see the actual object structure
+  console.log('🔍 [isTaskCompleted] Checking completion status');
+  console.log('   FULL TASK OBJECT:', task);
+  console.log('   FULL TASK STATE:', taskState);
+
+  // PRIMARY CHECK: taskState.completed boolean flag (most reliable)
   if (taskState.completed === true) {
+    console.log('   ✅ Found: taskState.completed = true');
     return true;
   }
 
-  // Secondary check: task.status field (handles string variations)
+  // FALLBACK 1: Check task.isCompleted boolean (alternative property name)
+  if (task.isCompleted === true) {
+    console.log('   ✅ Found: task.isCompleted = true');
+    return true;
+  }
+
+  // FALLBACK 2: Check task.completed boolean (another common pattern)
+  if (task.completed === true) {
+    console.log('   ✅ Found: task.completed = true');
+    return true;
+  }
+
+  // FALLBACK 3: Check task.status field (handles string variations)
   if (task.status) {
     const status = normalizeStatus(task.status);
+    console.log('   Found task.status:', task.status, '→ normalized:', status);
+
     const completedVariations = [
       'completed',
       'hoàn thành',
@@ -41,13 +63,16 @@ function isTaskCompleted(task, taskState = {}) {
       'xong'
     ];
     if (completedVariations.includes(status)) {
+      console.log('   ✅ Found: task.status matches completed variation');
       return true;
     }
   }
 
-  // Tertiary check: taskState.status field
+  // FALLBACK 4: Check taskState.status field
   if (taskState.status) {
     const status = normalizeStatus(taskState.status);
+    console.log('   Found taskState.status:', taskState.status, '→ normalized:', status);
+
     const completedVariations = [
       'completed',
       'hoàn thành',
@@ -56,11 +81,43 @@ function isTaskCompleted(task, taskState = {}) {
       'xong'
     ];
     if (completedVariations.includes(status)) {
+      console.log('   ✅ Found: taskState.status matches completed variation');
       return true;
     }
   }
 
+  // FALLBACK 5: Check if task has completionLink (indicates completion)
+  if (task.completionLink || taskState.link) {
+    console.log('   ✅ Found: Completion link exists (implies completed)');
+    return true;
+  }
+
+  console.log('   ❌ No completion indicators found - task is incomplete');
   return false;
+}
+
+/**
+ * Get the completion status using the EXACT SAME logic as badge
+ * This ensures footer and badge stay in sync
+ *
+ * @param {Object} task - The task object
+ * @param {Object} taskState - The task state
+ * @returns {Object} { isCompleted: boolean, reason: string }
+ */
+function getCompletionStatus(task, taskState = {}) {
+  console.log('📊 [getCompletionStatus] Determining completion status');
+
+  // Use the same comprehensive check
+  const completed = isTaskCompleted(task, taskState);
+
+  console.log('   Result:', completed ? '✅ COMPLETED' : '❌ INCOMPLETE');
+
+  return {
+    isCompleted: completed,
+    badgeShouldBeGreen: completed,
+    footerShouldBeVisible: completed,
+    inputShouldBeHidden: completed
+  };
 }
 
 /**
@@ -90,18 +147,22 @@ function createTaskItem(options) {
     isAdmin = false
   } = options;
 
-  // CRITICAL DEBUG: Log current task status
+  // ===== CRITICAL DEBUG LOGGING =====
+  console.log('📦 [createTaskItem] Creating task card');
+  console.log('FULL TASK OBJECT:', task);
+  console.log('FULL TASK STATE:', taskState);
+
+  // Determine completion status using robust logic
+  const completionStatus = getCompletionStatus(task, taskState);
+  const completed = completionStatus.isCompleted;
+
   console.log('Current Task Status:', {
     taskId: task.id,
     taskTitle: task.title || task.name,
-    rawStatus: task.status,
-    taskStateCompleted: taskState.completed,
-    taskStateStatus: taskState.status,
-    isCompleted: isTaskCompleted(task, taskState)
+    isCompleted: completed,
+    badgeShouldBeGreen: completionStatus.badgeShouldBeGreen,
+    footerShouldBeVisible: completionStatus.footerShouldBeVisible
   });
-
-  // Determine completion status
-  const completed = isTaskCompleted(task, taskState);
 
   // Get task metadata
   const title = task.title || task.name || 'Untitled Task';
@@ -123,7 +184,7 @@ function createTaskItem(options) {
   card.dataset.end = endDate;
   card.dataset.completed = completed ? 'true' : 'false';
 
-  // Build card HTML
+  // Build card HTML - BADGE AND FOOTER USE SAME COMPLETION CHECK
   card.innerHTML = `
     <div class="task-header">
       <h4 class="task-title">${escapeHtml(title)}</h4>
@@ -177,12 +238,13 @@ function createTaskItem(options) {
       <!-- FEEDBACK MESSAGE -->
       <div class="task-link-feedback" id="task-feedback-${task.id}"></div>
 
-      <!-- COMPLETED ACTIONS FOOTER: ALWAYS VISIBLE when isCompleted=true -->
+      <!-- COMPLETED ACTIONS FOOTER: Use SAME logic as badge -->
       <div
         class="task-completed-actions ${completed ? '' : 'hidden'}"
         id="task-actions-${task.id}"
         data-completed-actions="${task.id}"
         aria-hidden="${completed ? 'false' : 'true'}"
+        data-debug-completed="${completed}"
       >
         <button
           type="button"
@@ -242,6 +304,10 @@ function createTaskItem(options) {
   // Attach event listeners
   attachTaskItemEventListeners(card, task, slug, { onComplete, onView, onEdit, onComment });
 
+  console.log('✅ [createTaskItem] Task card created successfully');
+  console.log('   Badge visible:', completed ? 'GREEN (HOÀN THÀNH)' : 'GRAY (CHƯA XONG)');
+  console.log('   Footer visible:', completed ? 'YES' : 'NO');
+
   return card;
 }
 
@@ -260,6 +326,7 @@ function attachTaskItemEventListeners(card, task, slug, callbacks = {}) {
   if (completeBtn) {
     completeBtn.addEventListener('click', (e) => {
       e.preventDefault();
+      console.log('💾 [EVENT] Complete button clicked:', task.id);
       onComplete({ taskId: task.id, slug });
     });
   }
@@ -269,6 +336,7 @@ function attachTaskItemEventListeners(card, task, slug, callbacks = {}) {
   if (viewBtn) {
     viewBtn.addEventListener('click', (e) => {
       e.preventDefault();
+      console.log('👁️ [EVENT] View button clicked:', task.id);
       onView({ taskId: task.id, slug });
     });
   }
@@ -278,6 +346,7 @@ function attachTaskItemEventListeners(card, task, slug, callbacks = {}) {
   if (editBtn) {
     editBtn.addEventListener('click', (e) => {
       e.preventDefault();
+      console.log('✏️ [EVENT] Edit button clicked:', task.id);
       onEdit({ taskId: task.id, slug });
     });
   }
@@ -287,6 +356,7 @@ function attachTaskItemEventListeners(card, task, slug, callbacks = {}) {
   if (commentBtn) {
     commentBtn.addEventListener('click', (e) => {
       e.preventDefault();
+      console.log('💬 [EVENT] Comment button clicked:', task.id);
       onComment({ taskId: task.id, slug });
     });
   }
@@ -306,6 +376,8 @@ function attachTaskItemEventListeners(card, task, slug, callbacks = {}) {
 
 /**
  * Update task card UI based on current state
+ * Uses the SAME completion check logic as initial render
+ *
  * @param {HTMLElement} card - The task card element
  * @param {Object} task - The task data
  * @param {Object} taskState - The task state
@@ -313,7 +385,13 @@ function attachTaskItemEventListeners(card, task, slug, callbacks = {}) {
 function updateTaskCardUI(card, task, taskState = {}) {
   if (!card) return;
 
-  const completed = isTaskCompleted(task, taskState);
+  console.log('🔄 [updateTaskCardUI] Updating card UI');
+
+  // Use SAME completion logic as createTaskItem
+  const completionStatus = getCompletionStatus(task, taskState);
+  const completed = completionStatus.isCompleted;
+
+  console.log('   Task:', task.id, '| Completed:', completed);
 
   // Update card class
   card.dataset.completed = completed ? 'true' : 'false';
@@ -326,18 +404,19 @@ function updateTaskCardUI(card, task, taskState = {}) {
     statusBadge.textContent = completed ? 'HOÀN THÀNH' : 'CHƯA XONG';
   }
 
-  // Update input group visibility
+  // Update input group visibility (mirror the badge logic)
   const inputGroup = card.querySelector(`[data-input-group="${task.id}"]`);
   if (inputGroup) {
     inputGroup.style.display = completed ? 'none' : '';
     inputGroup.classList.toggle('hidden', completed);
   }
 
-  // Update completed actions visibility
+  // Update completed actions footer visibility (SAME logic as badge)
   const actionsFooter = card.querySelector(`[data-completed-actions="${task.id}"]`);
   if (actionsFooter) {
     actionsFooter.classList.toggle('hidden', !completed);
     actionsFooter.setAttribute('aria-hidden', completed ? 'false' : 'true');
+    actionsFooter.dataset.debugCompleted = completed ? 'true' : 'false';
   }
 
   // Update input field state
@@ -362,7 +441,7 @@ function updateTaskCardUI(card, task, taskState = {}) {
     viewBtn.setAttribute('aria-disabled', hasLink ? 'false' : 'true');
   }
 
-  // Update comment section visibility
+  // Update comment section visibility (mirror the badge logic)
   const commentSection = card.querySelector(`[data-comment-section="${task.id}"]`);
   if (commentSection) {
     commentSection.classList.toggle('hidden', !completed);
@@ -375,6 +454,8 @@ function updateTaskCardUI(card, task, taskState = {}) {
     feedbackEl.textContent = taskState.feedback;
     feedbackEl.className = `task-link-feedback ${taskState.feedbackType || ''}`;
   }
+
+  console.log('   ✅ Card UI updated. Badge:', completed ? 'GREEN' : 'GRAY', '| Footer:', completed ? 'VISIBLE' : 'HIDDEN');
 }
 
 /**
@@ -388,3 +469,4 @@ function escapeHtml(text) {
   div.textContent = text;
   return div.innerHTML;
 }
+
