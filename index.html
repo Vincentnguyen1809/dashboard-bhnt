@@ -4932,6 +4932,19 @@ Mô tả: ${task.description || 'Không có'}
 
     // ========= END NEW REFACTORED UI FUNCTIONS =========
 
+    // ✅ EXPOSE ALL NEW FUNCTIONS TO GLOBAL SCOPE
+    window.openTaskResult = openTaskResult;
+    window.toggleTaskComments = toggleTaskComments;
+    window.toggleEditMenu = toggleEditMenu;
+    window.openUpdateLinkModal = openUpdateLinkModal;
+    window.updateTaskLink = updateTaskLink;
+    window.confirmDeleteTask = confirmDeleteTask;
+    window.deleteTask = deleteTask;
+    window.submitComment = submitComment;
+    window.editComment = editComment;
+    window.deleteComment = deleteComment;
+
+    // Old function exports (keep for backward compatibility)
     window.viewCompletedTask = viewCompletedTask;
     window.editCompletedTask = editCompletedTask;
     window.deleteCompletedTask = deleteCompletedTask;
