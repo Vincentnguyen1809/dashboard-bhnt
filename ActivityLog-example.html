@@ -3,7 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ActivityLog Component - Usage Example</title>
+  <title>ActivityLog React Component - Demo</title>
+
+  <!-- Load React, ReactDOM, and Babel from CDN -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
   <style>
     * {
       margin: 0;
@@ -24,82 +30,9 @@
       border-radius: 8px;
       padding: 2rem;
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-bottom: 2rem;
     }
 
-    /* Table Styling */
-    .notes-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    .notes-table th {
-      background: #f9fafb;
-      padding: 0.75rem;
-      text-align: left;
-      font-weight: 600;
-      border-bottom: 2px solid #e5e7eb;
-    }
-
-    .notes-table td {
-      padding: 0.75rem;
-      border-bottom: 1px solid #f3f4f6;
-    }
-
-    .notes-table tr:hover {
-      background: #f9fafb;
-    }
-
-    /* Status Colors */
-    .text-green-600 { color: #059669; }
-    .text-blue-600 { color: #2563eb; }
-    .text-red-600 { color: #dc2626; }
-    .text-purple-600 { color: #9333ea; }
-    .text-yellow-600 { color: #d97706; }
-    .text-gray-600 { color: #4b5563; }
-
-    /* Pagination Styling */
-    .pagination {
-      display: flex;
-      gap: 0.5rem;
-      align-items: center;
-      justify-content: center;
-      margin-top: 1rem;
-    }
-
-    .pagination-btn {
-      padding: 0.5rem 1rem;
-      background: white;
-      border: 1px solid #d1d5db;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.875rem;
-      font-weight: 500;
-      color: #374151;
-      transition: all 0.2s;
-    }
-
-    .pagination-btn:hover:not(:disabled) {
-      background: #f3f4f6;
-      border-color: #9ca3af;
-    }
-
-    .pagination-btn.active {
-      background: #3b82f6;
-      color: white;
-      border-color: #3b82f6;
-    }
-
-    .pagination-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .pagination-ellipsis {
-      color: #9ca3af;
-      padding: 0.5rem;
-    }
-
-    /* Demo Controls */
     .demo-controls {
       margin-bottom: 2rem;
       padding: 1rem;
@@ -128,141 +61,331 @@
     .demo-controls button:hover {
       background: #2563eb;
     }
+
+    .code-block {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 0.875rem;
+      line-height: 1.6;
+      margin: 1rem 0;
+    }
+
+    .code-block .keyword {
+      color: #c792ea;
+    }
+
+    .code-block .string {
+      color: #c3e88d;
+    }
+
+    .code-block .function {
+      color: #82aaff;
+    }
+
+    .code-block .comment {
+      color: #546e7a;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="demo-controls">
-      <h2>Demo Controls</h2>
-      <button onclick="loadSampleData(10)">Load 10 Activities</button>
-      <button onclick="loadSampleData(50)">Load 50 Activities</button>
-      <button onclick="loadSampleData(100)">Load 100 Activities</button>
-      <button onclick="loadSampleData(0)">Clear All</button>
-    </div>
-
-    <!-- ActivityLog will render here -->
-    <div id="activity-log-container"></div>
+    <h1 style="margin-bottom: 1rem;">ActivityLog Component - React Demo</h1>
+    <p style="color: #6b7280; margin-bottom: 2rem;">
+      This is a live demo of the ActivityLog React component with proper event handlers.
+    </p>
   </div>
 
-  <!-- Include the ActivityLog component -->
-  <script src="ActivityLog.js"></script>
+  <!-- React App Container -->
+  <div id="root"></div>
 
-  <script>
-    // Initialize the ActivityLog component
-    let activityLog = null;
+  <!-- React Component Implementation -->
+  <script type="text/babel">
+    const { useState } = React;
 
-    // Sample data generator
-    function generateSampleActivities(count) {
-      const users = ['John Doe', 'Jane Smith', 'Bob Johnson', 'Alice Williams', 'Charlie Brown'];
-      const statuses = ['completed', 'edited', 'deleted', 'created', 'updated', 'pending'];
-      const actions = [
-        'Task updated',
-        'Task completed',
-        'Task deleted',
-        'Comment added',
-        'Status changed',
-        'Priority modified',
-        'Assignment changed',
-        'Due date updated'
-      ];
+    // ============================================================================
+    // ACTIVITYLOG COMPONENT (Copy this to your project)
+    // ============================================================================
+    const ActivityLog = ({ activities = [], itemsPerPage = 10 }) => {
+      // State for current page
+      const [currentPage, setCurrentPage] = useState(1);
 
-      const activities = [];
-      for (let i = 1; i <= count; i++) {
-        activities.push({
-          id: `ACT-${String(i).padStart(5, '0')}`,
-          content: actions[Math.floor(Math.random() * actions.length)],
-          user: users[Math.floor(Math.random() * users.length)],
-          timestamp: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000), // Random date within last 30 days
-          status: statuses[Math.floor(Math.random() * statuses.length)]
-        });
-      }
+      // Constants
+      const ITEMS_PER_PAGE = itemsPerPage;
 
-      return activities;
-    }
+      // Calculate total pages
+      const totalPages = Math.ceil(activities.length / ITEMS_PER_PAGE);
 
-    // Load sample data
-    function loadSampleData(count) {
-      const activities = generateSampleActivities(count);
+      // Get current page data using slice
+      const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+      const endIndex = startIndex + ITEMS_PER_PAGE;
+      const currentData = activities.slice(startIndex, endIndex);
 
-      if (activityLog) {
-        // Update existing component
-        activityLog.updateActivities(activities);
-      } else {
-        // Create new component
-        activityLog = new ActivityLog({
-          containerId: 'activity-log-container',
-          activities: activities,
-          itemsPerPage: 10
-        });
-      }
-    }
+      // Handle page change
+      const handlePageChange = (pageNumber) => {
+        if (pageNumber >= 1 && pageNumber <= totalPages) {
+          setCurrentPage(pageNumber);
+        }
+      };
 
-    // Initialize with sample data on page load
-    window.addEventListener('DOMContentLoaded', () => {
-      loadSampleData(50);
-    });
+      // Handle previous page
+      const handlePrevious = () => {
+        if (currentPage > 1) {
+          setCurrentPage(currentPage - 1);
+        }
+      };
+
+      // Handle next page
+      const handleNext = () => {
+        if (currentPage < totalPages) {
+          setCurrentPage(currentPage + 1);
+        }
+      };
+
+      // Generate page numbers with ellipsis
+      const getPageNumbers = () => {
+        const pages = [];
+
+        if (totalPages <= 7) {
+          for (let i = 1; i <= totalPages; i++) {
+            pages.push(i);
+          }
+        } else {
+          pages.push(1);
+          if (currentPage > 3) pages.push('...');
+
+          const start = Math.max(2, currentPage - 1);
+          const end = Math.min(totalPages - 1, currentPage + 1);
+
+          for (let i = start; i <= end; i++) {
+            if (!pages.includes(i)) pages.push(i);
+          }
+
+          if (currentPage < totalPages - 2) pages.push('...');
+          if (!pages.includes(totalPages)) pages.push(totalPages);
+        }
+
+        return pages;
+      };
+
+      // Format timestamp
+      const formatTimestamp = (timestamp) => {
+        if (!timestamp) return '-';
+        try {
+          const date = timestamp instanceof Date ? timestamp : new Date(timestamp);
+          return date.toLocaleString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+        } catch (error) {
+          return String(timestamp);
+        }
+      };
+
+      // Get status styling
+      const getStatusStyle = (status) => {
+        const statusMap = {
+          completed: { color: '#059669', label: 'Completed' },
+          edited: { color: '#2563eb', label: 'Edited' },
+          deleted: { color: '#dc2626', label: 'Deleted' },
+          created: { color: '#9333ea', label: 'Created' },
+          updated: { color: '#d97706', label: 'Updated' },
+          pending: { color: '#4b5563', label: 'Pending' }
+        };
+        return statusMap[status] || { color: '#4b5563', label: status };
+      };
+
+      const pageNumbers = getPageNumbers();
+      const showingStart = activities.length > 0 ? startIndex + 1 : 0;
+      const showingEnd = Math.min(endIndex, activities.length);
+
+      return (
+        <div className="activity-log-wrapper" style={{ width: '100%' }}>
+          <div className="activity-log-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '600' }}>Activity Log</h3>
+            <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+              {activities.length > 0 ? `Showing ${showingStart}-${showingEnd} of ${activities.length}` : 'No activities'}
+            </span>
+          </div>
+
+          <div style={{ overflowX: 'auto', marginBottom: '1rem' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden' }}>
+              <thead>
+                <tr>
+                  <th style={{ background: '#f9fafb', padding: '0.75rem', textAlign: 'left', fontWeight: '600', borderBottom: '2px solid #e5e7eb', fontSize: '0.875rem', color: '#374151' }}>ID</th>
+                  <th style={{ background: '#f9fafb', padding: '0.75rem', textAlign: 'left', fontWeight: '600', borderBottom: '2px solid #e5e7eb', fontSize: '0.875rem', color: '#374151' }}>Content</th>
+                  <th style={{ background: '#f9fafb', padding: '0.75rem', textAlign: 'left', fontWeight: '600', borderBottom: '2px solid #e5e7eb', fontSize: '0.875rem', color: '#374151' }}>User</th>
+                  <th style={{ background: '#f9fafb', padding: '0.75rem', textAlign: 'left', fontWeight: '600', borderBottom: '2px solid #e5e7eb', fontSize: '0.875rem', color: '#374151' }}>Timestamp</th>
+                  <th style={{ background: '#f9fafb', padding: '0.75rem', textAlign: 'left', fontWeight: '600', borderBottom: '2px solid #e5e7eb', fontSize: '0.875rem', color: '#374151' }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {currentData.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: '#9ca3af' }}>No activities found</td>
+                  </tr>
+                ) : (
+                  currentData.map((activity, index) => {
+                    const statusInfo = getStatusStyle(activity.status);
+                    return (
+                      <tr key={activity.id || index} style={{ transition: 'background-color 0.2s' }}>
+                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #f3f4f6', fontSize: '0.875rem' }}>{activity.id || '-'}</td>
+                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #f3f4f6', fontSize: '0.875rem' }}>{activity.content || '-'}</td>
+                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #f3f4f6', fontSize: '0.875rem' }}>{activity.user || '-'}</td>
+                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #f3f4f6', fontSize: '0.875rem' }}>{formatTimestamp(activity.timestamp)}</td>
+                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #f3f4f6', fontSize: '0.875rem' }}>
+                          <span style={{ color: statusInfo.color, fontWeight: '500' }}>{statusInfo.label}</span>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center', marginTop: '1rem' }}>
+              <button onClick={handlePrevious} disabled={currentPage === 1} style={{ padding: '0.5rem 1rem', backgroundColor: currentPage === 1 ? '#e5e7eb' : 'white', border: '1px solid #d1d5db', borderRadius: '6px', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', fontSize: '0.875rem', fontWeight: '500', color: '#374151', opacity: currentPage === 1 ? 0.5 : 1 }}>
+                Previous
+              </button>
+
+              {pageNumbers.map((page, index) => {
+                if (page === '...') {
+                  return <span key={`ellipsis-${index}`} style={{ color: '#9ca3af', padding: '0.5rem' }}>...</span>;
+                }
+                const isActive = page === currentPage;
+                return (
+                  <button key={page} onClick={() => handlePageChange(page)} disabled={isActive} style={{ padding: '0.5rem 1rem', backgroundColor: isActive ? '#3b82f6' : 'white', color: isActive ? 'white' : '#374151', border: '1px solid ' + (isActive ? '#3b82f6' : '#d1d5db'), borderRadius: '6px', cursor: isActive ? 'default' : 'pointer', fontSize: '0.875rem', fontWeight: '500', minWidth: '40px' }}>
+                    {page}
+                  </button>
+                );
+              })}
+
+              <button onClick={handleNext} disabled={currentPage === totalPages} style={{ padding: '0.5rem 1rem', backgroundColor: currentPage === totalPages ? '#e5e7eb' : 'white', border: '1px solid #d1d5db', borderRadius: '6px', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', fontSize: '0.875rem', fontWeight: '500', color: '#374151', opacity: currentPage === totalPages ? 0.5 : 1 }}>
+                Next
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    // ============================================================================
+    // DEMO APP
+    // ============================================================================
+    const App = () => {
+      // Sample data generator
+      const generateSampleActivities = (count) => {
+        const users = ['John Doe', 'Jane Smith', 'Bob Johnson', 'Alice Williams', 'Charlie Brown'];
+        const statuses = ['completed', 'edited', 'deleted', 'created', 'updated', 'pending'];
+        const actions = ['Task updated', 'Task completed', 'Task deleted', 'Comment added', 'Status changed', 'Priority modified', 'Assignment changed', 'Due date updated'];
+
+        const activities = [];
+        for (let i = 1; i <= count; i++) {
+          activities.push({
+            id: `ACT-${String(i).padStart(5, '0')}`,
+            content: actions[Math.floor(Math.random() * actions.length)],
+            user: users[Math.floor(Math.random() * users.length)],
+            timestamp: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
+            status: statuses[Math.floor(Math.random() * statuses.length)]
+          });
+        }
+        return activities;
+      };
+
+      const [activities, setActivities] = useState(generateSampleActivities(50));
+
+      return (
+        <div>
+          <div className="container">
+            <div className="demo-controls">
+              <h2>Demo Controls</h2>
+              <button onClick={() => setActivities(generateSampleActivities(10))}>Load 10 Activities</button>
+              <button onClick={() => setActivities(generateSampleActivities(50))}>Load 50 Activities</button>
+              <button onClick={() => setActivities(generateSampleActivities(100))}>Load 100 Activities</button>
+              <button onClick={() => setActivities([])}>Clear All</button>
+            </div>
+
+            <ActivityLog activities={activities} itemsPerPage={10} />
+          </div>
+
+          <div className="container">
+            <h2 style={{ marginBottom: '1rem' }}>✅ Key Features</h2>
+            <ul style={{ marginLeft: '1.5rem', lineHeight: '1.8' }}>
+              <li>✅ <strong>Proper React State:</strong> Uses <code>useState(1)</code></li>
+              <li>✅ <strong>Client-side Pagination:</strong> 10 items per page</li>
+              <li>✅ <strong>Correct Event Binding:</strong> <code>onClick={() => setCurrentPage(page)}</code></li>
+              <li>✅ <strong>Data Slicing:</strong> <code>activities.slice(startIndex, endIndex)</code></li>
+              <li>✅ <strong>No ReferenceError:</strong> All handlers are properly scoped</li>
+              <li>✅ <strong>Smart Pagination:</strong> Shows ellipsis for large datasets</li>
+              <li>✅ <strong>Responsive Design:</strong> Works on all screen sizes</li>
+            </ul>
+
+            <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>📦 Usage</h2>
+            <div className="code-block">
+              <span className="keyword">import</span> React <span className="keyword">from</span> <span className="string">'react'</span>;<br/>
+              <span className="keyword">import</span> ActivityLog <span className="keyword">from</span> <span className="string">'./ActivityLog'</span>;<br/>
+              <br/>
+              <span className="keyword">function</span> <span className="function">App</span>() {'{'}<br/>
+              &nbsp;&nbsp;<span className="keyword">const</span> activities = [<br/>
+              &nbsp;&nbsp;&nbsp;&nbsp;{'{ id: \'1\', content: \'Task completed\', user: \'John\', timestamp: new Date(), status: \'completed\' }'},<br/>
+              &nbsp;&nbsp;&nbsp;&nbsp;<span className="comment">// ... more activities</span><br/>
+              &nbsp;&nbsp;];<br/>
+              <br/>
+              &nbsp;&nbsp;<span className="keyword">return</span> {'<'}<span className="function">ActivityLog</span> activities={'{activities}'} itemsPerPage={'{10}'} />{'>'};<br/>
+              {'}'}
+            </div>
+
+            <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>🔧 Props</h2>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={{ background: '#f9fafb', padding: '0.75rem', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>Prop</th>
+                  <th style={{ background: '#f9fafb', padding: '0.75rem', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>Type</th>
+                  <th style={{ background: '#f9fafb', padding: '0.75rem', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>Default</th>
+                  <th style={{ background: '#f9fafb', padding: '0.75rem', textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={{ padding: '0.75rem', borderBottom: '1px solid #e5e7eb' }}><code>activities</code></td>
+                  <td style={{ padding: '0.75rem', borderBottom: '1px solid #e5e7eb' }}>Array</td>
+                  <td style={{ padding: '0.75rem', borderBottom: '1px solid #e5e7eb' }}>[]</td>
+                  <td style={{ padding: '0.75rem', borderBottom: '1px solid #e5e7eb' }}>Array of activity objects</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '0.75rem', borderBottom: '1px solid #e5e7eb' }}><code>itemsPerPage</code></td>
+                  <td style={{ padding: '0.75rem', borderBottom: '1px solid #e5e7eb' }}>Number</td>
+                  <td style={{ padding: '0.75rem', borderBottom: '1px solid #e5e7eb' }}>10</td>
+                  <td style={{ padding: '0.75rem', borderBottom: '1px solid #e5e7eb' }}>Number of items per page</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>📊 Data Format</h2>
+            <div className="code-block">
+              {'{'}<br/>
+              &nbsp;&nbsp;id: <span className="string">'ACT-001'</span>,<br/>
+              &nbsp;&nbsp;content: <span className="string">'Task completed'</span>,<br/>
+              &nbsp;&nbsp;user: <span className="string">'John Doe'</span>,<br/>
+              &nbsp;&nbsp;timestamp: <span className="keyword">new Date</span>(),<br/>
+              &nbsp;&nbsp;status: <span className="string">'completed'</span> <span className="comment">// completed|edited|deleted|created|updated|pending</span><br/>
+              {'}'}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // Render the app
+    ReactDOM.render(<App />, document.getElementById('root'));
   </script>
-
-  <!-- Usage Instructions -->
-  <div class="container" style="margin-top: 2rem;">
-    <h2 style="margin-bottom: 1rem;">Usage Instructions</h2>
-
-    <h3 style="margin-top: 1.5rem; margin-bottom: 0.5rem;">1. Basic Usage</h3>
-    <pre style="background: #f9fafb; padding: 1rem; border-radius: 6px; overflow-x: auto;"><code>// Create a new ActivityLog instance
-const activityLog = new ActivityLog({
-  containerId: 'activity-log-container',
-  activities: myActivitiesArray,
-  itemsPerPage: 10  // Optional, defaults to 10
-});</code></pre>
-
-    <h3 style="margin-top: 1.5rem; margin-bottom: 0.5rem;">2. Data Format</h3>
-    <pre style="background: #f9fafb; padding: 1rem; border-radius: 6px; overflow-x: auto;"><code>const activities = [
-  {
-    id: 'ACT-001',
-    content: 'Task completed',
-    user: 'John Doe',
-    timestamp: new Date(),
-    status: 'completed'  // completed, edited, deleted, created, updated, pending
-  },
-  // ... more activities
-];</code></pre>
-
-    <h3 style="margin-top: 1.5rem; margin-bottom: 0.5rem;">3. Update Activities</h3>
-    <pre style="background: #f9fafb; padding: 1rem; border-radius: 6px; overflow-x: auto;"><code>// Update with new data
-activityLog.updateActivities(newActivitiesArray);</code></pre>
-
-    <h3 style="margin-top: 1.5rem; margin-bottom: 0.5rem;">4. Integration with Your Existing Code</h3>
-    <pre style="background: #f9fafb; padding: 1rem; border-radius: 6px; overflow-x: auto;"><code>// In your index.html, add the script tag:
-&lt;script src="ActivityLog.js"&gt;&lt;/script&gt;
-
-// Add container element:
-&lt;div id="activity-log-container"&gt;&lt;/div&gt;
-
-// Initialize in your main script:
-const activityLog = new ActivityLog({
-  containerId: 'activity-log-container',
-  activities: activityLogs,  // Your existing activityLogs array
-  itemsPerPage: 10
-});
-
-// Update when data changes:
-// (e.g., in your Firestore onSnapshot callback)
-onSnapshot(collection, (snapshot) => {
-  const activities = snapshot.docs.map(doc => doc.data());
-  activityLog.updateActivities(activities);
-});</code></pre>
-
-    <h3 style="margin-top: 1.5rem; margin-bottom: 0.5rem;">5. Features</h3>
-    <ul style="margin-left: 1.5rem; line-height: 1.8;">
-      <li>✅ Client-side pagination (10 items per page)</li>
-      <li>✅ Proper event handling (no onclick errors)</li>
-      <li>✅ Status color coding</li>
-      <li>✅ Responsive design</li>
-      <li>✅ Previous/Next navigation</li>
-      <li>✅ Smart page number display with ellipsis</li>
-      <li>✅ Automatic timestamp formatting</li>
-      <li>✅ Empty state handling</li>
-    </ul>
-  </div>
 </body>
 </html>
