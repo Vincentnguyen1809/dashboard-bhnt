@@ -3121,12 +3121,24 @@
         const actions = document.querySelector(`[data-completed-actions="${task.id}"]`);
         const viewBtn = actions ? actions.querySelector('[data-view-btn]') : null;
         const countdownSpan = card ? card.querySelector('.deadline-countdown') : null;
-        const deadlineInfo = evaluateDeadline(task.deadline, state.completed);
+
+        // Check for BOTH English 'completed', Vietnamese status strings, or boolean completed field
+        const isTaskCompleted = state.completed ||
+                                task.status === 'completed' ||
+                                task.status === 'Hoàn thành' ||
+                                task.status === 'Đã hoàn thành' ||
+                                task.status === 'HOÀN THÀNH' ||
+                                state.status === 'completed' ||
+                                state.status === 'Hoàn thành' ||
+                                state.status === 'Đã hoàn thành' ||
+                                state.status === 'HOÀN THÀNH';
+
+        const deadlineInfo = evaluateDeadline(task.deadline, isTaskCompleted);
         const isOverdueTask = deadlineInfo && deadlineInfo.status === 'danger';
 
         if(input) input.value = state.link || '';
 
-        if(state.completed){
+        if(isTaskCompleted){
           console.log(`✅ [DEBUG] Task ${task.id} IS COMPLETED - Showing footer`);
           if(!actions){
             console.error(`❌ [ERROR] Task ${task.id} - Footer element NOT FOUND in DOM!`);
@@ -4002,7 +4014,12 @@
           tasksContainer.innerHTML = tasks.map(task => {
             const assignee = assignees.find(a => a.id === task.assigneeId);
             const assigneeName = assignee ? assignee.name : 'Chưa gán';
-            const isCompleted = !!task.completed;
+            // Check for BOTH English 'completed', Vietnamese status strings, or boolean completed field
+            const isCompleted = !!task.completed ||
+                                task.status === 'completed' ||
+                                task.status === 'Hoàn thành' ||
+                                task.status === 'Đã hoàn thành' ||
+                                task.status === 'HOÀN THÀNH';
             const startDateStr = task.startDate ? formatDateFromISO(task.startDate) : 'Chưa đặt';
             const endDateStr = task.endDate ? formatDateFromISO(task.endDate) : 'Chưa đặt';
 
