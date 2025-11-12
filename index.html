@@ -2887,12 +2887,13 @@
         editOptionsModal.classList.remove('active');
         editOptionsModal.setAttribute('aria-hidden','true');
       }
-      // Set the current delete task ID and show delete modal
-      currentDeleteTaskId = id;
-      if(deleteTaskModal){
-        deleteTaskModal.classList.add('active');
-        deleteTaskModal.setAttribute('aria-hidden','false');
+      // Use browser confirm() dialog instead of modal
+      const confirmed = confirm('Bạn có chắc chắn muốn xóa kết quả này không?\n(Are you sure you want to delete this result?)');
+      if(confirmed){
+        deleteTaskResult(id);
       }
+      // Clear the edit link task ID
+      currentEditLinkTaskId = null;
     }
     function cancelEditOptions(){
       currentEditLinkTaskId = null;
@@ -2939,8 +2940,8 @@
         deleteTaskModal.setAttribute('aria-hidden','false');
       }
     }
-    function confirmDeleteTask(){
-      const id = currentDeleteTaskId;
+    function deleteTaskResult(id){
+      if(!ensureProjectReady()) return;
       if(!id) return;
       const state = ensureTaskEntry(id);
       state.completed = false;
@@ -2954,13 +2955,18 @@
       updateUI();
       renderActivityLog();
       syncTaskState();
+      showLinkFeedback(id, '');
+      showToast('Đã xóa kết quả', 'success');
+    }
+    function confirmDeleteTask(){
+      const id = currentDeleteTaskId;
+      if(!id) return;
+      deleteTaskResult(id);
       currentDeleteTaskId = null;
       if(deleteTaskModal){
         deleteTaskModal.classList.remove('active');
         deleteTaskModal.setAttribute('aria-hidden','true');
       }
-      showLinkFeedback(id, '');
-      showToast('Đã xóa link', 'success');
     }
     function cancelDeleteTask(){
       currentDeleteTaskId = null;
