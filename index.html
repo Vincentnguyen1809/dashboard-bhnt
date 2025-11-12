@@ -4163,61 +4163,163 @@
                       </button>
                     </div>
                   ` : `
-                    <!-- ✅ COMPLETED TASK ACTIONS -->
+                    <!-- ✅ REFACTORED COMPLETED TASK UI - 3 COLUMN LAYOUT -->
                     <div class="task-completed-section" style="display:block !important; visibility:visible !important;">
-                      <!-- Completion Info -->
-                      <div style="margin-bottom:12px;">
-                        <span class="text-sm text-green-600 font-medium" style="display:inline-block;">✅ Đã hoàn thành</span>
-                        ${task.completedLink ? `<a href="${task.completedLink}" target="_blank" rel="noopener noreferrer" class="text-sm text-blue-600 hover:underline" style="margin-left:8px; word-break:break-all;">${task.completedLink}</a>` : ''}
-                        ${task.completedAt ? `<span class="text-xs text-gray-500" style="display:block; margin-top:4px;">Hoàn thành lúc: ${formatTimestamp(task.completedAt)}</span>` : ''}
+
+                      <!-- Completion Status Badge -->
+                      <div style="margin-bottom:16px; padding:8px 12px; background:#f0fdf4; border:1px solid #86efac; border-radius:6px;">
+                        <div style="display:flex; align-items:center; justify-content:space-between;">
+                          <span style="color:#166534; font-weight:600; font-size:0.875rem;">✅ Đã hoàn thành</span>
+                          ${task.completedAt ? `<span style="color:#6b7280; font-size:0.75rem;">${formatTimestamp(task.completedAt)}</span>` : ''}
+                        </div>
+                        ${task.completedLink ? `
+                          <a href="${task.completedLink}" target="_blank" rel="noopener noreferrer"
+                             style="display:inline-block; margin-top:4px; color:#2563eb; font-size:0.75rem; text-decoration:none; word-break:break-all;">
+                            🔗 ${task.completedLink}
+                          </a>
+                        ` : ''}
                       </div>
 
-                      <!-- Completion Comment Preview -->
-                      ${task.completedComment ? `<div style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:6px; padding:10px; margin-bottom:12px; font-size:0.875rem; color:#374151;">${task.completedComment}</div>` : ''}
+                      <!-- ✅ 3-COLUMN ACTION BAR (View | Comment | Edit) -->
+                      <div class="task-action-bar"
+                           style="display:grid !important; grid-template-columns:auto 1fr auto; gap:8px; align-items:stretch; visibility:visible !important;">
 
-                      <!-- ✅ ACTION BUTTONS - GUARANTEED VISIBLE -->
-                      <div class="action-buttons" style="display:flex !important; flex-wrap:wrap; gap:8px; margin-top:12px; visibility:visible !important;">
+                        <!-- LEFT: View Result Button -->
                         <button type="button"
-                          class="task-btn btn-view"
-                          style="display:inline-flex !important; align-items:center; padding:6px 12px; font-size:0.875rem; background:#0ea5e9; color:#fff; border:none; border-radius:6px; cursor:pointer;"
-                          onclick="viewCompletedTask('${menuId}', '${task.id}')">
-                          👁️ Xem
+                                class="action-btn-view"
+                                style="display:flex; align-items:center; justify-content:center; gap:6px; padding:10px 16px; background:#3b82f6; color:#fff; border:none; border-radius:8px; font-weight:500; font-size:0.875rem; cursor:pointer; transition:background 0.2s; white-space:nowrap;"
+                                onclick="openTaskResult('${menuId}', '${task.id}', '${task.completedLink || ''}')"
+                                onmouseover="this.style.background='#2563eb'"
+                                onmouseout="this.style.background='#3b82f6'"
+                                ${!task.completedLink ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>
+                          <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.173 8a13.133 13.133 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13.133 13.133 0 0 1 14.828 8c-.058.087-.122.183-.195.288-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5c-2.12 0-3.879-1.168-5.168-2.457A13.134 13.134 0 0 1 1.172 8z"/>
+                            <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z"/>
+                          </svg>
+                          Xem Kết Quả
                         </button>
-                        <button type="button"
-                          class="task-btn btn-complete"
-                          style="display:inline-flex !important; align-items:center; padding:6px 12px; font-size:0.875rem; background:#10b981; color:#fff; border:none; border-radius:6px; cursor:pointer;"
-                          onclick="editCompletedTask('${menuId}', '${task.id}')">
-                          ✏️ Sửa
-                        </button>
-                        <button type="button"
-                          class="task-btn"
-                          style="display:inline-flex !important; align-items:center; padding:6px 12px; font-size:0.875rem; background:#ef4444; color:#fff; border:none; border-radius:6px; cursor:pointer;"
-                          onclick="deleteCompletedTask('${menuId}', '${task.id}')">
-                          🗑️ Xóa
-                        </button>
-                        <button type="button"
-                          class="task-btn btn-outline"
-                          style="display:inline-flex !important; align-items:center; padding:6px 12px; font-size:0.875rem; background:#fff; color:#1f2937; border:1px solid #d1d5db; border-radius:6px; cursor:pointer;"
-                          onclick="toggleDynamicComment('${menuId}', '${task.id}')"
-                          id="dynamic-comment-toggle-${task.id}">
-                          💬 Bình luận
-                        </button>
-                      </div>
 
-                      <!-- Comment Section (Hidden by default) -->
-                      <div class="hidden" id="dynamic-comment-${task.id}" style="margin-top:16px; display:none;">
-                        <label class="block text-sm font-medium text-gray-700" style="margin-bottom:8px;">Cập nhật bình luận</label>
-                        <textarea
-                          class="task-link-input"
-                          style="width:100%; border:1px solid #d1d5db; border-radius:6px; padding:8px; font-size:1rem; resize:vertical;"
-                          rows="3"
-                          id="dynamic-comment-input-${task.id}"
-                          placeholder="Nhập bình luận cho task...">${task.completedComment || ''}</textarea>
-                        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
-                          <button type="button" class="task-btn btn-secondary" style="padding:6px 12px; font-size:0.875rem; background:#e5e7eb; color:#1f2937; border:none; border-radius:6px; cursor:pointer;" onclick="cancelDynamicComment('${task.id}')">Hủy</button>
-                          <button type="button" class="task-btn btn-complete" style="padding:6px 12px; font-size:0.875rem; background:#10b981; color:#fff; border:none; border-radius:6px; cursor:pointer;" onclick="saveDynamicComment('${menuId}', '${task.id}')">Lưu</button>
+                        <!-- CENTER: Comment Button with Count -->
+                        <button type="button"
+                                class="action-btn-comment"
+                                id="comment-toggle-${task.id}"
+                                style="display:flex; align-items:center; justify-content:center; gap:8px; padding:10px 16px; background:#f3f4f6; color:#1f2937; border:1px solid #d1d5db; border-radius:8px; font-weight:500; font-size:0.875rem; cursor:pointer; transition:all 0.2s;"
+                                onclick="toggleTaskComments('${menuId}', '${task.id}')"
+                                onmouseover="this.style.background='#e5e7eb'"
+                                onmouseout="this.style.background='#f3f4f6'">
+                          <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M2.678 11.894a1 1 0 0 1 .287.801 10.97 10.97 0 0 1-.398 2c1.395-.323 2.247-.697 2.634-.893a1 1 0 0 1 .71-.074A8.06 8.06 0 0 0 8 14c3.996 0 7-2.807 7-6 0-3.192-3.004-6-7-6S1 4.808 1 8c0 1.468.617 2.83 1.678 3.894zm-.493 3.905a21.682 21.682 0 0 1-.713.129c-.2.032-.352-.176-.273-.362a9.68 9.68 0 0 0 .244-.637l.003-.01c.248-.72.45-1.548.524-2.319C.743 11.37 0 9.76 0 8c0-3.866 3.582-7 8-7s8 3.134 8 7-3.582 7-8 7a9.06 9.06 0 0 1-2.347-.306c-.52.263-1.639.742-3.468 1.105z"/>
+                          </svg>
+                          <span>Bình luận</span>
+                          <span class="comment-count-badge"
+                                id="comment-count-${task.id}"
+                                style="display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px; padding:0 6px; background:#ef4444; color:#fff; border-radius:10px; font-size:0.75rem; font-weight:700;">
+                            ${(task.comments && task.comments.length) || 0}
+                          </span>
+                        </button>
+
+                        <!-- RIGHT: Edit Dropdown Button -->
+                        <div style="position:relative;">
+                          <button type="button"
+                                  class="action-btn-edit"
+                                  id="edit-toggle-${task.id}"
+                                  style="display:flex; align-items:center; justify-content:center; gap:6px; padding:10px 16px; background:#fff; color:#1f2937; border:1px solid #d1d5db; border-radius:8px; font-weight:500; font-size:0.875rem; cursor:pointer; transition:all 0.2s; white-space:nowrap;"
+                                  onclick="toggleEditMenu('${task.id}')"
+                                  onmouseover="this.style.background='#f9fafb'"
+                                  onmouseout="this.style.background='#fff'">
+                            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                              <path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708l-3-3zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207l6.5-6.5zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.499.499 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11l.178-.178z"/>
+                            </svg>
+                            Chỉnh sửa
+                            <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16" style="margin-left:4px;">
+                              <path d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z"/>
+                            </svg>
+                          </button>
+
+                          <!-- Edit Dropdown Menu -->
+                          <div id="edit-menu-${task.id}"
+                               class="edit-dropdown-menu"
+                               style="display:none; position:absolute; top:calc(100% + 4px); right:0; min-width:200px; background:#fff; border:1px solid #e5e7eb; border-radius:8px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); z-index:50; overflow:hidden;">
+                            <button type="button"
+                                    style="display:flex; align-items:center; gap:10px; width:100%; padding:12px 16px; background:#fff; border:none; text-align:left; cursor:pointer; transition:background 0.15s; color:#1f2937; font-size:0.875rem;"
+                                    onclick="openUpdateLinkModal('${menuId}', '${task.id}', '${task.completedLink || ''}'); toggleEditMenu('${task.id}')"
+                                    onmouseover="this.style.background='#f3f4f6'"
+                                    onmouseout="this.style.background='#fff'">
+                              <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M6.354 5.5H4a3 3 0 0 0 0 6h3a3 3 0 0 0 2.83-4H9c-.086 0-.17.01-.25.031A2 2 0 0 1 7 10.5H4a2 2 0 1 1 0-4h1.535c.218-.376.495-.714.82-1z"/>
+                                <path d="M9 5.5a3 3 0 0 0-2.83 4h1.098A2 2 0 0 1 9 6.5h3a2 2 0 1 1 0 4h-1.535a4.02 4.02 0 0 1-.82 1H12a3 3 0 1 0 0-6H9z"/>
+                              </svg>
+                              Cập nhật Link
+                            </button>
+                            <button type="button"
+                                    style="display:flex; align-items:center; gap:10px; width:100%; padding:12px 16px; background:#fff; border:none; border-top:1px solid #f3f4f6; text-align:left; cursor:pointer; transition:background 0.15s; color:#ef4444; font-size:0.875rem;"
+                                    onclick="confirmDeleteTask('${menuId}', '${task.id}', '${task.name}'); toggleEditMenu('${task.id}')"
+                                    onmouseover="this.style.background='#fef2f2'"
+                                    onmouseout="this.style.background='#fff'">
+                              <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>
+                                <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
+                              </svg>
+                              Xóa Task
+                            </button>
+                          </div>
                         </div>
                       </div>
+
+                      <!-- ✅ COMMENT SECTION (Toggle Visibility) -->
+                      <div id="comment-section-${task.id}"
+                           class="task-comment-section"
+                           style="display:none; margin-top:20px; padding:16px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px;">
+
+                        <!-- Comments List -->
+                        <div id="comments-list-${task.id}" style="margin-bottom:16px;">
+                          ${(task.comments && task.comments.length > 0) ?
+                            task.comments.map(comment => `
+                              <div class="comment-item" data-comment-id="${comment.id || ''}" style="padding:12px; background:#fff; border:1px solid #e5e7eb; border-radius:6px; margin-bottom:8px;">
+                                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                                  <div style="display:flex; align-items:center; gap:8px;">
+                                    <div style="width:32px; height:32px; background:#3b82f6; color:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:0.875rem;">
+                                      ${(comment.userName || 'U').charAt(0).toUpperCase()}
+                                    </div>
+                                    <div>
+                                      <div style="font-weight:600; font-size:0.875rem; color:#1f2937;">${comment.userName || 'Anonymous'}</div>
+                                      <div style="font-size:0.75rem; color:#6b7280;">${comment.createdAt ? formatTimestamp(comment.createdAt) : ''}</div>
+                                    </div>
+                                  </div>
+                                  ${comment.userId === (currentUser?.uid || '') ? `
+                                    <div style="display:flex; gap:4px;">
+                                      <button onclick="editComment('${task.id}', '${comment.id}')" style="padding:4px 8px; font-size:0.75rem; color:#6b7280; background:none; border:none; cursor:pointer;">✏️</button>
+                                      <button onclick="deleteComment('${menuId}', '${task.id}', '${comment.id}')" style="padding:4px 8px; font-size:0.75rem; color:#ef4444; background:none; border:none; cursor:pointer;">🗑️</button>
+                                    </div>
+                                  ` : ''}
+                                </div>
+                                <div style="color:#374151; font-size:0.875rem; line-height:1.5; white-space:pre-wrap;">${comment.text || ''}</div>
+                              </div>
+                            `).join('')
+                            : '<p style="text-align:center; color:#9ca3af; font-size:0.875rem; padding:20px;">Chưa có bình luận nào. Hãy là người đầu tiên!</p>'}
+                        </div>
+
+                        <!-- Add Comment Form -->
+                        <div style="display:flex; flex-direction:column; gap:8px;">
+                          <textarea id="comment-input-${task.id}"
+                                    placeholder="Nhập bình luận của bạn..."
+                                    rows="3"
+                                    style="width:100%; padding:10px; border:1px solid #d1d5db; border-radius:6px; font-size:0.875rem; resize:vertical; font-family:inherit;"></textarea>
+                          <div style="display:flex; justify-content:flex-end; gap:8px;">
+                            <button type="button"
+                                    onclick="toggleTaskComments('${menuId}', '${task.id}')"
+                                    style="padding:8px 16px; background:#e5e7eb; color:#1f2937; border:none; border-radius:6px; font-size:0.875rem; font-weight:500; cursor:pointer;">
+                              Hủy
+                            </button>
+                            <button type="button"
+                                    onclick="submitComment('${menuId}', '${task.id}')"
+                                    style="padding:8px 16px; background:#3b82f6; color:#fff; border:none; border-radius:6px; font-size:0.875rem; font-weight:500; cursor:pointer;">
+                              Gửi bình luận
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
                     </div>
                   `}
                 </div>
@@ -4518,6 +4620,317 @@ Mô tả: ${task.description || 'Không có'}
         showToast('Lỗi khi xóa', 'error');
       }
     }
+
+    // ========= NEW REFACTORED UI FUNCTIONS =========
+
+    /**
+     * Open task result link in new window
+     */
+    function openTaskResult(menuId, taskId, link){
+      console.log('👁️ [VIEW RESULT] Opening task result:', { menuId, taskId, link });
+
+      if(!link || link === ''){
+        showToast('Không có link kết quả', 'error');
+        return;
+      }
+
+      // Open the actual Google Sheet/Doc link
+      window.open(link, '_blank', 'noopener,noreferrer');
+    }
+
+    /**
+     * Toggle comment section visibility
+     */
+    function toggleTaskComments(menuId, taskId){
+      console.log('💬 [COMMENTS] Toggling comments for task:', taskId);
+
+      const commentSection = document.getElementById(`comment-section-${taskId}`);
+      const commentToggle = document.getElementById(`comment-toggle-${taskId}`);
+
+      if(!commentSection){
+        console.error('❌ Comment section not found:', taskId);
+        return;
+      }
+
+      const isHidden = commentSection.style.display === 'none';
+
+      if(isHidden){
+        commentSection.style.display = 'block';
+        if(commentToggle){
+          commentToggle.style.background = '#dbeafe';
+          commentToggle.style.borderColor = '#3b82f6';
+        }
+      } else {
+        commentSection.style.display = 'none';
+        if(commentToggle){
+          commentToggle.style.background = '#f3f4f6';
+          commentToggle.style.borderColor = '#d1d5db';
+        }
+      }
+    }
+
+    /**
+     * Toggle edit dropdown menu
+     */
+    function toggleEditMenu(taskId){
+      console.log('📝 [EDIT MENU] Toggling edit menu for task:', taskId);
+
+      const editMenu = document.getElementById(`edit-menu-${taskId}`);
+      if(!editMenu) {
+        console.error('❌ Edit menu not found:', taskId);
+        return;
+      }
+
+      // Close all other edit menus first
+      document.querySelectorAll('.edit-dropdown-menu').forEach(menu => {
+        if(menu.id !== `edit-menu-${taskId}`){
+          menu.style.display = 'none';
+        }
+      });
+
+      // Toggle current menu
+      editMenu.style.display = editMenu.style.display === 'none' ? 'block' : 'none';
+    }
+
+    /**
+     * Close edit menu when clicking outside
+     */
+    document.addEventListener('click', function(e){
+      if(!e.target.closest('.action-btn-edit') && !e.target.closest('.edit-dropdown-menu')){
+        document.querySelectorAll('.edit-dropdown-menu').forEach(menu => {
+          menu.style.display = 'none';
+        });
+      }
+    });
+
+    /**
+     * Open modal to update task link
+     */
+    function openUpdateLinkModal(menuId, taskId, currentLink){
+      console.log('🔗 [UPDATE LINK] Opening modal:', { menuId, taskId, currentLink });
+
+      const newLink = prompt('Cập nhật Link kết quả:\n\nNhập URL mới (Google Sheet/Doc):', currentLink || '');
+
+      if(newLink === null) return; // User cancelled
+
+      if(newLink.trim() === ''){
+        showToast('Link không được để trống', 'error');
+        return;
+      }
+
+      // Validate URL
+      try {
+        new URL(newLink);
+      } catch(e){
+        showToast('URL không hợp lệ. Vui lòng nhập URL đầy đủ (bắt đầu bằng http:// hoặc https://)', 'error');
+        return;
+      }
+
+      // Update link in Firestore
+      updateTaskLink(menuId, taskId, newLink);
+    }
+
+    /**
+     * Update task link in Firestore
+     */
+    async function updateTaskLink(menuId, taskId, newLink){
+      if(!ensureProjectReady()) return;
+
+      try {
+        const projectId = ensureProjectId();
+        await updateDoc(doc(db, 'projects', projectId, 'menus', menuId, 'tasks', taskId), {
+          completedLink: newLink,
+          updatedAt: serverTimestamp()
+        });
+
+        showToast('Cập nhật link thành công', 'success');
+        await loadMenuTasks(menuId);
+        await showDynamicMenuSection(menuId);
+      } catch(error){
+        console.error('❌ Error updating link:', error);
+        showToast('Lỗi khi cập nhật link', 'error');
+      }
+    }
+
+    /**
+     * Confirm and delete task
+     */
+    function confirmDeleteTask(menuId, taskId, taskName){
+      console.log('🗑️ [DELETE] Confirming deletion:', { menuId, taskId, taskName });
+
+      const confirmed = confirm(`⚠️ XÓA TASK\n\nBạn có chắc chắn muốn xóa task này?\n\n"${taskName}"\n\nHành động này KHÔNG THỂ HOÀN TÁC!`);
+
+      if(!confirmed) return;
+
+      deleteTask(menuId, taskId, taskName);
+    }
+
+    /**
+     * Delete task from Firestore
+     */
+    async function deleteTask(menuId, taskId, taskName){
+      if(!ensureProjectReady()) return;
+
+      try {
+        const projectId = ensureProjectId();
+        const performer = getCurrentUserName();
+        const menu = dynamicMenus.find(m => m.id === menuId);
+        const phaseLabel = menu ? menu.name : menuId;
+        const timestamp = new Date().toISOString();
+
+        // Delete from Firestore
+        await deleteDoc(doc(db, 'projects', projectId, 'menus', menuId, 'tasks', taskId));
+
+        showToast('Đã xóa task thành công', 'success');
+
+        // Record activity
+        recordActivityEntry({
+          taskId: `dynamic-${taskId}`,
+          taskName: taskName,
+          phase: phaseLabel,
+          status: 'deleted',
+          timestamp,
+          performedBy: performer,
+          menuId: menuId,
+        });
+
+        renderActivityLog();
+        await loadMenuTasks(menuId);
+        await showDynamicMenuSection(menuId);
+        renderDynamicOverview();
+      } catch(error){
+        console.error('❌ Error deleting task:', error);
+        showToast('Lỗi khi xóa task', 'error');
+      }
+    }
+
+    /**
+     * Submit a new comment
+     */
+    async function submitComment(menuId, taskId){
+      if(!ensureProjectReady()) return;
+
+      const commentInput = document.getElementById(`comment-input-${taskId}`);
+      if(!commentInput){
+        console.error('❌ Comment input not found:', taskId);
+        return;
+      }
+
+      const commentText = commentInput.value.trim();
+
+      if(!commentText){
+        showToast('Vui lòng nhập nội dung bình luận', 'error');
+        return;
+      }
+
+      console.log('💬 [SUBMIT COMMENT] Submitting comment:', { menuId, taskId, commentText });
+
+      try {
+        const projectId = ensureProjectId();
+        const tasks = dynamicTasks[menuId] || [];
+        const task = tasks.find(t => t.id === taskId);
+
+        // Get current comments
+        const currentComments = task.comments || [];
+
+        // Create new comment object
+        const newComment = {
+          id: `comment-${Date.now()}`,
+          text: commentText,
+          userId: currentUser?.uid || 'anonymous',
+          userName: getCurrentUserName(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+
+        // Add to comments array
+        const updatedComments = [...currentComments, newComment];
+
+        // Update Firestore
+        await updateDoc(doc(db, 'projects', projectId, 'menus', menuId, 'tasks', taskId), {
+          comments: updatedComments,
+          updatedAt: serverTimestamp()
+        });
+
+        showToast('Đã thêm bình luận', 'success');
+
+        // Clear input
+        commentInput.value = '';
+
+        // Reload tasks
+        await loadMenuTasks(menuId);
+        await showDynamicMenuSection(menuId);
+
+        // Reopen comment section
+        setTimeout(() => {
+          const commentSection = document.getElementById(`comment-section-${taskId}`);
+          if(commentSection) commentSection.style.display = 'block';
+        }, 100);
+
+      } catch(error){
+        console.error('❌ Error submitting comment:', error);
+        showToast('Lỗi khi gửi bình luận', 'error');
+      }
+    }
+
+    /**
+     * Edit a comment
+     */
+    async function editComment(taskId, commentId){
+      console.log('✏️ [EDIT COMMENT] Editing comment:', { taskId, commentId });
+      showToast('Chức năng chỉnh sửa bình luận đang được phát triển', 'error');
+      // TODO: Implement edit comment functionality
+    }
+
+    /**
+     * Delete a comment
+     */
+    async function deleteComment(menuId, taskId, commentId){
+      if(!ensureProjectReady()) return;
+
+      const confirmed = confirm('Bạn có chắc chắn muốn xóa bình luận này?');
+      if(!confirmed) return;
+
+      console.log('🗑️ [DELETE COMMENT] Deleting comment:', { menuId, taskId, commentId });
+
+      try {
+        const projectId = ensureProjectId();
+        const tasks = dynamicTasks[menuId] || [];
+        const task = tasks.find(t => t.id === taskId);
+
+        if(!task || !task.comments){
+          showToast('Không tìm thấy bình luận', 'error');
+          return;
+        }
+
+        // Filter out the comment to delete
+        const updatedComments = task.comments.filter(c => c.id !== commentId);
+
+        // Update Firestore
+        await updateDoc(doc(db, 'projects', projectId, 'menus', menuId, 'tasks', taskId), {
+          comments: updatedComments,
+          updatedAt: serverTimestamp()
+        });
+
+        showToast('Đã xóa bình luận', 'success');
+
+        // Reload tasks
+        await loadMenuTasks(menuId);
+        await showDynamicMenuSection(menuId);
+
+        // Reopen comment section
+        setTimeout(() => {
+          const commentSection = document.getElementById(`comment-section-${taskId}`);
+          if(commentSection) commentSection.style.display = 'block';
+        }, 100);
+
+      } catch(error){
+        console.error('❌ Error deleting comment:', error);
+        showToast('Lỗi khi xóa bình luận', 'error');
+      }
+    }
+
+    // ========= END NEW REFACTORED UI FUNCTIONS =========
 
     window.viewCompletedTask = viewCompletedTask;
     window.editCompletedTask = editCompletedTask;
