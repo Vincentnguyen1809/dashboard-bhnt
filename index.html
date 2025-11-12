@@ -63,6 +63,13 @@
     .task-btn.btn-danger:hover:not(:disabled){ background:#dc2626; }
     .task-btn.btn-outline{ background:#fff; color:#1f2937; border:1px solid #d1d5db; }
     .task-btn.btn-outline:hover:not(:disabled){ background:#f3f4f6; }
+    /* Pagination Styles */
+    .pagination-btn{ padding:0.5rem 0.875rem; font-size:0.875rem; font-weight:500; border-radius:0.375rem; transition:.2s; cursor:pointer; border:1px solid #d1d5db; background:#fff; color:#374151; min-width:2.5rem; }
+    .pagination-btn:hover:not(:disabled){ background:#f3f4f6; border-color:#9ca3af; }
+    .pagination-btn:disabled{ opacity:0.4; cursor:not-allowed; }
+    .pagination-btn.active{ background:#2563eb; color:#fff; border-color:#2563eb; font-weight:600; }
+    .pagination-btn.active:hover{ background:#1d4ed8; border-color:#1d4ed8; }
+    .pagination-ellipsis{ padding:0.5rem 0.5rem; color:#9ca3af; font-weight:500; }
     .task-completed-actions{ display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; }
     .task-icon-btn{ width:2.5rem; height:2.5rem; border-radius:0.375rem; border:1px solid #d1d5db; background:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:.2s; }
     .task-icon-btn:hover{ background:#e5e7eb; }
@@ -872,7 +879,7 @@
                   <tbody id="activity-log-body"></tbody>
                 </table>
               </div>
-              <button id="activity-log-toggle" class="task-btn btn-view mt-3 hidden">Xem thêm</button>
+              <div id="activity-log-pagination" class="mt-4 flex items-center justify-center gap-2 hidden"></div>
             </div>
           </section>
 
@@ -1635,6 +1642,8 @@
     let viewButtons = [];
     let debouncedSyncTaskState = () => {};
     let activityLogShowAll = false;
+    let activityLogCurrentPage = 1;
+    let activityLogItemsPerPage = 10;
     let currentSettings = { ...defaultSettings };
     let noteDetailModal = null;
     let noteModalContent = null;
@@ -3061,7 +3070,7 @@
     function renderActivityLog(){
       const tbody = $('#activity-log-body');
       const countLabel = $('#activity-log-count');
-      const toggleBtn = $('#activity-log-toggle');
+      const paginationContainer = $('#activity-log-pagination');
       if(!tbody) return;
 
       const entries = Array.isArray(activityLogs)
@@ -3073,10 +3082,24 @@
         : [];
 
       const total = entries.length;
-      const visibleEntries = activityLogShowAll ? entries : entries.slice(0, 10);
+      const totalPages = Math.ceil(total / activityLogItemsPerPage);
 
+      // Ensure current page is within valid range
+      if(activityLogCurrentPage > totalPages && totalPages > 0){
+        activityLogCurrentPage = totalPages;
+      }
+      if(activityLogCurrentPage < 1){
+        activityLogCurrentPage = 1;
+      }
+
+      // Calculate pagination slice
+      const startIndex = (activityLogCurrentPage - 1) * activityLogItemsPerPage;
+      const endIndex = startIndex + activityLogItemsPerPage;
+      const visibleEntries = entries.slice(startIndex, endIndex);
+
+      // Render table rows
       tbody.innerHTML = '';
-      if(visibleEntries.length === 0){
+      if(total === 0){
         tbody.innerHTML = '<tr><td colspan="5" class="text-center text-gray-500 py-6">Chưa có hoạt động nào.</td></tr>';
       } else {
         const statusMap = {
@@ -3101,20 +3124,92 @@
         });
       }
 
+      // Update count label
       if(countLabel){
         if(total === 0){
           countLabel.textContent = 'Chưa có hoạt động nào';
         } else {
           const shown = visibleEntries.length;
-          countLabel.textContent = activityLogShowAll ? `Đang hiển thị ${shown} hoạt động` : `Hiển thị ${shown}/${total} hoạt động gần nhất`;
+          const rangeStart = startIndex + 1;
+          const rangeEnd = startIndex + shown;
+          countLabel.textContent = `Hiển thị ${rangeStart}-${rangeEnd} / ${total} hoạt động`;
         }
       }
 
-      if(toggleBtn){
-        if(total > 10 && !activityLogShowAll){
-          toggleBtn.classList.remove('hidden');
+      // Render pagination controls
+      if(paginationContainer){
+        if(totalPages <= 1){
+          paginationContainer.classList.add('hidden');
         } else {
-          toggleBtn.classList.add('hidden');
+          paginationContainer.classList.remove('hidden');
+          paginationContainer.innerHTML = renderPaginationControls(activityLogCurrentPage, totalPages);
+        }
+      }
+    }
+
+    function renderPaginationControls(currentPage, totalPages){
+      let html = '';
+
+      // Previous button
+      html += `<button class="pagination-btn" onclick="changeActivityLogPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+        &laquo; Trước
+      </button>`;
+
+      // Page numbers with ellipsis
+      const maxVisiblePages = 5;
+      let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+      let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+      // Adjust start if we're near the end
+      if(endPage - startPage < maxVisiblePages - 1){
+        startPage = Math.max(1, endPage - maxVisiblePages + 1);
+      }
+
+      // First page + ellipsis
+      if(startPage > 1){
+        html += `<button class="pagination-btn" onclick="changeActivityLogPage(1)">1</button>`;
+        if(startPage > 2){
+          html += `<span class="pagination-ellipsis">...</span>`;
+        }
+      }
+
+      // Page numbers
+      for(let i = startPage; i <= endPage; i++){
+        const activeClass = i === currentPage ? 'active' : '';
+        html += `<button class="pagination-btn ${activeClass}" onclick="changeActivityLogPage(${i})">${i}</button>`;
+      }
+
+      // Ellipsis + last page
+      if(endPage < totalPages){
+        if(endPage < totalPages - 1){
+          html += `<span class="pagination-ellipsis">...</span>`;
+        }
+        html += `<button class="pagination-btn" onclick="changeActivityLogPage(${totalPages})">${totalPages}</button>`;
+      }
+
+      // Next button
+      html += `<button class="pagination-btn" onclick="changeActivityLogPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+        Sau &raquo;
+      </button>`;
+
+      return html;
+    }
+
+    function changeActivityLogPage(page){
+      const total = Array.isArray(activityLogs) ? activityLogs.length : 0;
+      const totalPages = Math.ceil(total / activityLogItemsPerPage);
+
+      if(page < 1 || page > totalPages) return;
+
+      activityLogCurrentPage = page;
+      renderActivityLog();
+
+      // Scroll to activity log section
+      const activitySection = document.querySelector('#tongquan');
+      if(activitySection && !activitySection.classList.contains('hidden')){
+        const activityLogElement = $('#activity-log-body');
+        if(activityLogElement){
+          activityLogElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
       }
     }
@@ -6357,6 +6452,14 @@ Mô tả: ${task.description || 'Không có'}
       if(progressText) progressText.textContent = `${completedTasks} / ${totalTasks} Tasks`;
       if(progressPercent) progressPercent.textContent = `${percent}%`;
       if(progressBar) progressBar.style.width = `${percent}%`;
+
+      // ✅ FIX: Update the doughnut chart with current task data
+      if(progressChart){
+        const remainingTasks = Math.max(0, totalTasks - completedTasks);
+        progressChart.data.datasets[0].data = [completedTasks, remainingTasks];
+        progressChart.update();
+        console.log('📊 [CHART] Updated doughnut chart:', { completed: completedTasks, remaining: remainingTasks, total: totalTasks });
+      }
     }
 
     async function renderDynamicMenus(){
@@ -7693,7 +7796,6 @@ Mô tả: ${task.description || 'Không có'}
         renderCoverPage(computePreviewSettings({ coverColor: getPreviewCoverColor() }));
       });
     }
-    const activityLogToggleBtn = $('#activity-log-toggle'); if(activityLogToggleBtn) activityLogToggleBtn.addEventListener('click', () => { activityLogShowAll = true; renderActivityLog(); });
     const activityLogBody = $('#activity-log-body'); if(activityLogBody) activityLogBody.addEventListener('click', e => {
       const trigger = e.target.closest('[data-jump-task]');
       if(trigger){
