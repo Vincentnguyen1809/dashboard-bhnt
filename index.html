@@ -289,6 +289,11 @@
       .task-item-header { flex-direction: column; gap: 0.5rem; }
       .task-item-actions { width: 100%; }
     }
+    /* Loading spinner animation */
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body class="text-gray-800">
@@ -3950,7 +3955,43 @@
       }
     }
 
-    function showDynamicMenuSection(menuId){
+    // ========= TASK COMPLETION HELPER =========
+    /**
+     * Check if a task is completed with comprehensive fallback logic
+     * Handles all variations of completion status indicators
+     * @param {Object} task - The task object from Firestore
+     * @returns {boolean} - True if task is completed
+     */
+    function isTaskComplete(task){
+      if(!task) return false;
+
+      // Primary check: Boolean 'completed' field
+      if(task.completed === true) return true;
+
+      // Fallback 1: Boolean 'isCompleted' field (alternative naming)
+      if(task.isCompleted === true) return true;
+
+      // Fallback 2: Check status string (case-insensitive)
+      if(task.status){
+        const normalizedStatus = task.status.toLowerCase().trim();
+        const completedVariants = [
+          'completed',
+          'hoàn thành',
+          'đã hoàn thành',
+          'done',
+          'xong',
+          'complete'
+        ];
+        if(completedVariants.includes(normalizedStatus)) return true;
+      }
+
+      // Fallback 3: Check for completion indicators (link or timestamp)
+      if(task.completedAt || task.completedLink || task.completionLink) return true;
+
+      return false;
+    }
+
+    async function showDynamicMenuSection(menuId){
       console.log('📄 [MENU] Showing dynamic menu section for ID:', menuId);
 
       // Show the dynamic-menu section
@@ -3997,8 +4038,24 @@
         `;
       }
 
-      // Render tasks for this menu
+      // ✅ FIX ISSUE A: Load tasks from Firestore if not already loaded
       const tasksContainer = $('#dynamic-menu-tasks-container');
+      if(!dynamicTasks[menuId]){
+        console.log('⏳ [MENU] Tasks not loaded yet, fetching from Firestore...');
+        if(tasksContainer){
+          tasksContainer.innerHTML = `
+            <div class="card-section text-center py-8">
+              <div class="text-gray-500">
+                <div style="display:inline-block;width:20px;height:20px;border:3px solid #ddd;border-top-color:#333;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+                <p class="mt-4">Đang tải tasks...</p>
+              </div>
+            </div>
+          `;
+        }
+        await loadMenuTasks(menuId);
+      }
+
+      // Render tasks for this menu
       if(tasksContainer){
         const tasks = dynamicTasks[menuId] || [];
         if(tasks.length === 0){
@@ -4012,12 +4069,8 @@
           tasksContainer.innerHTML = tasks.map(task => {
             const assignee = assignees.find(a => a.id === task.assigneeId);
             const assigneeName = assignee ? assignee.name : 'Chưa gán';
-            // Check for BOTH English 'completed', Vietnamese status strings, or boolean completed field
-            const isCompleted = !!task.completed ||
-                                task.status === 'completed' ||
-                                task.status === 'Hoàn thành' ||
-                                task.status === 'Đã hoàn thành' ||
-                                task.status === 'HOÀN THÀNH';
+            // ✅ FIX ISSUE B: Use comprehensive completion check helper function
+            const isCompleted = isTaskComplete(task);
             const startDateStr = task.startDate ? formatDateFromISO(task.startDate) : 'Chưa đặt';
             const endDateStr = task.endDate ? formatDateFromISO(task.endDate) : 'Chưa đặt';
 
@@ -4504,14 +4557,14 @@ Mô tả: ${task.description || 'Không có'}
         console.warn('⚠️ [ROUTER] Route not found, redirecting to home:', normalized);
         return { path: '/', route: defaultRoute, notFound: true };
       }
-      function handle(pathname){
+      async function handle(pathname){
         const { path, route } = resolve(pathname);
         if(!route) return path;
         setLayoutMode(route.layout === 'cover' ? 'cover' : route.layout === 'login' ? 'login' : 'app');
         if(route.layout === 'app' && route.section){
           if(route.section === 'dynamic-menu' && route.menuId){
-            // Show dynamic menu content
-            showDynamicMenuSection(route.menuId);
+            // Show dynamic menu content (now async)
+            await showDynamicMenuSection(route.menuId);
           } else {
             showSection(route.section);
           }
@@ -4519,14 +4572,14 @@ Mô tả: ${task.description || 'Không có'}
         setActiveNavByHref(route.navHref || path);
         return path;
       }
-      function navigate(pathname){
+      async function navigate(pathname){
         const { path, route } = resolve(pathname);
         if(!route) return;
         const currentPath = normalizeRoutePath(window.location.pathname);
         if(currentPath !== path){
           window.history.pushState({}, '', path);
         }
-        handle(path);
+        await handle(path);
       }
       window.addEventListener('popstate', () => handle(window.location.pathname));
       return {
