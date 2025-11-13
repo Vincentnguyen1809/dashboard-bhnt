@@ -437,6 +437,41 @@
     </div>
   </div>
 
+  <!-- Update Link Modal -->
+  <div id="update-link-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true" style="max-width: 500px;">
+      <h3 class="modal-title">Cập nhật Link kết quả</h3>
+      <div class="space-y-4">
+        <div>
+          <label for="update-link-input" class="block text-sm font-medium text-gray-700 mb-2">Nhập URL mới (Google Sheet/Doc):</label>
+          <input
+            type="url"
+            id="update-link-input"
+            class="filter-input"
+            placeholder="https://docs.google.com/..."
+            style="width: 100%;"
+          />
+        </div>
+      </div>
+      <div class="modal-buttons" style="margin-top: 1.5rem;">
+        <button id="cancel-update-link-btn" class="task-btn btn-cancel">Hủy</button>
+        <button id="confirm-update-link-btn" class="task-btn" style="background-color:#10b981; color:#fff;">Lưu Link</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Remove Result Confirmation Modal -->
+  <div id="remove-result-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true">
+      <h3 class="modal-title">Xác nhận gỡ kết quả</h3>
+      <p class="modal-message">Bạn có chắc chắn muốn gỡ kết quả của task này? Task sẽ quay về trạng thái Chưa xong.</p>
+      <div class="modal-buttons">
+        <button id="cancel-remove-result-btn" class="task-btn btn-cancel">Hủy</button>
+        <button id="confirm-remove-result-btn" class="task-btn" style="background-color:#ef4444; color:#fff;">Đồng ý</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Menu Add/Edit Modal -->
   <div id="menu-modal" class="modal-overlay" aria-hidden="true">
     <div class="modal-content" role="dialog" aria-modal="true" style="max-width: 600px;">
@@ -1772,6 +1807,8 @@
     let currentEditingTaskId = null;
     let currentEditingAssigneeId = null;
     let currentMenuIdForTask = null;
+    let updateLinkContext = { menuId: null, taskId: null, currentLink: null }; // For update link modal
+    let removeResultContext = { menuId: null, taskId: null }; // For remove result modal
 
     // ========= HELPERS =========
     const $ = (sel, ctx=document) => ctx.querySelector(sel);
@@ -5011,30 +5048,60 @@ Mô tả: ${task.description || 'Không có'}
       alert(details);
     }
 
-    // Edit completed task
-    async function editCompletedTask(menuId, taskId){
+    // Edit completed task - Open update link modal
+    function editCompletedTask(menuId, taskId){
       if(!ensureProjectReady()) return;
       const tasks = dynamicTasks[menuId] || [];
       const task = tasks.find(t => t.id === taskId);
       if(!task) return;
 
-      const newLink = prompt('📎 Cập nhật Link:', task.completedLink || '');
-      if(newLink === null) return; // User cancelled
+      // Store context for modal
+      updateLinkContext = {
+        menuId: menuId,
+        taskId: taskId,
+        currentLink: task.completedLink || ''
+      };
 
-      const trimmedLink = newLink.trim();
-      if(trimmedLink){
+      // Open modal
+      const modal = $('#update-link-modal');
+      const input = $('#update-link-input');
+      if(modal && input){
+        input.value = task.completedLink || '';
+        modal.classList.add('active');
+        modal.setAttribute('aria-hidden', 'false');
+        // Focus input
+        setTimeout(() => input.focus(), 100);
+      }
+    }
+
+    // Save updated link from modal
+    async function saveUpdatedLink(){
+      const modal = $('#update-link-modal');
+      const input = $('#update-link-input');
+      if(!input) return;
+
+      const newLink = input.value.trim();
+
+      // Validate URL if not empty
+      if(newLink){
         try {
-          new URL(trimmedLink);
+          new URL(newLink);
         } catch(e){
           showToast('Link không hợp lệ. Vui lòng nhập URL đầy đủ (bắt đầu bằng http:// hoặc https://)', 'error');
           return;
         }
       }
 
+      const { menuId, taskId } = updateLinkContext;
+      if(!menuId || !taskId) return;
+
       try {
+        const tasks = dynamicTasks[menuId] || [];
+        const task = tasks.find(t => t.id === taskId);
+
         const projectId = ensureProjectId();
         await updateDoc(doc(db, 'projects', projectId, 'menus', menuId, 'tasks', taskId), {
-          completedLink: trimmedLink,
+          completedLink: newLink,
           updatedAt: serverTimestamp()
         });
 
@@ -5044,17 +5111,24 @@ Mô tả: ${task.description || 'Không có'}
         const timestamp = new Date().toISOString();
         recordActivityEntry({
           taskId: `dynamic-${taskId}`,
-          taskName: task.name,
+          taskName: task ? task.name : taskId,
           phase: phaseLabel,
           status: 'edited',
           timestamp,
           performedBy: performer,
-          menuId: menuId, // Store menu ID for navigation
+          menuId: menuId,
         });
         renderActivityLog();
         syncTaskState();
 
         showToast('Cập nhật link thành công!', 'success');
+
+        // Close modal
+        if(modal){
+          modal.classList.remove('active');
+          modal.setAttribute('aria-hidden', 'true');
+        }
+
         await loadMenuTasks(menuId);
         showDynamicMenuSection(menuId);
       } catch(error){
@@ -5063,12 +5137,42 @@ Mô tả: ${task.description || 'Không có'}
       }
     }
 
-    // Delete completed task content
-    async function deleteCompletedTask(menuId, taskId){
-      if(!ensureProjectReady()) return;
-      if(!confirm('⚠️ Bạn có chắc chắn muốn xóa nội dung đã hoàn thành?\n\nHành động này sẽ:\n- Xóa link đã gửi\n- Xóa ghi chú\n- Đặt lại task về trạng thái "Chưa xong"\n\nBạn có muốn tiếp tục?')){
-        return;
+    // Cancel update link modal
+    function cancelUpdateLink(){
+      const modal = $('#update-link-modal');
+      const input = $('#update-link-input');
+      if(modal){
+        modal.classList.remove('active');
+        modal.setAttribute('aria-hidden', 'true');
       }
+      if(input){
+        input.value = '';
+      }
+      updateLinkContext = { menuId: null, taskId: null, currentLink: null };
+    }
+
+    // Delete completed task content - Open remove result modal
+    function deleteCompletedTask(menuId, taskId){
+      if(!ensureProjectReady()) return;
+
+      // Store context for modal
+      removeResultContext = {
+        menuId: menuId,
+        taskId: taskId
+      };
+
+      // Open modal
+      const modal = $('#remove-result-modal');
+      if(modal){
+        modal.classList.add('active');
+        modal.setAttribute('aria-hidden', 'false');
+      }
+    }
+
+    // Confirm remove result from modal
+    async function confirmRemoveResult(){
+      const { menuId, taskId } = removeResultContext;
+      if(!menuId || !taskId) return;
 
       try {
         const tasks = dynamicTasks[menuId] || [];
@@ -5096,17 +5200,35 @@ Mô tả: ${task.description || 'Không có'}
           status: 'deleted',
           timestamp,
           performedBy: performer,
-          menuId: menuId, // Store menu ID for navigation
+          menuId: menuId,
         });
         renderActivityLog();
         syncTaskState();
+
+        // Close modal
+        const modal = $('#remove-result-modal');
+        if(modal){
+          modal.classList.remove('active');
+          modal.setAttribute('aria-hidden', 'true');
+        }
+
         await loadMenuTasks(menuId);
         showDynamicMenuSection(menuId);
-        renderDynamicOverview(); // Update overview
+        renderDynamicOverview();
       } catch(error){
         console.error('Error deleting completed task:', error);
         showToast('Lỗi khi xóa', 'error');
       }
+    }
+
+    // Cancel remove result modal
+    function cancelRemoveResult(){
+      const modal = $('#remove-result-modal');
+      if(modal){
+        modal.classList.remove('active');
+        modal.setAttribute('aria-hidden', 'true');
+      }
+      removeResultContext = { menuId: null, taskId: null };
     }
 
     // ========= NEW REFACTORED UI FUNCTIONS =========
@@ -5197,25 +5319,25 @@ Mô tả: ${task.description || 'Không có'}
     function openUpdateLinkModal(menuId, taskId, currentLink){
       console.log('🔗 [UPDATE LINK] Opening modal:', { menuId, taskId, currentLink });
 
-      const newLink = prompt('Cập nhật Link kết quả:\n\nNhập URL mới (Google Sheet/Doc):', currentLink || '');
+      if(!ensureProjectReady()) return;
 
-      if(newLink === null) return; // User cancelled
+      // Store context for modal
+      updateLinkContext = {
+        menuId: menuId,
+        taskId: taskId,
+        currentLink: currentLink || ''
+      };
 
-      if(newLink.trim() === ''){
-        showToast('Link không được để trống', 'error');
-        return;
+      // Open modal
+      const modal = $('#update-link-modal');
+      const input = $('#update-link-input');
+      if(modal && input){
+        input.value = currentLink || '';
+        modal.classList.add('active');
+        modal.setAttribute('aria-hidden', 'false');
+        // Focus input
+        setTimeout(() => input.focus(), 100);
       }
-
-      // Validate URL
-      try {
-        new URL(newLink);
-      } catch(e){
-        showToast('URL không hợp lệ. Vui lòng nhập URL đầy đủ (bắt đầu bằng http:// hoặc https://)', 'error');
-        return;
-      }
-
-      // Update link in Firestore
-      updateTaskLink(menuId, taskId, newLink);
     }
 
     /**
@@ -8661,6 +8783,48 @@ Mô tả: ${task.description || 'Không có'}
         userToDelete = null;
       }
     });
+
+    // Update Link Modal Event Listeners
+    const updateLinkModal = $('#update-link-modal');
+    const cancelUpdateLinkBtn = $('#cancel-update-link-btn');
+    const confirmUpdateLinkBtn = $('#confirm-update-link-btn');
+
+    if(cancelUpdateLinkBtn){
+      cancelUpdateLinkBtn.addEventListener('click', cancelUpdateLink);
+    }
+
+    if(confirmUpdateLinkBtn){
+      confirmUpdateLinkBtn.addEventListener('click', saveUpdatedLink);
+    }
+
+    if(updateLinkModal){
+      updateLinkModal.addEventListener('click', e => {
+        if(e.target === updateLinkModal){
+          cancelUpdateLink();
+        }
+      });
+    }
+
+    // Remove Result Modal Event Listeners
+    const removeResultModal = $('#remove-result-modal');
+    const cancelRemoveResultBtn = $('#cancel-remove-result-btn');
+    const confirmRemoveResultBtn = $('#confirm-remove-result-btn');
+
+    if(cancelRemoveResultBtn){
+      cancelRemoveResultBtn.addEventListener('click', cancelRemoveResult);
+    }
+
+    if(confirmRemoveResultBtn){
+      confirmRemoveResultBtn.addEventListener('click', confirmRemoveResult);
+    }
+
+    if(removeResultModal){
+      removeResultModal.addEventListener('click', e => {
+        if(e.target === removeResultModal){
+          cancelRemoveResult();
+        }
+      });
+    }
 
     // TASK 11 & 12: Password Management Event Listeners
     const changePasswordForm = $('#change-password-form');
