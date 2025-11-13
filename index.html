@@ -1754,6 +1754,8 @@
     let currentUserData = null;
     let allUsers = [];
     let isAdmin = false;
+    let isCreatingNewUser = false; // Flag to prevent redirect when creating new user
+    let adminCredentialsForReauth = null; // Store admin credentials temporarily
 
     // Dynamic Data State
     let dynamicMenus = [];
@@ -6053,7 +6055,25 @@ Mô tả: ${task.description || 'Không có'}
           await loadUserData(user.uid);
           showApp();
 
-          // Navigate to cover page after login
+          // If we just created a new user and admin re-authenticated, refresh user list and stay on page
+          if(isCreatingNewUser){
+            isCreatingNewUser = false;
+            adminCredentialsForReauth = null;
+
+            // Refresh user list to show the new user
+            await loadUsers();
+
+            // Navigate back to user management if not already there
+            const currentPath = normalizeRoutePath(window.location.pathname);
+            if(currentPath !== '/quan-ly-nguoi-dung'){
+              if(router) router.navigate('/quan-ly-nguoi-dung');
+            }
+
+            showToast('✅ Người dùng đã được tạo thành công!', 'success');
+            return;
+          }
+
+          // Navigate to cover page after normal login
           const currentPath = normalizeRoutePath(window.location.pathname);
           if(currentPath === '/login'){
             setTimeout(() => {
@@ -6068,6 +6088,14 @@ Mô tả: ${task.description || 'Không có'}
           currentUser = null;
           currentUserData = null;
           isAdmin = false;
+
+          // If we're creating a new user, don't redirect - show re-login prompt instead
+          if(isCreatingNewUser){
+            // Don't redirect to login page - stay on current page with re-login prompt
+            console.log('🔄 New user created. Please re-authenticate to continue.');
+            return;
+          }
+
           showLoginPage();
         }
       });
@@ -6787,8 +6815,25 @@ Mô tả: ${task.description || 'Không có'}
             throw new Error('Mật khẩu phải có ít nhất 6 ký tự');
           }
 
-          // Save admin email for re-login
+          // Set flag to prevent redirect when signing out
+          isCreatingNewUser = true;
+
+          // Save admin email and ask for password for re-authentication
           const adminEmail = currentUserData.email;
+
+          // Prompt admin for their password for re-authentication
+          const adminPassword = prompt('⚠️ Tạo người dùng mới yêu cầu đăng nhập lại.\n\nVui lòng nhập mật khẩu của bạn để tiếp tục:');
+
+          if(!adminPassword){
+            isCreatingNewUser = false;
+            throw new Error('Cần mật khẩu admin để tạo người dùng mới.');
+          }
+
+          // Store admin credentials for re-authentication
+          adminCredentialsForReauth = {
+            email: adminEmail,
+            password: adminPassword
+          };
 
           // Create auth user (this will automatically sign in the new user)
           let userCredential;
@@ -6797,7 +6842,9 @@ Mô tả: ${task.description || 'Không có'}
             userCredential = await createUserWithEmailAndPassword(auth, email, password);
             newUserId = userCredential.user.uid;
           } catch(authError){
-            // If auth creation fails, throw with clear message
+            // If auth creation fails, reset flag and throw
+            isCreatingNewUser = false;
+            adminCredentialsForReauth = null;
             throw authError;
           }
 
@@ -6813,21 +6860,33 @@ Mô tả: ${task.description || 'Không có'}
           } catch(firestoreError){
             // Firestore creation failed - auth user exists but Firestore doc doesn't
             await signOut(auth);
+            isCreatingNewUser = false;
+            adminCredentialsForReauth = null;
             throw new Error(`⚠️ Tài khoản đã tạo trong Firebase Auth nhưng lưu thông tin thất bại.\n\nEmail: ${email}\nBạn cần xóa user này trong Firebase Console > Authentication.\n\nLỗi: ${firestoreError.message}`);
           }
 
-          // User created successfully - sign out the new user
+          // User created successfully - sign out the new user and sign admin back in
           await signOut(auth);
 
-          // Show success message and prompt admin to log back in
-          showToast('✅ Người dùng đã được tạo thành công! Vui lòng đăng nhập lại.', 'success');
+          // Close modal immediately
           $('#user-modal').classList.remove('active');
 
-          // Pre-fill admin email on login page for convenience
-          setTimeout(() => {
-            const loginEmailInput = $('#login-email');
-            if(loginEmailInput) loginEmailInput.value = adminEmail;
-          }, 100);
+          // Clear form
+          $('#user-email').value = '';
+          $('#user-display-name').value = '';
+          $('#user-password').value = '';
+          $('#user-error-message').classList.add('hidden');
+
+          // Re-authenticate admin immediately (this will trigger onAuthStateChanged)
+          try {
+            await signInWithEmailAndPassword(auth, adminCredentialsForReauth.email, adminCredentialsForReauth.password);
+            // Success - the auth state listener will handle the rest (refresh user list, show toast, etc.)
+          } catch(reAuthError){
+            isCreatingNewUser = false;
+            adminCredentialsForReauth = null;
+            showToast('❌ Lỗi khi đăng nhập lại. Vui lòng đăng nhập thủ công.', 'error');
+            console.error('Re-authentication error:', reAuthError);
+          }
         }
       } catch(error){
         console.error('Error saving user:', error);
