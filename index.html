@@ -3172,64 +3172,117 @@
     }
 
     /**
-     * Get date range for filtering activity logs
+     * Get date range for filtering activity logs (timezone-aware)
+     * Returns timestamps in milliseconds for comparison
      * @param {string} filterType - Type of filter: 'all', 'today', 'yesterday', 'thisWeek', 'lastWeek', 'thisMonth', 'lastMonth', 'custom'
-     * @returns {Object} Object with startDate and endDate (Date objects) or null for 'all'
+     * @returns {Object} Object with startTimestamp and endTimestamp (numbers) or null for 'all'
      */
     function getActivityDateRange(filterType){
       const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()); // Start of today
+
+      // Helper function to get start of day (00:00:00.000) in local timezone
+      function getStartOfDay(date){
+        const d = new Date(date);
+        d.setHours(0, 0, 0, 0);
+        return d.getTime();
+      }
+
+      // Helper function to get end of day (23:59:59.999) in local timezone
+      function getEndOfDay(date){
+        const d = new Date(date);
+        d.setHours(23, 59, 59, 999);
+        return d.getTime();
+      }
+
+      // Helper function to get start of month
+      function getStartOfMonth(year, month){
+        const d = new Date(year, month, 1);
+        d.setHours(0, 0, 0, 0);
+        return d.getTime();
+      }
+
+      // Helper function to get end of month
+      function getEndOfMonth(year, month){
+        const d = new Date(year, month + 1, 0); // Last day of month
+        d.setHours(23, 59, 59, 999);
+        return d.getTime();
+      }
 
       switch(filterType){
         case 'all':
           return null; // No filter
 
         case 'today':
-          const tomorrow = new Date(today);
-          tomorrow.setDate(tomorrow.getDate() + 1);
-          return { startDate: today, endDate: tomorrow };
+          return {
+            startTimestamp: getStartOfDay(now),
+            endTimestamp: getEndOfDay(now)
+          };
 
         case 'yesterday':
-          const yesterday = new Date(today);
+          const yesterday = new Date(now);
           yesterday.setDate(yesterday.getDate() - 1);
-          return { startDate: yesterday, endDate: today };
+          return {
+            startTimestamp: getStartOfDay(yesterday),
+            endTimestamp: getEndOfDay(yesterday)
+          };
 
         case 'thisWeek':
-          // Get start of week (Monday)
-          const dayOfWeek = today.getDay();
+          // Get start of week (Monday 00:00:00)
+          const dayOfWeek = now.getDay();
           const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Sunday is 0, Monday is 1
-          const weekStart = new Date(today);
-          weekStart.setDate(today.getDate() + diffToMonday);
+          const weekStart = new Date(now);
+          weekStart.setDate(now.getDate() + diffToMonday);
+
+          // Get end of week (Sunday 23:59:59)
           const weekEnd = new Date(weekStart);
-          weekEnd.setDate(weekStart.getDate() + 7);
-          return { startDate: weekStart, endDate: weekEnd };
+          weekEnd.setDate(weekStart.getDate() + 6); // 6 days after Monday = Sunday
+
+          return {
+            startTimestamp: getStartOfDay(weekStart),
+            endTimestamp: getEndOfDay(weekEnd)
+          };
 
         case 'lastWeek':
           // Get start of last week (Monday)
-          const lastWeekDayOfWeek = today.getDay();
+          const lastWeekDayOfWeek = now.getDay();
           const diffToLastMonday = lastWeekDayOfWeek === 0 ? -13 : -6 - lastWeekDayOfWeek;
-          const lastWeekStart = new Date(today);
-          lastWeekStart.setDate(today.getDate() + diffToLastMonday);
+          const lastWeekStart = new Date(now);
+          lastWeekStart.setDate(now.getDate() + diffToLastMonday);
+
+          // Get end of last week (Sunday)
           const lastWeekEnd = new Date(lastWeekStart);
-          lastWeekEnd.setDate(lastWeekStart.getDate() + 7);
-          return { startDate: lastWeekStart, endDate: lastWeekEnd };
+          lastWeekEnd.setDate(lastWeekStart.getDate() + 6);
+
+          return {
+            startTimestamp: getStartOfDay(lastWeekStart),
+            endTimestamp: getEndOfDay(lastWeekEnd)
+          };
 
         case 'thisMonth':
-          const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-          const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-          return { startDate: monthStart, endDate: monthEnd };
+          return {
+            startTimestamp: getStartOfMonth(now.getFullYear(), now.getMonth()),
+            endTimestamp: getEndOfMonth(now.getFullYear(), now.getMonth())
+          };
 
         case 'lastMonth':
-          const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-          const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 1);
-          return { startDate: lastMonthStart, endDate: lastMonthEnd };
+          const lastMonth = now.getMonth() - 1;
+          const lastMonthYear = lastMonth < 0 ? now.getFullYear() - 1 : now.getFullYear();
+          const lastMonthIndex = lastMonth < 0 ? 11 : lastMonth;
+
+          return {
+            startTimestamp: getStartOfMonth(lastMonthYear, lastMonthIndex),
+            endTimestamp: getEndOfMonth(lastMonthYear, lastMonthIndex)
+          };
 
         case 'custom':
           if(activityCustomDateStart && activityCustomDateEnd){
             const startDate = new Date(activityCustomDateStart);
             const endDate = new Date(activityCustomDateEnd);
-            endDate.setDate(endDate.getDate() + 1); // Include the end date
-            return { startDate, endDate };
+
+            return {
+              startTimestamp: getStartOfDay(startDate),
+              endTimestamp: getEndOfDay(endDate)
+            };
           }
           return null; // No custom range set
 
@@ -3239,7 +3292,7 @@
     }
 
     /**
-     * Filter activity logs based on current date filter
+     * Filter activity logs based on current date filter (timezone-aware)
      * @param {Array} logs - Array of activity log entries
      * @returns {Array} Filtered activity logs
      */
@@ -3253,14 +3306,45 @@
         return logs;
       }
 
-      const { startDate, endDate } = dateRange;
+      const { startTimestamp, endTimestamp } = dateRange;
 
-      return logs.filter(entry => {
+      console.log('🔍 [DATE FILTER] Filtering with range:', {
+        filter: activityDateFilter,
+        start: new Date(startTimestamp).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
+        end: new Date(endTimestamp).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }),
+        totalLogs: logs.length
+      });
+
+      const filtered = logs.filter(entry => {
         if(!entry.updatedAt) return false;
 
-        const entryDate = new Date(entry.updatedAt);
-        return entryDate >= startDate && entryDate < endDate;
+        // Parse the updatedAt field - handles both ISO strings and Date objects
+        let entryTimestamp;
+        if(typeof entry.updatedAt === 'string'){
+          entryTimestamp = new Date(entry.updatedAt).getTime();
+        } else if(entry.updatedAt instanceof Date){
+          entryTimestamp = entry.updatedAt.getTime();
+        } else if(typeof entry.updatedAt === 'number'){
+          entryTimestamp = entry.updatedAt;
+        } else if(entry.updatedAt?.toDate && typeof entry.updatedAt.toDate === 'function'){
+          // Firestore Timestamp object
+          entryTimestamp = entry.updatedAt.toDate().getTime();
+        } else {
+          return false;
+        }
+
+        // Check if entry timestamp is within range (inclusive)
+        const isInRange = entryTimestamp >= startTimestamp && entryTimestamp <= endTimestamp;
+
+        return isInRange;
       });
+
+      console.log('✅ [DATE FILTER] Filtered results:', {
+        original: logs.length,
+        filtered: filtered.length
+      });
+
+      return filtered;
     }
 
     function renderActivityLog(){
