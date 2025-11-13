@@ -871,17 +871,29 @@
             <div id="activity-log-section" class="card-section">
               <div class="flex items-center justify-between mb-3 flex-wrap gap-3">
                 <h3 class="card-title">Tổng Quan Hoạt Động</h3>
-                <span id="activity-log-count" class="text-sm text-gray-500"></span>
+                <div class="flex items-center gap-3">
+                  <button
+                    id="bulk-delete-incomplete-btn"
+                    type="button"
+                    class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors text-sm flex items-center gap-2"
+                    title="Xóa tất cả task chưa hoàn thành khỏi hệ thống"
+                  >
+                    <span>🗑️</span>
+                    <span>Xóa Task Chưa Hoàn Thành</span>
+                  </button>
+                  <span id="activity-log-count" class="text-sm text-gray-500"></span>
+                </div>
               </div>
               <div class="overflow-x-auto">
                 <table class="notes-table activity-table">
                   <thead>
                     <tr>
-                      <th style="width:20%">Giai đoạn</th>
+                      <th style="width:18%">Giai đoạn</th>
                       <th style="width:15%">Trạng thái</th>
-                      <th style="width:35%">Tên Task</th>
-                      <th style="width:15%">Thời gian hoàn thành</th>
-                      <th style="width:15%">Thời gian cập nhật</th>
+                      <th style="width:30%">Tên Task</th>
+                      <th style="width:13%">Thời gian hoàn thành</th>
+                      <th style="width:13%">Thời gian cập nhật</th>
+                      <th style="width:11%; text-align: center;">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody id="activity-log-body"></tbody>
@@ -3126,7 +3138,7 @@
       // Render table rows
       tbody.innerHTML = '';
       if(total === 0){
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-gray-500 py-6">Chưa có hoạt động nào.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-gray-500 py-6">Chưa có hoạt động nào.</td></tr>';
       } else {
         const statusMap = {
           completed: { text: 'Hoàn thành', className: 'text-green-600 font-semibold' },
@@ -3140,12 +3152,27 @@
           const performer = entry.performedBy ? ` – ${escapeHtml(entry.performedBy)}` : '';
           const tr = document.createElement('tr');
           const menuIdAttr = entry.menuId ? ` data-menu-id="${escapeHtml(entry.menuId)}"` : '';
+
+          // Check if task is incomplete (not completed status)
+          const isIncomplete = entry.status !== 'completed';
+          const deleteButtonHtml = isIncomplete
+            ? `<button type="button"
+                  class="delete-incomplete-task-btn px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded text-xs font-medium transition-colors"
+                  data-task-id="${entry.taskId}"
+                  data-menu-id="${entry.menuId || ''}"
+                  data-task-name="${escapeHtml(entry.taskName || `Task ${entry.taskId}`)}"
+                  title="Xóa task chưa hoàn thành">
+                  🗑️ Xóa
+               </button>`
+            : '<span class="text-gray-400 text-xs">—</span>';
+
           tr.innerHTML = `
             <td>${phaseLabels[entry.phase] || entry.phase || '-'}</td>
             <td><span class="${statusConfig.className}">${statusConfig.text}${performer}</span></td>
             <td><button type="button" class="task-log-link" data-jump-task="${entry.taskId}"${menuIdAttr}>${escapeHtml(entry.taskName || `Task ${entry.taskId}`)}</button></td>
             <td>${entry.completedAt ? formatDateTime(entry.completedAt) : '-'}</td>
-            <td>${entry.updatedAt ? formatDateTime(entry.updatedAt) : '-'}</td>`;
+            <td>${entry.updatedAt ? formatDateTime(entry.updatedAt) : '-'}</td>
+            <td style="text-align: center;">${deleteButtonHtml}</td>`;
           tbody.appendChild(tr);
         });
       }
@@ -5018,6 +5045,174 @@ Mô tả: ${task.description || 'Không có'}
       } catch(error){
         console.error('❌ Error deleting task:', error);
         showToast('Lỗi khi xóa task', 'error');
+      }
+    }
+
+    /**
+     * Delete an incomplete task from the Activity Log
+     * Only allows deletion if task status is NOT 'completed'
+     */
+    async function deleteIncompleteTask(taskId, menuId, taskName){
+      if(!ensureProjectReady()) return;
+
+      try {
+        const projectId = ensureProjectId();
+
+        // Verify the task exists and is incomplete
+        if(!menuId){
+          showToast('Không thể xóa: Thiếu thông tin menu', 'error');
+          return;
+        }
+
+        // Get task from Firestore to verify it's incomplete
+        const taskDoc = await getDoc(doc(db, 'projects', projectId, 'menus', menuId, 'tasks', taskId));
+
+        if(!taskDoc.exists()){
+          showToast('Task không tồn tại trong cơ sở dữ liệu', 'error');
+          return;
+        }
+
+        const taskData = taskDoc.data();
+
+        // Check if task is completed - prevent deletion of completed tasks
+        if(taskData.completed || taskData.status === 'completed'){
+          showToast('❌ Không thể xóa task đã hoàn thành', 'error');
+          return;
+        }
+
+        // Confirm deletion
+        const confirmMessage = `Bạn có chắc muốn xóa task "${taskName}" khỏi hệ thống?\n\nLưu ý: Hành động này không thể hoàn tác.`;
+        if(!confirm(confirmMessage)) return;
+
+        const performer = getCurrentUserName();
+        const menu = dynamicMenus.find(m => m.id === menuId);
+        const phaseLabel = menu ? menu.name : menuId;
+        const timestamp = new Date().toISOString();
+
+        // Delete from Firestore
+        await deleteDoc(doc(db, 'projects', projectId, 'menus', menuId, 'tasks', taskId));
+
+        // Remove from activity logs
+        activityLogs = activityLogs.filter(log => log.taskId !== `dynamic-${taskId}`);
+
+        // Remove from local task state
+        if(taskState[taskId]){
+          delete taskState[taskId];
+        }
+
+        showToast('✅ Đã xóa task thành công', 'success');
+
+        // Record deletion activity
+        recordActivityEntry({
+          taskId: `dynamic-${taskId}`,
+          taskName: taskName,
+          phase: phaseLabel,
+          status: 'deleted',
+          timestamp,
+          performedBy: performer,
+          menuId: menuId,
+        });
+
+        // Refresh UI
+        renderActivityLog();
+        await loadMenuTasks(menuId);
+        renderDynamicOverview();
+        calculateDeadlines();
+      } catch(error){
+        console.error('❌ Error deleting incomplete task:', error);
+        showToast('Lỗi khi xóa task: ' + error.message, 'error');
+      }
+    }
+
+    /**
+     * Bulk delete all incomplete tasks from the system
+     * Scans all activity logs and deletes tasks that are NOT completed
+     */
+    async function bulkDeleteIncompleteTasks(){
+      if(!ensureProjectReady()) return;
+
+      try {
+        const projectId = ensureProjectId();
+
+        // Find all incomplete tasks from activity logs
+        const incompleteTasks = activityLogs.filter(entry => entry.status !== 'completed' && entry.menuId);
+
+        if(incompleteTasks.length === 0){
+          showToast('Không có task chưa hoàn thành để xóa', 'info');
+          return;
+        }
+
+        // Confirm bulk deletion
+        const confirmMessage = `⚠️ CẢNH BÁO: Bạn sắp xóa ${incompleteTasks.length} task chưa hoàn thành khỏi hệ thống!\n\nDanh sách các task sẽ bị xóa:\n${incompleteTasks.slice(0, 10).map(t => `- ${t.taskName}`).join('\n')}${incompleteTasks.length > 10 ? `\n... và ${incompleteTasks.length - 10} task khác` : ''}\n\nHành động này KHÔNG THỂ HOÀN TÁC!\n\nBạn có chắc chắn muốn tiếp tục?`;
+
+        if(!confirm(confirmMessage)) return;
+
+        // Show loading message
+        showToast('Đang xóa tasks...', 'info');
+
+        let deletedCount = 0;
+        let errorCount = 0;
+        const errors = [];
+
+        // Delete each incomplete task
+        for(const entry of incompleteTasks){
+          try {
+            const taskId = entry.taskId.replace('dynamic-', '');
+            const menuId = entry.menuId;
+
+            // Verify task exists and is incomplete
+            const taskDoc = await getDoc(doc(db, 'projects', projectId, 'menus', menuId, 'tasks', taskId));
+
+            if(taskDoc.exists()){
+              const taskData = taskDoc.data();
+
+              // Only delete if not completed
+              if(!taskData.completed && taskData.status !== 'completed'){
+                await deleteDoc(doc(db, 'projects', projectId, 'menus', menuId, 'tasks', taskId));
+
+                // Remove from local task state
+                if(taskState[taskId]){
+                  delete taskState[taskId];
+                }
+
+                deletedCount++;
+              }
+            }
+          } catch(error){
+            console.error(`❌ Error deleting task ${entry.taskName}:`, error);
+            errors.push(entry.taskName);
+            errorCount++;
+          }
+        }
+
+        // Remove deleted tasks from activity logs
+        activityLogs = activityLogs.filter(entry =>
+          entry.status === 'completed' || !entry.menuId
+        );
+
+        // Show results
+        if(deletedCount > 0){
+          showToast(`✅ Đã xóa thành công ${deletedCount} task chưa hoàn thành`, 'success');
+        }
+
+        if(errorCount > 0){
+          showToast(`⚠️ Có ${errorCount} task không thể xóa: ${errors.slice(0, 3).join(', ')}`, 'warning');
+        }
+
+        // Refresh all UI
+        renderActivityLog();
+
+        // Reload all menus
+        for(const menu of dynamicMenus){
+          await loadMenuTasks(menu.id);
+        }
+
+        renderDynamicOverview();
+        calculateDeadlines();
+
+      } catch(error){
+        console.error('❌ Error in bulk delete:', error);
+        showToast('Lỗi khi xóa hàng loạt: ' + error.message, 'error');
       }
     }
 
@@ -7898,6 +8093,18 @@ Mô tả: ${task.description || 'Không có'}
       });
     }
     const activityLogBody = $('#activity-log-body'); if(activityLogBody) activityLogBody.addEventListener('click', e => {
+      // Handle delete incomplete task button
+      const deleteBtn = e.target.closest('.delete-incomplete-task-btn');
+      if(deleteBtn){
+        e.preventDefault();
+        const taskId = deleteBtn.getAttribute('data-task-id');
+        const menuId = deleteBtn.getAttribute('data-menu-id');
+        const taskName = deleteBtn.getAttribute('data-task-name');
+        deleteIncompleteTask(taskId, menuId, taskName);
+        return;
+      }
+
+      // Handle task navigation
       const trigger = e.target.closest('[data-jump-task]');
       if(trigger){
         e.preventDefault();
@@ -7906,6 +8113,15 @@ Mô tả: ${task.description || 'Không có'}
         navigateToTask(taskId, menuId);
       }
     });
+
+    // Bulk delete incomplete tasks button
+    const bulkDeleteBtn = $('#bulk-delete-incomplete-btn');
+    if(bulkDeleteBtn){
+      bulkDeleteBtn.addEventListener('click', e => {
+        e.preventDefault();
+        bulkDeleteIncompleteTasks();
+      });
+    }
     const notificationBell = $('#notification-bell');
     const notificationDropdown = $('#notification-dropdown');
     if(notificationBell && notificationDropdown){
