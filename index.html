@@ -3060,12 +3060,22 @@
       overdueList.innerHTML = '';
       let upcomingCount = 0, overdueCount = 0;
 
+      // Track unique task IDs to prevent duplicates
+      const processedTaskIds = new Set();
+
       allTasks.forEach(task => {
+        // Skip if task ID has already been processed
+        if(processedTaskIds.has(task.id)) return;
+
         const state = ensureTaskEntry(task.id);
         if(!task.deadline) return;
         if(state.completed) return;
         const info = evaluateDeadline(task.deadline, false);
         if(!info) return;
+
+        // Mark this task ID as processed
+        processedTaskIds.add(task.id);
+
         if(info.status === 'danger'){
           const li = document.createElement('li');
           li.innerHTML = `<b>${task.title}</b>: ${task.deadline} <span class="text-red-600 font-semibold">(${info.text})</span>`;
