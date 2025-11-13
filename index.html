@@ -3451,7 +3451,7 @@
       let html = '';
 
       // Previous button
-      html += `<button class="pagination-btn" onclick="changeActivityLogPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>
+      html += `<button type="button" class="pagination-btn" data-page="${currentPage - 1}" ${currentPage === 1 ? 'disabled' : ''}>
         &laquo; Trước
       </button>`;
 
@@ -3467,7 +3467,7 @@
 
       // First page + ellipsis
       if(startPage > 1){
-        html += `<button class="pagination-btn" onclick="changeActivityLogPage(1)">1</button>`;
+        html += `<button type="button" class="pagination-btn" data-page="1">1</button>`;
         if(startPage > 2){
           html += `<span class="pagination-ellipsis">...</span>`;
         }
@@ -3476,7 +3476,7 @@
       // Page numbers
       for(let i = startPage; i <= endPage; i++){
         const activeClass = i === currentPage ? 'active' : '';
-        html += `<button class="pagination-btn ${activeClass}" onclick="changeActivityLogPage(${i})">${i}</button>`;
+        html += `<button type="button" class="pagination-btn ${activeClass}" data-page="${i}" ${i === currentPage ? 'disabled' : ''}>${i}</button>`;
       }
 
       // Ellipsis + last page
@@ -3484,11 +3484,11 @@
         if(endPage < totalPages - 1){
           html += `<span class="pagination-ellipsis">...</span>`;
         }
-        html += `<button class="pagination-btn" onclick="changeActivityLogPage(${totalPages})">${totalPages}</button>`;
+        html += `<button type="button" class="pagination-btn" data-page="${totalPages}">${totalPages}</button>`;
       }
 
       // Next button
-      html += `<button class="pagination-btn" onclick="changeActivityLogPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>
+      html += `<button type="button" class="pagination-btn" data-page="${currentPage + 1}" ${currentPage === totalPages ? 'disabled' : ''}>
         Sau &raquo;
       </button>`;
 
@@ -3496,10 +3496,7 @@
     }
 
     function changeActivityLogPage(page){
-      const total = Array.isArray(activityLogs) ? activityLogs.length : 0;
-      const totalPages = Math.ceil(total / activityLogItemsPerPage);
-
-      if(page < 1 || page > totalPages) return;
+      if(page < 1) return;
 
       activityLogCurrentPage = page;
       renderActivityLog();
@@ -8401,9 +8398,15 @@ Mô tả: ${task.description || 'Không có'}
       const deleteBtn = e.target.closest('.delete-incomplete-task-btn');
       if(deleteBtn){
         e.preventDefault();
-        const taskId = deleteBtn.getAttribute('data-task-id');
+        let taskId = deleteBtn.getAttribute('data-task-id');
         const menuId = deleteBtn.getAttribute('data-menu-id');
         const taskName = deleteBtn.getAttribute('data-task-name');
+
+        // Strip "dynamic-" prefix if present (activity logs store IDs with this prefix)
+        if(taskId && taskId.startsWith('dynamic-')){
+          taskId = taskId.replace('dynamic-', '');
+        }
+
         deleteIncompleteTask(taskId, menuId, taskName);
         return;
       }
@@ -8417,6 +8420,20 @@ Mô tả: ${task.description || 'Không có'}
         navigateToTask(taskId, menuId);
       }
     });
+
+    // Activity Log Pagination Event Delegation
+    const activityLogPagination = $('#activity-log-pagination');
+    if(activityLogPagination){
+      activityLogPagination.addEventListener('click', e => {
+        const paginationBtn = e.target.closest('.pagination-btn');
+        if(paginationBtn && !paginationBtn.disabled){
+          const page = parseInt(paginationBtn.getAttribute('data-page'), 10);
+          if(!isNaN(page) && page >= 1){
+            changeActivityLogPage(page);
+          }
+        }
+      });
+    }
 
     // Activity Log Date Filter
     const activityFilterBtn = $('#activity-date-filter-btn');
